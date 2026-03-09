@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 180" width="520" height="180">
+  <defs>
+    <linearGradient id="rg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff1a0a"/>
+      <stop offset="100%" style="stop-color:#b80000"/>
+    </linearGradient>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a1a"/>
+      <stop offset="100%" style="stop-color:#0a0a0a"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softglow">
+      <feGaussianBlur stdDeviation="8" result="b"/>
+      <feComposite in="SourceGraphic" in2="b" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- ===================== -->
+  <!-- ICON MARK (left side) -->
+  <!-- ===================== -->
+
+  <!-- Outer hexagon-ish badge for icon -->
+  <polygon points="20,30 60,10 100,30 100,90 60,110 20,90" fill="url(#bg)" stroke="#E10600" stroke-width="1.5"/>
+
+  <!-- Inner F shape as icon -->
+  <!-- Vertical bar of F -->
+  <rect x="36" y="28" width="10" height="54" fill="white"/>
+  <!-- Top horizontal of F -->
+  <rect x="36" y="28" width="32" height="10" fill="white"/>
+  <!-- Middle horizontal of F -->
+  <rect x="36" y="51" width="24" height="8" fill="#E10600"/>
+  <!-- Speed slash cutting through -->
+  <polygon points="72,28 82,28 50,82 40,82" fill="#E10600" opacity="0.9"/>
+
+  <!-- ===================== -->
+  <!-- WORDMARK (right side) -->
+  <!-- ===================== -->
+
+  <!-- Outer container — skewed parallelogram -->
+  <polygon points="118,15 498,15 510,165 130,165" fill="#0d0d0d" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+
+  <!-- Red accent: top bar -->
+  <rect x="118" y="15" width="392" height="3" fill="#E10600" opacity="0.9"/>
+
+  <!-- Speed slash decoration behind letters -->
+  <polygon points="280,18 292,18 280,162 268,162" fill="rgba(225,6,0,0.07)"/>
+  <polygon points="286,18 289,18 277,162 274,162" fill="rgba(225,6,0,0.12)"/>
+
+  <!-- FJ — white, italic -->
+  <text
+    x="136"
+    y="130"
+    font-family="'Arial Black', 'Franklin Gothic Heavy', 'Impact', sans-serif"
+    font-weight="900"
+    font-size="108"
+    fill="white"
+    letter-spacing="-6"
+    font-style="italic"
+  >FJ</text>
+
+  <!-- UAN — red, italic -->
+  <text
+    x="283"
+    y="130"
+    font-family="'Arial Black', 'Franklin Gothic Heavy', 'Impact', sans-serif"
+    font-weight="900"
+    font-size="108"
+    fill="url(#rg)"
+    letter-spacing="-6"
+    font-style="italic"
+    filter="url(#softglow)"
+  >UAN</text>
+
+  <!-- Divider line -->
+  <line x1="130" y1="143" x2="505" y2="143" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+
+  <!-- Tagline -->
+  <text
+    x="136"
+    y="158"
+    font-family="'Arial', sans-serif"
+    font-weight="700"
+    font-size="9.5"
+    fill="rgba(255,255,255,0.22)"
+    letter-spacing="5"
+  >FORMULA 1  ·  ANALYTICS  ·  2026</text>
+
+  <!-- Corner pip top right -->
+  <rect x="484" y="22" width="18" height="3" fill="#E10600" opacity="0.6"/>
+  <rect x="494" y="22" width="8" height="6" fill="#E10600" opacity="0.4"/>
+
+</svg>

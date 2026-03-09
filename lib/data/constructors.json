@@ -1,0 +1,17 @@
+[
+  { "id": "ferrari", "name": "Scuderia Ferrari", "nationality": "Italian", "championships": 16, "founded": 1950, "base": "Maranello, Italy", "color": "#E8002D" },
+  { "id": "williams", "name": "Williams Racing", "nationality": "British", "championships": 9, "founded": 1977, "base": "Grove, United Kingdom", "color": "#64C4FF" },
+  { "id": "mclaren", "name": "McLaren F1 Team", "nationality": "British", "championships": 8, "founded": 1966, "base": "Woking, United Kingdom", "color": "#FF8000" },
+  { "id": "mercedes", "name": "Mercedes-AMG Petronas", "nationality": "German", "championships": 8, "founded": 1954, "base": "Brackley, United Kingdom", "color": "#27F4D2" },
+  { "id": "red_bull", "name": "Oracle Red Bull Racing", "nationality": "Austrian", "championships": 6, "founded": 2005, "base": "Milton Keynes, United Kingdom", "color": "#3671C6" },
+  { "id": "lotus_f1", "name": "Lotus", "nationality": "British", "championships": 7, "founded": 1958, "base": "Hingham, United Kingdom", "color": "#FFD700" },
+  { "id": "brabham", "name": "Brabham", "nationality": "British", "championships": 2, "founded": 1962, "base": "Chessington, United Kingdom", "color": "#FFFFFF" },
+  { "id": "tyrrell", "name": "Tyrrell", "nationality": "British", "championships": 1, "founded": 1968, "base": "Ockham, United Kingdom", "color": "#009900" },
+  { "id": "benetton", "name": "Benetton", "nationality": "British", "championships": 2, "founded": 1986, "base": "Enstone, United Kingdom", "color": "#00CC00" },
+  { "id": "renault", "name": "Renault F1 Team", "nationality": "French", "championships": 2, "founded": 2001, "base": "Enstone, United Kingdom", "color": "#FFF500" },
+  { "id": "alpine", "name": "BWT Alpine F1 Team", "nationality": "French", "championships": 0, "founded": 2021, "base": "Enstone, United Kingdom", "color": "#FF87BC" },
+  { "id": "aston_martin", "name": "Aston Martin Aramco F1 Team", "nationality": "British", "championships": 0, "founded": 2021, "base": "Silverstone, United Kingdom", "color": "#229971" },
+  { "id": "haas", "name": "MoneyGram Haas F1 Team", "nationality": "American", "championships": 0, "founded": 2016, "base": "Kannapolis, United States", "color": "#B6BABD" },
+  { "id": "rb", "name": "Visa Cash App RB F1 Team", "nationality": "Italian", "championships": 0, "founded": 2020, "base": "Faenza, Italy", "color": "#6692FF" },
+  { "id": "sauber", "name": "Stake F1 Team Kick Sauber", "nationality": "Swiss", "championships": 0, "founded": 1993, "base": "Hinwil, Switzerland", "color": "#52E252" }
+]

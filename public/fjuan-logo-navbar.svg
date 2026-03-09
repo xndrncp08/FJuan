@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 40" width="160" height="40">
+  <defs>
+    <linearGradient id="rg" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#ff1a0a"/>
+      <stop offset="100%" style="stop-color:#E10600"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Red left accent bar -->
+  <rect x="0" y="4" width="3" height="32" fill="#E10600"/>
+  <rect x="0" y="4" width="3" height="10" fill="#ff3020"/>
+
+  <!-- FJ white -->
+  <text
+    x="10"
+    y="32"
+    font-family="'Arial Black', 'Franklin Gothic Heavy', 'Impact', sans-serif"
+    font-weight="900"
+    font-size="30"
+    fill="white"
+    letter-spacing="-1"
+    font-style="italic"
+  >FJ</text>
+
+  <!-- UAN red -->
+  <text
+    x="52"
+    y="32"
+    font-family="'Arial Black', 'Franklin Gothic Heavy', 'Impact', sans-serif"
+    font-weight="900"
+    font-size="30"
+    fill="url(#rg)"
+    letter-spacing="-1"
+    font-style="italic"
+  >UAN</text>
+
+  <!-- Underline slash -->
+  <polygon points="10,35 155,35 152,39 7,39" fill="rgba(225,6,0,0.15)"/>
+
+</svg>

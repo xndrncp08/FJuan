@@ -1,0 +1,194 @@
+@import url('https://fonts.googleapis.com/css2?family=Russo+One&family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Barlow+Condensed:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 100% 44%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 55%;
+    --accent: 0 0% 10%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 11%;
+    --input: 0 0% 10%;
+    --ring: 0 100% 44%;
+    --radius: 0rem;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+
+  body {
+    background-color: #080808;
+    color: rgba(255,255,255,0.9);
+    font-family: 'Rajdhani', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html { scroll-behavior: smooth; }
+}
+
+@layer utilities {
+  .font-display { font-family: 'Russo One', sans-serif; }
+  .font-mono-f1 { font-family: 'JetBrains Mono', monospace; }
+
+  .surface { background-color: #111111; border: 1px solid rgba(255,255,255,0.07); }
+  .surface-2 { background-color: #161616; border: 1px solid rgba(255,255,255,0.07); }
+  .panel { background-color: #0d0d0d; border: 1px solid rgba(255,255,255,0.07); }
+
+  .label-overline {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #E10600;
+  }
+
+  .section-title {
+    font-family: 'Russo One', sans-serif;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    line-height: 0.95;
+    text-transform: uppercase;
+    color: white;
+  }
+
+  .stat-value {
+    font-family: 'Russo One', sans-serif;
+    font-size: 2.5rem;
+    line-height: 1;
+    color: white;
+  }
+
+  .stat-label {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.38);
+    margin-top: 0.25rem;
+  }
+
+  .data-readout {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 0.05em;
+  }
+
+  .hero-bg {
+    background:
+      radial-gradient(ellipse 100% 80% at 50% -5%, rgba(225,6,0,0.16) 0%, transparent 60%),
+      #080808;
+  }
+
+  .carbon-bg {
+    background-color: #0a0a0a;
+    background-image:
+      repeating-linear-gradient(45deg, transparent, transparent 1px, rgba(255,255,255,0.013) 1px, rgba(255,255,255,0.013) 2px),
+      repeating-linear-gradient(-45deg, transparent, transparent 1px, rgba(255,255,255,0.013) 1px, rgba(255,255,255,0.013) 2px);
+    background-size: 4px 4px;
+  }
+
+  .glow-red { box-shadow: 0 0 40px rgba(225,6,0,0.18), 0 0 80px rgba(225,6,0,0.05); }
+
+  .card-hover { transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease; }
+  .card-hover:hover { border-color: rgba(225,6,0,0.35) !important; transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #E10600;
+    animation: pulse-live 1.5s ease-in-out infinite;
+    display: inline-block;
+  }
+
+  .btn-primary {
+    background-color: #E10600;
+    color: white;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 0.875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 0.625rem 1.75rem;
+    transition: all 0.18s ease;
+    border: 1px solid transparent;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+  }
+  .btn-primary:hover { background-color: #c80500; box-shadow: 0 0 28px rgba(225,6,0,0.4); }
+
+  .btn-ghost {
+    background: transparent;
+    color: rgba(255,255,255,0.6);
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 0.875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.625rem 1.75rem;
+    border: 1px solid rgba(255,255,255,0.12);
+    transition: all 0.18s ease;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+  }
+  .btn-ghost:hover { color: white; border-color: rgba(255,255,255,0.25); background: rgba(255,255,255,0.04); }
+
+  .skeleton {
+    background: linear-gradient(90deg, #111 25%, #191919 50%, #111 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: #080808; }
+  ::-webkit-scrollbar-thumb { background: rgba(225,6,0,0.35); }
+  ::-webkit-scrollbar-thumb:hover { background: #E10600; }
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes pulse-live {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(225,6,0,0.5); }
+  50% { opacity: 0.5; box-shadow: 0 0 0 4px rgba(225,6,0,0); }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-slide-up { animation: slide-up 0.5s ease-out both; }
+.animate-fade-in { animation: fade-in 0.4s ease-out both; }
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
