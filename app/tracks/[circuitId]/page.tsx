@@ -3,15 +3,15 @@ import { notFound } from "next/navigation";
 import { getCircuit } from "@/lib/api/jolpica";
 import circuitsData from '@/lib/data/circuits.json';
 
-export default async function TrackDetailPage({ params }: { params: { circuitId: string } }) {
-  // Rich stats from local JSON
-  const localData = circuitsData.find(c => c.id === params.circuitId);
+export default async function TrackDetailPage({ params }: { params: Promise<{ circuitId: string }> }) {
+  const { circuitId } = await params;
+
+  const localData = circuitsData.find(c => c.id === circuitId);
   if (!localData) notFound();
 
-  // Live circuit identity from Jolpica (name, location, url)
   let apiCircuit: any = null;
   try {
-    apiCircuit = await getCircuit(params.circuitId);
+    apiCircuit = await getCircuit(circuitId);
   } catch {
     // fall back to local data silently
   }
@@ -21,13 +21,12 @@ export default async function TrackDetailPage({ params }: { params: { circuitId:
   const country = localData.country;
 
   return (
-    <main style={{ background: "#080808", minHeight: "100vh" }}>
+    <main style={{ background: "#060606", minHeight: "100vh" }}>
 
       {/* Hero */}
       <section style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden" }}>
         <div style={{ height: "2px", background: "#E10600" }} />
 
-        {/* Country watermark */}
         <div style={{
           position: "absolute", right: 0, top: 0, bottom: 0,
           display: "flex", alignItems: "center", paddingRight: "2rem",
@@ -76,7 +75,6 @@ export default async function TrackDetailPage({ params }: { params: { circuitId:
 
       <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "3rem 1.5rem" }}>
 
-        {/* Stats bar */}
         <div style={{
           display: "grid", gridTemplateColumns: "repeat(4, 1fr)",
           background: "rgba(255,255,255,0.05)", marginBottom: "1px",
@@ -105,7 +103,6 @@ export default async function TrackDetailPage({ params }: { params: { circuitId:
           ))}
         </div>
 
-        {/* Lap record bar */}
         <div style={{
           background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.05)",
           borderTop: "none", padding: "0.875rem 1.5rem",
@@ -130,13 +127,10 @@ export default async function TrackDetailPage({ params }: { params: { circuitId:
           }}>{localData.lapRecordHolder} · {localData.lapRecordYear}</div>
         </div>
 
-        {/* Layout + info grid */}
         <div style={{
           display: "grid", gridTemplateColumns: "1fr 1fr",
           gap: "1px", background: "rgba(255,255,255,0.05)",
         }}>
-
-          {/* Track layout */}
           <div style={{ background: "#0a0a0a", padding: "2rem" }}>
             <div style={{
               fontFamily: "'Rajdhani', sans-serif", fontWeight: 600,
@@ -162,7 +156,6 @@ export default async function TrackDetailPage({ params }: { params: { circuitId:
             }}>{localData.laps} laps · {localData.distance}</div>
           </div>
 
-          {/* Circuit info */}
           <div style={{ background: "#0a0a0a", padding: "2rem" }}>
             <div style={{
               fontFamily: "'Rajdhani', sans-serif", fontWeight: 600,
@@ -191,7 +184,7 @@ export default async function TrackDetailPage({ params }: { params: { circuitId:
                     textTransform: "uppercase", color: "rgba(255,255,255,0.28)",
                   }}>{row.label}</span>
                   {"href" in row ? (
-                    <a href={row.href} target="_blank" rel="noopener noreferrer" style={{
+                    <a href={(row as any).href} target="_blank" rel="noopener noreferrer" style={{
                       fontFamily: "'Russo One', sans-serif",
                       fontSize: "0.85rem", color: "#E10600", textDecoration: "none",
                     }}>{row.value}</a>
@@ -207,7 +200,6 @@ export default async function TrackDetailPage({ params }: { params: { circuitId:
           </div>
         </div>
 
-        {/* Back */}
         <div style={{ marginTop: "3rem", paddingTop: "1.5rem", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
           <Link href="/tracks" style={{
             fontFamily: "'Rajdhani', sans-serif", fontWeight: 600,

@@ -17,7 +17,7 @@ export default async function Home() {
   const topDrivers = standings.slice(0, 3);
 
   return (
-    <main className="min-h-screen" style={{ background: "#080808" }}>
+    <main className="min-h-screen" style={{ background: "#060606" }}>
       <HeroSection />
       <NextRaceSection nextRace={nextRace} />
       <TopDriversSection topDrivers={topDrivers} />

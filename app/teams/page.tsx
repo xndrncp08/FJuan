@@ -8,7 +8,6 @@ export default async function TeamsPage() {
     standings = await getConstructorStandings("current");
   } catch {}
 
-  // Merge API standings with local static data
   const teams = standings.length > 0
     ? standings.map((s: any) => {
         const local = constructorsData.find(c =>
@@ -19,9 +18,9 @@ export default async function TeamsPage() {
           constructorId: s.Constructor.constructorId,
           name: s.Constructor.name,
           nationality: s.Constructor.nationality,
-          position: parseInt(s.position),
-          points: parseFloat(s.points),
-          wins: parseInt(s.wins),
+          position: parseInt(s.position) || 0,
+          points: parseFloat(s.points) || 0,
+          wins: parseInt(s.wins) || 0,
           championships: local?.championships ?? 0,
           color: local?.color ?? "#E10600",
           base: local?.base ?? "",
@@ -46,7 +45,7 @@ export default async function TeamsPage() {
   ].includes(t.constructorId));
 
   return (
-    <main style={{ background: "#080808", minHeight: "100vh" }}>
+    <main style={{ background: "#060606", minHeight: "100vh" }}>
 
       {/* Hero */}
       <section style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden" }}>
@@ -74,7 +73,7 @@ export default async function TeamsPage() {
           <div style={{ display: "inline-grid", gridTemplateColumns: "repeat(3, auto)", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
             {[
               { value: "10", label: "Teams" },
-              { value: standings.length > 0 ? standings.reduce((s: number, t: any) => s + parseInt(t.wins), 0).toString() : "—", label: "Wins" },
+              { value: standings.length > 0 ? standings.reduce((s: number, t: any) => s + (parseInt(t.wins) || 0), 0).toString() : "—", label: "Wins" },
               { value: "10", label: "Nations" },
             ].map((s, i) => (
               <div key={i} style={{ padding: "1rem 2rem 0", borderRight: i < 2 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
@@ -96,7 +95,9 @@ export default async function TeamsPage() {
               {currentTeams.slice(0, 3).map((team) => (
                 <div key={team.constructorId} style={{ background: "#0a0a0a", padding: "1.5rem", position: "relative", overflow: "hidden" }}>
                   <div style={{ height: "3px", background: team.color, marginBottom: "1.25rem" }} />
-                  <div style={{ position: "absolute", right: "1rem", top: "1rem", fontFamily: "'Russo One', sans-serif", fontSize: "5rem", color: "rgba(255,255,255,0.025)", lineHeight: 1 }}>P{team.position}</div>
+                  <div style={{ position: "absolute", right: "1rem", top: "1rem", fontFamily: "'Russo One', sans-serif", fontSize: "5rem", color: "rgba(255,255,255,0.025)", lineHeight: 1 }}>
+                    {team.position > 0 ? `P${team.position}` : "—"}
+                  </div>
                   <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.68rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: "0.25rem" }}>{team.nationality}</div>
                   <div style={{ fontFamily: "'Russo One', sans-serif", fontSize: "1.15rem", color: "white", lineHeight: 1.1, marginBottom: "1rem" }}>{team.name}</div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1px", background: "rgba(255,255,255,0.05)" }}>
@@ -120,7 +121,6 @@ export default async function TeamsPage() {
         {/* Full list */}
         <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.68rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", display: "block", marginBottom: "1rem" }}>Full Standings</span>
         <div style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
-          {/* Header */}
           <div style={{ display: "grid", gridTemplateColumns: "3rem 1fr 5rem 5rem 6rem 5rem", padding: "0.6rem 1.25rem", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "#0d0d0d" }}>
             {["Pos", "Constructor", "Pts", "Wins", "Base", "Titles"].map((h) => (
               <div key={h} style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.62rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>{h}</div>
@@ -128,7 +128,7 @@ export default async function TeamsPage() {
           </div>
           {currentTeams.map((team) => (
             <div key={team.constructorId} style={{ display: "grid", gridTemplateColumns: "3rem 1fr 5rem 5rem 6rem 5rem", padding: "0.9rem 1.25rem", borderBottom: "1px solid rgba(255,255,255,0.04)", alignItems: "center" }}>
-              <div style={{ fontFamily: "'Russo One', sans-serif", fontSize: "1.1rem", color: "white" }}>{team.position}</div>
+              <div style={{ fontFamily: "'Russo One', sans-serif", fontSize: "1.1rem", color: "white" }}>{team.position || "—"}</div>
               <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                 <div style={{ width: "3px", height: "20px", background: team.color, flexShrink: 0 }} />
                 <div>

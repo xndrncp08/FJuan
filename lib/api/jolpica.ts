@@ -14,21 +14,22 @@ export interface ApiResponse<T> {
 }
 
 // Generic fetch function with error handling
-async function fetchFromAPI<T>(endpoint: string): Promise<T> {
+async function fetchFromAPI<T>(endpoint: string, noCache = false): Promise<T> {
   try {
     const response = await fetch(`${BASE_URL}${endpoint}`, {
-      next: { revalidate: 300 },
+      next: noCache ? undefined : { revalidate: 300 },
+      cache: noCache ? "no-store" : undefined,
     });
 
     if (!response.ok) {
-      throw new Error(`API error: ${response.status} - ${response.statusText}`);
+      return null as T;
     }
 
     const data = await response.json();
     return data;
   } catch (error) {
     console.error(`Error fetching from ${endpoint}:`, error);
-    throw error;
+    return null as T;
   }
 }
 
@@ -51,7 +52,10 @@ export async function getDriver(driverId: string) {
   return data.MRData.DriverTable.Drivers[0];
 }
 
-export async function getDriverStandings(season: string = "current", round?: string) {
+export async function getDriverStandings(
+  season: string = "current",
+  round?: string,
+) {
   const endpoint = round
     ? `/${season}/${round}/driverStandings.json`
     : `/${season}/driverStandings.json`;
@@ -68,7 +72,7 @@ export async function getCurrentDriverStandings() {
 // Fixed: query string must come before .json extension
 export async function getDriverChampionships(driverId: string) {
   const data = await fetchFromAPI<any>(
-    `/drivers/${driverId}/driverstandings/1/`
+    `/drivers/${driverId}/driverstandings/1/`,
   );
   return data.MRData.StandingsTable.StandingsLists || [];
 }
@@ -77,7 +81,7 @@ export async function getDriverResults(driverId: string, limit: number = 1000) {
   const data = await fetchFromAPI<any>(
     `/drivers/${driverId}/results.json?limit=${limit}`,
   );
-  return data.MRData.RaceTable.Races;
+  return data?.MRData?.RaceTable?.Races ?? [];
 }
 
 export async function getDriverSeasonResults(driverId: string, season: string) {
@@ -96,7 +100,7 @@ export async function getDriverQualifying(driverId: string, season: string) {
 
 export async function getRaceSchedule(season: string = "current") {
   const data = await fetchFromAPI<any>(`/${season}.json`);
-  return data.MRData.RaceTable.Races;
+  return data?.MRData?.RaceTable?.Races ?? [];
 }
 
 export async function getRaceCalendar(season: string = "current") {
@@ -115,18 +119,27 @@ export async function getNextRace() {
 }
 
 export async function getRaceResults(season: string, round: string) {
-  const data = await fetchFromAPI<any>(`/${season}/${round}/results.json`);
-  return data.MRData.RaceTable.Races[0];
+  const data = await fetchFromAPI<any>(
+    `/${season}/${round}/results.json`,
+    true,
+  );
+  return data?.MRData?.RaceTable?.Races?.[0] ?? null;
 }
 
 export async function getQualifyingResults(season: string, round: string) {
-  const data = await fetchFromAPI<any>(`/${season}/${round}/qualifying.json`);
-  return data.MRData.RaceTable.Races[0];
+  const data = await fetchFromAPI<any>(
+    `/${season}/${round}/qualifying.json`,
+    true,
+  );
+  return data?.MRData?.RaceTable?.Races?.[0] ?? null;
 }
 
 export async function getConstructorStandings(season: string = "current") {
   const data = await fetchFromAPI<any>(`/${season}/constructorStandings.json`);
-  return data.MRData.StandingsTable.StandingsLists[0]?.ConstructorStandings || [];
+  return (
+    data?.MRData?.StandingsTable?.StandingsLists?.[0]?.ConstructorStandings ??
+    []
+  );
 }
 
 export async function getConstructors(season: string = "current") {
@@ -139,7 +152,10 @@ export async function getConstructor(constructorId: string) {
   return data.MRData.ConstructorTable.Constructors[0];
 }
 
-export async function getConstructorResults(constructorId: string, season: string) {
+export async function getConstructorResults(
+  constructorId: string,
+  season: string,
+) {
   const data = await fetchFromAPI<any>(
     `/${season}/constructors/${constructorId}/results.json`,
   );

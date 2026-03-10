@@ -1,11 +1,13 @@
 import { Suspense } from "react";
 import DriverProfile from "./DriverProfile";
 
-export default function DriverProfilePage({
+export default async function DriverProfilePage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
+
   return (
     <Suspense fallback={
       <main style={{ minHeight: "100vh", background: "#080808", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -16,7 +18,7 @@ export default function DriverProfilePage({
         </div>
       </main>
     }>
-      <DriverProfile driverId={params.id} />
+      <DriverProfile driverId={id} />
     </Suspense>
   );
 }

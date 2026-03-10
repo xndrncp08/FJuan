@@ -33,7 +33,7 @@
   * { @apply border-border; }
 
   body {
-    background-color: #080808;
+    background-color: #060606;
     color: rgba(255,255,255,0.9);
     font-family: 'Rajdhani', sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -96,11 +96,11 @@
   .hero-bg {
     background:
       radial-gradient(ellipse 100% 80% at 50% -5%, rgba(225,6,0,0.16) 0%, transparent 60%),
-      #080808;
+      #060606;
   }
 
   .carbon-bg {
-    background-color: #0a0a0a;
+    background-color: #080808;
     background-image:
       repeating-linear-gradient(45deg, transparent, transparent 1px, rgba(255,255,255,0.013) 1px, rgba(255,255,255,0.013) 2px),
       repeating-linear-gradient(-45deg, transparent, transparent 1px, rgba(255,255,255,0.013) 1px, rgba(255,255,255,0.013) 2px);
@@ -170,6 +170,40 @@
   100% { background-position: -200% 0; }
 }
 
+@keyframes page-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(18px);
+    filter: blur(3px);
+  }
+  55% { filter: blur(0px); }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0px);
+  }
+}
+
+@keyframes border-glow-pulse {
+  0%, 100% { border-color: rgba(225,6,0,0.15); }
+  50% { border-color: rgba(225,6,0,0.45); }
+}
+
+@keyframes scan-line {
+  0% { transform: translateY(0); opacity: 0.5; }
+  100% { transform: translateY(300px); opacity: 0; }
+}
+
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes number-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes pulse-live {
   0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(225,6,0,0.5); }
   50% { opacity: 0.5; box-shadow: 0 0 0 4px rgba(225,6,0,0); }
@@ -192,3 +226,116 @@
 .delay-300 { animation-delay: 0.3s; }
 .delay-400 { animation-delay: 0.4s; }
 .delay-500 { animation-delay: 0.5s; }
+
+/* Page transition */
+.page-transition-wrapper {
+  animation: page-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Ticker */
+.ticker-track {
+  display: flex;
+  animation: ticker-scroll 28s linear infinite;
+  width: max-content;
+}
+.ticker-track:hover { animation-play-state: paused; }
+
+/* Number animations */
+.animate-number { animation: number-rise 0.4s ease-out both; }
+
+/* Glow border */
+.animate-border-glow { animation: border-glow-pulse 3s ease-in-out infinite; }
+
+/* Enhanced card hover */
+.card-hover-enhanced {
+  transition: border-color 0.25s ease, transform 0.25s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.25s ease;
+}
+.card-hover-enhanced:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(225,6,0,0.2);
+}
+
+/* Scan line effect for live elements */
+.scan-effect {
+  position: relative;
+  overflow: hidden;
+}
+.scan-effect::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(225,6,0,0.4), transparent);
+  animation: scan-line 2s ease-in-out infinite;
+  pointer-events: none;
+}
+/* Spinner for telemetry loading */
+@keyframes spin-ring {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Mobile responsiveness ───────────────────────────────────────────── */
+
+/* Tyre panel side-by-side → stack on mobile */
+@media (max-width: 640px) {
+  .live-two-col {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Session search dropdowns stack */
+  .session-search-row {
+    flex-direction: column !important;
+  }
+
+  /* Driver grid wraps tighter */
+  .driver-grid {
+    gap: 0.35rem !important;
+  }
+
+  /* Lap times panel reduce padding */
+  .lap-times-row {
+    padding: 0.45rem 0.75rem !important;
+  }
+
+  /* Teams grid: 1 col on mobile */
+  .teams-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Calendar: hide some columns */
+  .calendar-hide-mobile {
+    display: none !important;
+  }
+
+  /* Track detail: stack layout */
+  .track-detail-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Compare page: stack */
+  .compare-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Hero padding reduction */
+  .hero-content {
+    padding: 1.5rem !important;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Live page: telemetry + tyre panels stack */
+  .live-data-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Next race countdown: 2x2 instead of 4x1 */
+  .countdown-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Features grid: 1 col */
+  .features-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
