@@ -6,138 +6,112 @@ import { useState } from "react";
 const features = [
   {
     href: "/drivers",
-    label: "Driver Profiles",
-    title: "Driver\nStandings",
-    description: "Detailed statistics, career highlights, and championship points for every driver on the grid.",
+    label: "Standings",
+    title: "Driver\nProfiles",
+    description: "Career stats, win rates, podium rates, and season-by-season breakdowns for every driver.",
     index: "01",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <circle cx="10" cy="7" r="3.5" stroke="currentColor" strokeWidth="1.3"/>
-        <path d="M3 17c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-      </svg>
-    ),
   },
   {
     href: "/live",
-    label: "Live Data",
+    label: "Real-Time",
     title: "Live\nTelemetry",
-    description: "Real-time speed, RPM, throttle, and gear data during active race sessions.",
+    description: "Speed, RPM, throttle, brake, and tyre data from any session in any season.",
     index: "02",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <path d="M2 10h3l2-5 4 10 2-5h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    ),
   },
   {
     href: "/compare",
-    label: "Head to Head",
+    label: "Analysis",
     title: "Driver\nComparison",
     description: "Side-by-side career statistics and performance analysis across every season.",
     index: "03",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <path d="M7 4H3v12h4M13 4h4v12h-4M10 4v12M7 8h6M7 12h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-      </svg>
-    ),
   },
   {
     href: "/calendar",
-    label: "Race Schedule",
+    label: "Schedule",
     title: "Race\nCalendar",
-    description: "Complete Formula 1 season schedule with countdown timers and circuit details.",
+    description: "Full season schedule with live countdown, results, and circuit details.",
     index: "04",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <rect x="2" y="3" width="16" height="15" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
-        <path d="M6 2v2M14 2v2M2 7h16" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-        <circle cx="7" cy="12" r="1" fill="currentColor"/>
-        <circle cx="10" cy="12" r="1" fill="currentColor"/>
-        <circle cx="13" cy="12" r="1" fill="currentColor"/>
-      </svg>
-    ),
   },
 ];
 
-function FeatureCard({ feature }: { feature: typeof features[0] }) {
+function FeatureCard({ feature, index }: { feature: typeof features[0]; index: number }) {
   const [hovered, setHovered] = useState(false);
+
   return (
-    <Link href={feature.href} className="block">
+    <Link href={feature.href} style={{ textDecoration: "none", display: "block", height: "100%" }}>
       <div
-        className="h-full p-7 relative overflow-hidden"
         style={{
-          borderRight: "1px solid rgba(255,255,255,0.07)",
-          borderBottom: "1px solid rgba(255,255,255,0.07)",
-          background: hovered ? "rgba(255,255,255,0.012)" : "transparent",
-          transition: "background 0.2s ease",
-          cursor: "pointer",
+          height: "100%", padding: "2rem",
+          borderRight: "1px solid rgba(255,255,255,0.06)",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          background: hovered ? "rgba(255,255,255,0.015)" : "transparent",
+          position: "relative", overflow: "hidden",
+          cursor: "pointer", transition: "background 0.2s ease",
         }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >
-        {/* Hover wash */}
-        <div className="absolute inset-0 pointer-events-none" style={{
-          background: "radial-gradient(ellipse at top left, rgba(225,6,0,0.06) 0%, transparent 70%)",
-          opacity: hovered ? 1 : 0,
-          transition: "opacity 0.3s ease",
-        }} />
-
-        {/* Left border accent */}
+        {/* Top accent line — animates in on hover */}
         <div style={{
-          position: "absolute", left: 0, top: "1.5rem", bottom: "1.5rem",
-          width: "2px",
+          position: "absolute", top: 0, left: 0, right: 0, height: "2px",
           background: "#E10600",
-          transform: hovered ? "scaleY(1)" : "scaleY(0)",
-          transformOrigin: "top",
-          transition: "transform 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+          transform: hovered ? "scaleX(1)" : "scaleX(0)",
+          transformOrigin: "left",
+          transition: "transform 0.3s cubic-bezier(0.34,1.56,0.64,1)",
         }} />
 
-        {/* Icon + Index row */}
-        <div className="flex items-center justify-between mb-6 relative">
-          <div style={{
-            color: hovered ? "#E10600" : "rgba(255,255,255,0.2)",
+        {/* Radial glow */}
+        <div style={{
+          position: "absolute", inset: 0, pointerEvents: "none",
+          background: "radial-gradient(ellipse at top left, rgba(225,6,0,0.07) 0%, transparent 60%)",
+          opacity: hovered ? 1 : 0, transition: "opacity 0.3s ease",
+        }} />
+
+        {/* Index + label row */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2.5rem" }}>
+          <span style={{
+            fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem",
+            letterSpacing: "0.12em", color: "rgba(255,255,255,0.18)",
+          }}>{feature.index}</span>
+          <span style={{
+            fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.6rem",
+            letterSpacing: "0.2em", textTransform: "uppercase",
+            color: hovered ? "#E10600" : "rgba(255,255,255,0.22)",
             transition: "color 0.2s ease",
-          }}>
-            {feature.icon}
-          </div>
-          <div className="data-readout" style={{
-            color: hovered ? "#E10600" : "rgba(255,255,255,0.15)",
-            transition: "color 0.2s ease",
-          }}>
-            {feature.index}
-          </div>
+          }}>{feature.label}</span>
         </div>
 
-        {/* Label */}
-        <span className="label-overline block mb-3 relative">{feature.label}</span>
-
         {/* Title */}
-        <h3 className="relative" style={{
-          fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800,
-          fontSize: "1.6rem", lineHeight: 1, textTransform: "uppercase",
-          color: "white", marginBottom: "1rem", whiteSpace: "pre-line",
+        <h3 style={{
+          fontFamily: "'Russo One', sans-serif",
+          fontSize: "clamp(1.4rem, 2.5vw, 2rem)", lineHeight: 0.95,
+          textTransform: "uppercase", color: "white",
+          margin: "0 0 1.1rem", whiteSpace: "pre-line",
+          letterSpacing: "-0.01em",
         }}>
           {feature.title}
         </h3>
 
         {/* Description */}
-        <p className="relative" style={{
-          color: "rgba(255,255,255,0.38)", fontSize: "0.8125rem", lineHeight: 1.7,
-          marginBottom: "1.5rem",
+        <p style={{
+          fontFamily: "'Rajdhani', sans-serif", fontWeight: 400,
+          fontSize: "0.82rem", lineHeight: 1.75,
+          color: "rgba(255,255,255,0.32)", margin: "0 0 2rem",
         }}>
           {feature.description}
         </p>
 
-        {/* Arrow */}
-        <div className="relative flex items-center gap-2" style={{
+        {/* CTA */}
+        <div style={{
           fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
-          fontSize: "0.72rem", letterSpacing: "0.1em", textTransform: "uppercase",
-          color: hovered ? "#E10600" : "rgba(255,255,255,0.22)",
+          fontSize: "0.72rem", letterSpacing: "0.14em", textTransform: "uppercase",
+          color: hovered ? "#E10600" : "rgba(255,255,255,0.18)",
           transition: "color 0.2s ease",
+          display: "flex", alignItems: "center", gap: "6px",
         }}>
           Explore
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{
-            transform: hovered ? "translateX(4px)" : "translateX(0)",
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" style={{
+            transform: hovered ? "translateX(4px)" : "none",
             transition: "transform 0.2s ease",
           }}>
             <path d="M1 6h10M6 1l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -150,28 +124,37 @@ function FeatureCard({ feature }: { feature: typeof features[0] }) {
 
 export default function FeaturesGrid() {
   return (
-    <section className="max-w-7xl mx-auto px-6 py-16">
-      <div className="flex items-end justify-between mb-10 pb-8 border-b border-white/[0.06]">
-        <div>
-          <span className="label-overline block mb-3">Explore</span>
-          <h2 style={{
-            fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900,
-            fontSize: "clamp(2rem, 4vw, 3rem)", lineHeight: 0.95,
-            textTransform: "uppercase", color: "white",
-          }}>Features</h2>
-        </div>
-        <p className="text-white/35 text-sm max-w-xs text-right hidden md:block" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
-          Comprehensive F1 analytics and real-time insights
-        </p>
-      </div>
+    <section style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+      <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-0" style={{
-        border: "1px solid rgba(255,255,255,0.07)",
-        borderRight: "none", borderBottom: "none",
-      }}>
-        {features.map((feature) => (
-          <FeatureCard key={feature.href} feature={feature} />
-        ))}
+        {/* Header */}
+        <div style={{
+          padding: "2rem 1.5rem",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          display: "flex", alignItems: "baseline", justifyContent: "space-between",
+        }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "1.5rem" }}>
+            <h2 style={{
+              fontFamily: "'Russo One', sans-serif",
+              fontSize: "clamp(1.4rem, 3vw, 2rem)", lineHeight: 1,
+              textTransform: "uppercase", color: "white", margin: 0,
+              letterSpacing: "-0.01em",
+            }}>Platform</h2>
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.58rem", color: "rgba(255,255,255,0.18)", letterSpacing: "0.1em" }}>
+              04 features
+            </span>
+          </div>
+          <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 500, fontSize: "0.8rem", color: "rgba(255,255,255,0.2)", letterSpacing: "0.06em" }}>
+            Explore →
+          </span>
+        </div>
+
+        {/* Grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", borderLeft: "1px solid rgba(255,255,255,0.06)", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          {features.map((feature, i) => (
+            <FeatureCard key={feature.href} feature={feature} index={i} />
+          ))}
+        </div>
       </div>
     </section>
   );

@@ -339,3 +339,95 @@
     grid-template-columns: 1fr !important;
   }
 }
+
+/* ── Design Uplift ─────────────────────────────────────────────────────── */
+
+/* Stronger btn-primary */
+.btn-primary {
+  background: #E10600 !important;
+  border: none !important;
+  padding: 0.8rem 1.75rem !important;
+  font-family: 'Barlow Condensed', sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 0.9rem !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color: white !important;
+  cursor: pointer !important;
+  transition: background 0.15s ease !important;
+  border-radius: 0 !important;
+}
+.btn-primary:hover { background: #c50500 !important; }
+
+.btn-ghost {
+  background: transparent !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  padding: 0.8rem 1.75rem !important;
+  font-family: 'Barlow Condensed', sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 0.9rem !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color: rgba(255,255,255,0.5) !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  border-radius: 0 !important;
+}
+.btn-ghost:hover {
+  border-color: rgba(255,255,255,0.25) !important;
+  color: white !important;
+}
+
+/* Scanline hover effect for cards */
+@keyframes scanline-pass {
+  0% { top: -2px; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 0.6; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.card-scanline {
+  position: relative;
+  overflow: hidden;
+}
+.card-scanline::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(225,6,0,0.6), transparent);
+  top: -2px; opacity: 0;
+  pointer-events: none;
+}
+.card-scanline:hover::after {
+  animation: scanline-pass 0.6s ease-out forwards;
+}
+
+/* Horizontal rule with red accent */
+.hr-accent {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, #E10600 0%, rgba(225,6,0,0.15) 30%, transparent 60%);
+}
+
+/* Data table row hover */
+.data-row {
+  transition: background 0.1s ease;
+}
+.data-row:hover {
+  background: rgba(255,255,255,0.025) !important;
+}
+
+/* Monospace number display */
+.num-display {
+  font-family: 'Russo One', sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Stagger children animations */
+.stagger-children > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.1s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.2s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.3s; }

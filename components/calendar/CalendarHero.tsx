@@ -6,63 +6,31 @@ interface CalendarHeroProps {
 
 export default function CalendarHero({ season }: CalendarHeroProps) {
   return (
-    <section className="relative overflow-hidden hero-bg py-20 lg:py-28">
-      {/* Decorative vertical lines */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[25, 50, 75].map((left, i) => (
-          <div
-            key={i}
-            className="absolute top-0 bottom-0 w-px"
-            style={{
-              left: `${left}%`,
-              background:
-                "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%)",
-            }}
-          />
-        ))}
+    <section style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden" }}>
+      <div style={{ height: "2px", background: "#E10600" }} />
+
+      <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", paddingRight: "2rem", pointerEvents: "none", overflow: "hidden" }}>
+        <span style={{ fontFamily: "'Russo One', sans-serif", fontSize: "clamp(6rem, 18vw, 16rem)", color: "rgba(255,255,255,0.02)", lineHeight: 1 }}>F1</span>
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-6">
-        <Link href="/">
-          <button className="btn-ghost mb-8 flex items-center gap-2">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path
-                d="M11 6H1M6 11L1 6l5-5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            Home
-          </button>
+      <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "3rem 1.5rem" }}>
+        <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginBottom: "2rem", fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.75rem", letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", textDecoration: "none" }}>
+          ← Home
         </Link>
-
-        <span className="label-overline block mb-4">Race Schedule</span>
-        <h1
-          className="font-display font-black text-white leading-none"
-          style={{
-            fontFamily: "'Barlow Condensed', sans-serif",
-            fontWeight: 900,
-            fontSize: "clamp(3.5rem, 10vw, 7rem)",
-            lineHeight: 0.92,
-            textTransform: "uppercase",
-            letterSpacing: "-0.01em",
-          }}
-        >
-          {season} <span style={{ color: "#E10600" }}>Calendar</span>
+        <div style={{ marginBottom: "0.5rem" }}>
+          <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.72rem", letterSpacing: "0.28em", textTransform: "uppercase", color: "#E10600" }}>
+            Formula 1 · Race Schedule
+          </span>
+        </div>
+        <h1 style={{ fontFamily: "'Russo One', sans-serif", fontSize: "clamp(3rem, 8vw, 6rem)", color: "white", lineHeight: 0.92, letterSpacing: "-0.02em", margin: "0 0 0.75rem" }}>
+          {season} <span style={{ color: "#E10600" }}>CALENDAR</span>
         </h1>
-        <p className="text-white/40 mt-4 text-base">
-          Complete Formula 1 season schedule
+        <p style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 400, fontSize: "1rem", color: "rgba(255,255,255,0.38)", maxWidth: "420px" }}>
+          Complete Formula 1 season schedule with results and countdown.
         </p>
       </div>
 
-      <div
-        className="absolute bottom-0 left-0 right-0 h-20 pointer-events-none"
-        style={{
-          background: "linear-gradient(to bottom, transparent, #080808)",
-        }}
-      />
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "80px", background: "linear-gradient(to bottom, transparent, #060606)", pointerEvents: "none" }} />
     </section>
   );
 }
