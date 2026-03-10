@@ -274,9 +274,9 @@
   to { transform: rotate(360deg); }
 }
 
-/* ── Mobile responsiveness ───────────────────────────────────────────── */
+/* -- Mobile responsiveness --------------------------------------------- */
 
-/* Tyre panel side-by-side → stack on mobile */
+/* Tyre panel side-by-side -> stack on mobile */
 @media (max-width: 640px) {
   .live-two-col {
     grid-template-columns: 1fr !important;
@@ -340,42 +340,42 @@
   }
 }
 
-/* ── Design Uplift ─────────────────────────────────────────────────────── */
+/* Design Uplift */
 
 /* Stronger btn-primary */
 .btn-primary {
-  background: #E10600 !important;
-  border: none !important;
-  padding: 0.8rem 1.75rem !important;
-  font-family: 'Barlow Condensed', sans-serif !important;
-  font-weight: 700 !important;
-  font-size: 0.9rem !important;
-  letter-spacing: 0.12em !important;
-  text-transform: uppercase !important;
-  color: white !important;
-  cursor: pointer !important;
-  transition: background 0.15s ease !important;
-  border-radius: 0 !important;
+  background: #E10600;
+  border: none;
+  padding: 0.8rem 1.75rem;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: white;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  border-radius: 0;
 }
-.btn-primary:hover { background: #c50500 !important; }
+.btn-primary:hover { background: #c50500; }
 
 .btn-ghost {
-  background: transparent !important;
-  border: 1px solid rgba(255,255,255,0.1) !important;
-  padding: 0.8rem 1.75rem !important;
-  font-family: 'Barlow Condensed', sans-serif !important;
-  font-weight: 700 !important;
-  font-size: 0.9rem !important;
-  letter-spacing: 0.12em !important;
-  text-transform: uppercase !important;
-  color: rgba(255,255,255,0.5) !important;
-  cursor: pointer !important;
-  transition: all 0.15s ease !important;
-  border-radius: 0 !important;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 0.8rem 1.75rem;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-radius: 0;
 }
 .btn-ghost:hover {
-  border-color: rgba(255,255,255,0.25) !important;
-  color: white !important;
+  border-color: rgba(255,255,255,0.25);
+  color: white;
 }
 
 /* Scanline hover effect for cards */
