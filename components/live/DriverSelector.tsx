@@ -12,9 +12,10 @@ interface Props {
 export default function DriverSelector({ drivers, selected, onSelect }: Props) {
   return (
     <Panel>
-      <div style={{ padding: "1.25rem 1.5rem" }}>
+      <div className="p-4 md:p-6">
         <SectionLabel>Select Driver</SectionLabel>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+        {/* Flex wrap with smaller gap on mobile */}
+        <div className="flex flex-wrap gap-2 md:gap-3">
           {drivers.map((d) => {
             const isSelected = selected === d.driver_number;
             const color = teamColor(d.team_colour);
@@ -22,23 +23,19 @@ export default function DriverSelector({ drivers, selected, onSelect }: Props) {
               <button
                 key={d.driver_number}
                 onClick={() => onSelect(d.driver_number)}
+                className="flex items-center gap-2 px-3 py-2 transition-all"
                 style={{
                   background: isSelected ? `${color}22` : "rgba(255,255,255,0.03)",
                   border: `1px solid ${isSelected ? color : "rgba(255,255,255,0.08)"}`,
-                  padding: "0.5rem 0.85rem",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  transition: "all 0.15s ease",
                 }}
               >
-                <div style={{ width: "3px", height: "14px", background: color, flexShrink: 0 }} />
-                <div style={{ textAlign: "left" }}>
-                  <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: "0.85rem", color: "white", letterSpacing: "0.06em" }}>
+                {/* Team color stripe */}
+                <div className="w-0.5 h-4" style={{ background: color }} />
+                <div className="text-left">
+                  <div className="font-sans font-bold text-sm text-white tracking-wide">
                     {d.name_acronym}
                   </div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", color: "rgba(255,255,255,0.3)" }}>
+                  <div className="font-mono text-[0.6rem] text-white/40">
                     #{d.driver_number}
                   </div>
                 </div>

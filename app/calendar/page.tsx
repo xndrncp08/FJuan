@@ -35,15 +35,29 @@ export default function CalendarPage() {
     : null;
 
   return (
-    <main className="min-h-screen" style={{ background: "#060606" }}>
-      <CalendarHero season={season} />
-      {!isLoading && nextRace && <CountdownBanner race={nextRace} />}
-      <div>
+    <main className="min-h-screen bg-[#060606]">
+      {/* Hero Section - Centered */}
+      <div className="max-w-7xl mx-auto px-6">
+        <CalendarHero season={season} />
+      </div>
+      
+      {/* Countdown Banner - Same width as SeasonSelector */}
+      {!isLoading && nextRace && (
+        <div className="max-w-7xl mx-auto px-6 mb-8">
+          <CountdownBanner race={nextRace} />
+        </div>
+      )}
+      
+      {/* Season Selector & Race Grid - Centered */}
+      <div className="max-w-7xl mx-auto px-6">
         <SeasonSelector season={season} onSeasonChange={setSeason} />
+        
         {isLoading ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "8rem 0" }}>
-            <div style={{ width: "32px", height: "32px", border: "2px solid #E10600", borderTopColor: "transparent", borderRadius: "50%", animation: "spin-ring 0.8s linear infinite", marginBottom: "1rem" }} />
-            <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em" }}>LOADING SCHEDULE...</p>
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="w-10 h-10 border-2 border-red-600/20 border-t-red-600 rounded-full animate-spin" />
+            <p className="font-['JetBrains_Mono',monospace] text-[0.7rem] text-white/30 mt-4 tracking-[0.1em]">
+              LOADING SCHEDULE...
+            </p>
           </div>
         ) : (
           <RaceGrid races={races} season={season} currentYear={currentYear} />

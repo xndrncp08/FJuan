@@ -6,16 +6,16 @@ interface Props {
 }
 
 export default function TelemetryPanel({ car }: Props) {
-  if (!car) return (
-    <Panel>
-      <div style={{ padding: "1.25rem 1.5rem" }}>
-        <SectionLabel>Car Telemetry (Latest Sample)</SectionLabel>
-        <div style={{ color: "rgba(255,255,255,0.2)", fontFamily: "'Rajdhani', sans-serif", fontSize: "0.85rem" }}>
-          No telemetry data available for this session.
+  if (!car) {
+    return (
+      <Panel>
+        <div className="p-4 md:p-6">
+          <SectionLabel>Car Telemetry (Latest Sample)</SectionLabel>
+          <div className="text-white/30 text-sm">No telemetry data available for this session.</div>
         </div>
-      </div>
-    </Panel>
-  );
+      </Panel>
+    );
+  }
 
   const gauges = [
     { label: "Speed", value: `${car.speed}`, unit: "km/h", pct: Math.min(car.speed / 380, 1), color: "#E10600" },
@@ -26,35 +26,37 @@ export default function TelemetryPanel({ car }: Props) {
 
   return (
     <Panel>
-      <div style={{ padding: "1.25rem 1.5rem" }}>
+      <div className="p-4 md:p-6">
         <SectionLabel>Car Telemetry (Latest Sample)</SectionLabel>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1px", background: "rgba(255,255,255,0.05)", marginBottom: "1rem" }}>
+
+        {/* Gauges grid: 2 columns on mobile, 2 on desktop (but stacked if needed) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-white/5 mb-4">
           {gauges.map((g) => (
-            <div key={g.label} style={{ background: "#111", padding: "1rem 1.25rem" }}>
-              <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.62rem", letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: "0.4rem" }}>
+            <div key={g.label} className="bg-[#111] p-4">
+              <div className="text-white/40 text-[0.6rem] uppercase tracking-wider mb-2">
                 {g.label}
               </div>
-              <div style={{ fontFamily: "'Russo One', sans-serif", fontSize: "1.6rem", color: "white", lineHeight: 1, marginBottom: "0.5rem" }}>
+              <div className="font-display text-2xl md:text-3xl text-white leading-none mb-2">
                 {g.value}
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(255,255,255,0.3)", marginLeft: "4px" }}>
-                  {g.unit}
-                </span>
+                <span className="font-mono text-xs text-white/40 ml-1">{g.unit}</span>
               </div>
-              <div style={{ height: "3px", background: "rgba(255,255,255,0.08)" }}>
-                <div style={{ height: "100%", width: `${g.pct * 100}%`, background: g.color, transition: "width 0.5s ease" }} />
+              {/* Progress bar */}
+              <div className="h-1 bg-white/10">
+                <div className="h-full transition-all duration-300" style={{ width: `${g.pct * 100}%`, background: g.color }} />
               </div>
             </div>
           ))}
         </div>
 
-        <div style={{ display: "flex", gap: "1rem" }}>
-          <div style={{ background: "#111", padding: "0.75rem 1rem", flex: 1, textAlign: "center", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.6rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: "0.25rem" }}>Gear</div>
-            <div style={{ fontFamily: "'Russo One', sans-serif", fontSize: "2rem", color: "white", lineHeight: 1 }}>{car.n_gear || "N"}</div>
+        {/* Gear & DRS row – column on mobile, row on desktop */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 bg-[#111] p-3 text-center border border-white/10">
+            <div className="text-white/30 text-[0.6rem] uppercase tracking-wider mb-1">Gear</div>
+            <div className="font-display text-3xl text-white">{car.n_gear || "N"}</div>
           </div>
-          <div style={{ background: "#111", padding: "0.75rem 1rem", flex: 1, textAlign: "center", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.6rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: "0.25rem" }}>DRS</div>
-            <div style={{ fontFamily: "'Russo One', sans-serif", fontSize: "1.1rem", color: car.drs > 10 ? "#39B54A" : "rgba(255,255,255,0.3)", lineHeight: 1, marginTop: "4px" }}>
+          <div className="flex-1 bg-[#111] p-3 text-center border border-white/10">
+            <div className="text-white/30 text-[0.6rem] uppercase tracking-wider mb-1">DRS</div>
+            <div className={`font-display text-xl ${car.drs > 10 ? "text-green-500" : "text-white/40"}`}>
               {car.drs > 10 ? "OPEN" : "CLOSED"}
             </div>
           </div>

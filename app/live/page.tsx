@@ -21,12 +21,14 @@ export default function LivePage() {
   const [car, setCar] = useState<CarTelemetry | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Fetch drivers when a session is selected
   useEffect(() => {
     if (!session) return;
     const load = async () => {
       try {
         const res = await fetch(`https://api.openf1.org/v1/drivers?session_key=${session.session_key}`);
         const data = await res.json();
+        // Remove duplicates by driver_number
         const unique = Array.from(
           new Map(safeArray<Driver>(data).map((d) => [d.driver_number, d])).values()
         ).sort((a, b) => a.driver_number - b.driver_number);
@@ -40,6 +42,7 @@ export default function LivePage() {
     load();
   }, [session]);
 
+  // Fetch detailed data when a driver is selected
   useEffect(() => {
     if (!session || !selectedDriver) return;
     const load = async () => {
@@ -86,28 +89,34 @@ export default function LivePage() {
   const showEmpty = !loading && session && selectedDriver && laps.length === 0;
 
   return (
-    <main style={{ background: "#060606", minHeight: "100vh" }}>
+    <main className="min-h-screen bg-[#060606]">
       <Hero session={session} />
 
-      <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "3rem 1.5rem" }}>
-        <div style={{ marginBottom: "2rem" }}>
+      {/* Responsive container: padding scales from 1rem on mobile to 1.5rem on desktop */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
+        {/* Session search – always on top */}
+        <div className="mb-6 md:mb-8">
           <SessionSearch onSelect={handleSessionSelect} />
         </div>
 
+        {/* Session banner (shows after selection) */}
         {session && <SessionBanner session={session} onClear={handleClearSession} />}
 
+        {/* Driver selector – appears after session loaded */}
         {session && drivers.length > 0 && (
-          <div style={{ marginBottom: "2rem" }}>
+          <div className="mb-6 md:mb-8">
             <DriverSelector drivers={drivers} selected={selectedDriver} onSelect={setSelectedDriver} />
           </div>
         )}
 
         {loading && <Spinner />}
 
+        {/* Main data panels – stacked on mobile, side-by-side on desktop */}
         {showData && (
           <>
             <StatsSummary laps={laps} driver={selectedDriverObj} />
-            <div className="live-data-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", marginBottom: "1.5rem" }}>
+            {/* Grid: 1 column on mobile, 2 columns on medium screens and up */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
               <TelemetryPanel car={car} />
               <TyrePanel stints={stints} pits={pits} totalLaps={laps.length} />
             </div>
@@ -115,69 +124,97 @@ export default function LivePage() {
           </>
         )}
 
+        {/* Empty state when no lap data found */}
         {showEmpty && (
-          <div style={{ padding: "4rem 2rem", textAlign: "center", border: "1px solid rgba(255,255,255,0.06)", background: "#0a0a0a" }}>
-            <div style={{ fontFamily: "'Russo One', sans-serif", fontSize: "0.9rem", color: "rgba(255,255,255,0.2)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.5rem" }}>No Data</div>
-            <p style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: "0.9rem", color: "rgba(255,255,255,0.2)" }}>No lap data for this driver in this session.</p>
+          <div className="py-12 px-4 text-center border border-white/10 bg-[#0a0a0a]">
+            <div className="font-display text-sm uppercase tracking-[0.2em] text-white/20 mb-2">No Data</div>
+            <p className="text-white/20 text-sm">No lap data for this driver in this session.</p>
           </div>
         )}
 
+        {/* Prompt when no session selected */}
         {!session && <PromptState />}
       </div>
     </main>
   );
 }
 
+// Hero section with responsive text sizing
 function Hero({ session }: { session: Session | null }) {
   return (
-    <section style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden" }}>
-      <div style={{ height: "2px", background: "#E10600" }} />
-      <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", paddingRight: "2rem", pointerEvents: "none", overflow: "hidden" }}>
-        <span style={{ fontFamily: "'Russo One', sans-serif", fontSize: "clamp(6rem, 18vw, 16rem)", color: "rgba(255,255,255,0.02)", lineHeight: 1 }}>F1</span>
+    <section className="relative border-b border-white/10 overflow-hidden">
+      {/* Red top accent line */}
+      <div className="h-[2px] bg-f1-red" />
+
+      {/* Giant background watermark – smaller on mobile */}
+      <div className="absolute right-0 top-0 bottom-0 flex items-center pr-4 md:pr-8 pointer-events-none">
+        <span className="font-display text-[clamp(4rem,15vw,12rem)] text-white/5 leading-none">F1</span>
       </div>
-      <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "3rem 1.5rem" }}>
-        <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginBottom: "2rem", fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.75rem", letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", textDecoration: "none" }}>← Home</Link>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "0.75rem" }}>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
+        {/* Back link */}
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-white/40 text-xs uppercase tracking-[0.15em] mb-6 hover:text-white/70 transition"
+        >
+          ← Home
+        </Link>
+
+        {/* Status label */}
+        <div className="flex items-center gap-2 mb-2">
           <span className="live-dot" />
-          <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.72rem", letterSpacing: "0.28em", textTransform: "uppercase", color: "#E10600" }}>
+          <span className="text-f1-red text-[0.7rem] md:text-xs font-semibold tracking-[0.2em] uppercase">
             {session ? `${session.circuit_short_name} · ${session.session_name}` : "Session Telemetry"}
           </span>
         </div>
-        <h1 style={{ fontFamily: "'Russo One', sans-serif", fontSize: "clamp(3rem, 8vw, 6rem)", color: "white", lineHeight: 0.92, letterSpacing: "-0.02em", margin: "0 0 0.75rem" }}>
-          RACE<span style={{ color: "#E10600" }}>DATA</span>
+
+        {/* Main title – scales with screen size */}
+        <h1 className="font-display text-5xl sm:text-7xl md:text-8xl lg:text-9xl text-white leading-[0.92] tracking-[-0.02em] mb-2">
+          RACE<span className="text-f1-red">DATA</span>
         </h1>
-        <p style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 400, fontSize: "1rem", color: "rgba(255,255,255,0.38)", maxWidth: "420px" }}>
+        <p className="text-white/40 text-sm md:text-base max-w-md">
           Browse any F1 session and explore real telemetry, lap times, tyre strategy, and car data.
         </p>
       </div>
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "80px", background: "linear-gradient(to bottom, transparent, #060606)", pointerEvents: "none" }} />
+
+      {/* Bottom fade gradient */}
+      <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-[#060606] to-transparent pointer-events-none" />
     </section>
   );
 }
 
+// Session banner – shows selected session info with change button
 function SessionBanner({ session, onClear }: { session: Session; onClear: () => void }) {
   return (
-    <div style={{ marginBottom: "2rem", padding: "1rem 1.25rem", background: "rgba(225,6,0,0.06)", border: "1px solid rgba(225,6,0,0.2)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem" }}>
+    <div className="mb-6 p-3 md:p-4 bg-red-600/10 border border-red-600/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
       <div>
-        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: "1.1rem", color: "white", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+        <div className="font-bold text-white text-sm md:text-base uppercase tracking-wide">
           {session.circuit_short_name} — {session.session_name}
         </div>
-        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(255,255,255,0.35)", marginTop: "2px" }}>
-          {session.country_name} · {new Date(session.date_start).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+        <div className="text-white/40 text-[0.65rem] md:text-xs mt-1">
+          {session.country_name} ·{" "}
+          {new Date(session.date_start).toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          })}
         </div>
       </div>
-      <button onClick={onClear} className="btn-ghost" style={{ fontSize: "0.72rem", padding: "0.4rem 0.85rem" }}>Change Session</button>
+      <button onClick={onClear} className="btn-ghost text-xs py-1.5 px-3">
+        Change Session
+      </button>
     </div>
   );
 }
 
+// Empty prompt when no session is loaded
 function PromptState() {
   return (
-    <div style={{ padding: "5rem 2rem", textAlign: "center", border: "1px solid rgba(255,255,255,0.05)", background: "#0a0a0a" }}>
-      <div style={{ fontFamily: "'Russo One', sans-serif", fontSize: "1rem", color: "rgba(255,255,255,0.15)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "0.5rem" }}>
+    <div className="py-16 px-4 text-center border border-white/5 bg-[#0a0a0a]">
+      <div className="font-display text-sm uppercase tracking-[0.2em] text-white/20 mb-2">
         Select a Year and Race Above
       </div>
-      <p style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: "0.9rem", color: "rgba(255,255,255,0.18)" }}>
+      <p className="text-white/20 text-sm">
         Use the dropdowns to find a session, then pick a driver to load their data.
       </p>
     </div>

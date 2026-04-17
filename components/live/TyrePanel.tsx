@@ -8,26 +8,20 @@ interface Props {
 }
 
 export default function TyrePanel({ stints, pits, totalLaps }: Props) {
-  // Guard against API returning non-array
   const safeStints = safeArray<Stint>(stints);
   const safePits = safeArray<PitStop>(pits);
 
   return (
     <Panel>
-      <div style={{ padding: "1.25rem 1.5rem" }}>
+      <div className="p-4 md:p-6">
         <SectionLabel>Tyre Strategy</SectionLabel>
+
         {safeStints.length === 0 ? (
-          <div style={{ color: "rgba(255,255,255,0.2)", fontFamily: "'Rajdhani', sans-serif", fontSize: "0.85rem" }}>
-            No stint data available
-          </div>
+          <div className="text-white/30 text-sm">No stint data available</div>
         ) : (
           <>
-            {/* Visual stint bar */}
-            <div style={{
-              display: "flex", height: "32px", marginBottom: "1.25rem",
-              background: "rgba(255,255,255,0.04)", overflow: "hidden",
-              border: "1px solid rgba(255,255,255,0.06)",
-            }}>
+            {/* Visual stint bar – horizontal with percentage widths */}
+            <div className="flex h-8 mb-5 bg-white/5 border border-white/10 overflow-hidden">
               {safeStints.map((stint) => {
                 const laps = (stint.lap_end || totalLaps) - stint.lap_start + 1;
                 const pct = totalLaps > 0 ? (laps / totalLaps) * 100 : 0;
@@ -36,18 +30,13 @@ export default function TyrePanel({ stints, pits, totalLaps }: Props) {
                   <div
                     key={stint.stint_number}
                     title={`${stint.compound} · Laps ${stint.lap_start}–${stint.lap_end || "?"}`}
-                    style={{
-                      width: `${pct}%`, background: color,
-                      borderRight: "2px solid rgba(0,0,0,0.4)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      minWidth: "24px",
-                    }}
+                    className="flex items-center justify-center min-w-[24px] border-r border-black/40"
+                    style={{ width: `${pct}%`, background: color }}
                   >
-                    <span style={{
-                      fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem", fontWeight: 700,
-                      color: stint.compound === "MEDIUM" || stint.compound === "HARD" ? "#000" : "#fff",
-                      letterSpacing: "0.05em",
-                    }}>
+                    <span
+                      className="font-mono text-[0.55rem] font-bold"
+                      style={{ color: stint.compound === "MEDIUM" || stint.compound === "HARD" ? "#000" : "#fff" }}
+                    >
                       {stint.compound[0]}
                     </span>
                   </div>
@@ -55,24 +44,26 @@ export default function TyrePanel({ stints, pits, totalLaps }: Props) {
               })}
             </div>
 
-            {/* Stint list */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "1px", background: "rgba(255,255,255,0.05)" }}>
+            {/* Stint list – each stint as a card, responsive layout */}
+            <div className="flex flex-col gap-px bg-white/5">
               {safeStints.map((stint) => {
                 const color = TYRE_COLORS[stint.compound] || TYRE_COLORS.UNKNOWN;
                 const pit = safePits.find((p) => p.lap_number === stint.lap_start);
                 return (
-                  <div key={stint.stint_number} style={{ background: "#111", padding: "0.75rem 1rem", display: "flex", alignItems: "center", gap: "1rem" }}>
-                    <div style={{ width: "12px", height: "12px", borderRadius: "50%", background: color, flexShrink: 0 }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: "0.9rem", color: "white", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                        Stint {stint.stint_number} · {stint.compound}
-                      </div>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.62rem", color: "rgba(255,255,255,0.35)", marginTop: "2px" }}>
-                        Laps {stint.lap_start}–{stint.lap_end || "?"} · Age at start: {stint.tyre_age_at_start} laps
+                  <div key={stint.stint_number} className="bg-[#111] p-3 md:p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 rounded-full" style={{ background: color }} />
+                      <div>
+                        <div className="font-bold text-white text-sm uppercase tracking-wide">
+                          Stint {stint.stint_number} · {stint.compound}
+                        </div>
+                        <div className="font-mono text-[0.6rem] text-white/40 mt-1">
+                          Laps {stint.lap_start}–{stint.lap_end || "?"} · Age at start: {stint.tyre_age_at_start} laps
+                        </div>
                       </div>
                     </div>
                     {pit && (
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.7rem", color: "#E10600" }}>
+                      <div className="text-f1-red text-xs font-mono sm:ml-auto">
                         {pit.pit_duration?.toFixed(1)}s pit
                       </div>
                     )}

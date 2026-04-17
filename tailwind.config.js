@@ -130,6 +130,10 @@ module.exports = {
           '0%, 100%': { boxShadow: '0 0 20px rgba(239, 68, 68, 0.3)' },
           '50%': { boxShadow: '0 0 40px rgba(239, 68, 68, 0.6)' },
         },
+        'spin': {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -144,6 +148,7 @@ module.exports = {
         'shimmer': 'shimmer 2s linear infinite',
         'float': 'float 3s ease-in-out infinite',
         'glow': 'glow 2s ease-in-out infinite',
+        'spin': 'spin 0.8s linear infinite',
       },
       fontFamily: {
         'formula': ['formula1', 'system-ui', 'sans-serif'],

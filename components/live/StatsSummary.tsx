@@ -6,13 +6,12 @@ interface Props {
 }
 
 export default function StatsSummary({ laps, driver }: Props) {
+  // Filter valid laps (exclude pit out laps and invalid durations)
   const validLaps = laps.filter(
-    (l) => l.lap_duration && l.lap_duration > 0 && !l.is_pit_out_lap,
+    (l) => l.lap_duration && l.lap_duration > 0 && !l.is_pit_out_lap
   );
   const fastest =
-    validLaps.length > 0
-      ? Math.min(...validLaps.map((l) => l.lap_duration!))
-      : null;
+    validLaps.length > 0 ? Math.min(...validLaps.map((l) => l.lap_duration!)) : null;
   const avg =
     validLaps.length > 0
       ? validLaps.reduce((s, l) => s + l.lap_duration!, 0) / validLaps.length
@@ -28,45 +27,17 @@ export default function StatsSummary({ laps, driver }: Props) {
   ];
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-        gap: "1px",
-        background: "rgba(255,255,255,0.05)",
-        marginBottom: "2rem",
-      }}
-    >
-      {stats.map((s) => (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-white/5 mb-6 md:mb-8">
+      {stats.map((s: { label: string; value: string }) => (
         <div
           key={s.label}
-          style={{
-            background: "#0e0e0e",
-            padding: "1.1rem 1.25rem",
-            borderTop: `2px solid ${color}`,
-          }}
+          className="bg-[#0e0e0e] p-4 md:p-5"
+          style={{ borderTop: `2px solid ${color}` }}
         >
-          <div
-            style={{
-              fontFamily: "'Rajdhani', sans-serif",
-              fontWeight: 600,
-              fontSize: "0.62rem",
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              color: "rgba(255,255,255,0.25)",
-              marginBottom: "0.3rem",
-            }}
-          >
+          <div className="text-white/30 text-[0.65rem] uppercase tracking-wider mb-1">
             {s.label}
           </div>
-          <div
-            style={{
-              fontFamily: "'Russo One', sans-serif",
-              fontSize: "1.3rem",
-              color: "white",
-              lineHeight: 1,
-            }}
-          >
+          <div className="font-display text-xl md:text-2xl text-white leading-tight">
             {s.value}
           </div>
         </div>

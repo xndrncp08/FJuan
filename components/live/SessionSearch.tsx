@@ -9,7 +9,7 @@ interface Props {
 }
 
 const SESSION_TYPES = ["Race", "Qualifying", "Sprint", "Practice 1", "Practice 2", "Practice 3"];
-const YEARS = Array.from({ length: 6 }, (_, i) => String(2026 - i));
+const YEARS = Array.from({ length: 6 }, (_, i) => String(2026 - i)); // 2026 down to 2021
 
 export default function SessionSearch({ onSelect }: Props) {
   const [year, setYear] = useState("2026");
@@ -20,7 +20,7 @@ export default function SessionSearch({ onSelect }: Props) {
   const [loadingYear, setLoadingYear] = useState(false);
   const [error, setError] = useState("");
 
-  // Load all sessions for the selected year
+  // Load all sessions for the selected year when year changes
   useEffect(() => {
     const load = async () => {
       setLoadingYear(true);
@@ -31,22 +31,26 @@ export default function SessionSearch({ onSelect }: Props) {
       try {
         const res = await fetch(`https://api.openf1.org/v1/sessions?year=${year}`);
         const data: Session[] = await res.json();
+        // Only keep sessions that match our predefined types (Race, Quali, etc.)
         const filtered = Array.isArray(data)
           ? data.filter((s) => SESSION_TYPES.includes(s.session_name))
           : [];
         setAllSessions(filtered);
 
-        // Extract unique race locations in chronological order
+        // Build unique list of race locations in chronological order
         const seen = new Set<string>();
         const raceList: string[] = [];
         [...filtered]
           .sort((a, b) => new Date(a.date_start).getTime() - new Date(b.date_start).getTime())
           .forEach((s) => {
             const key = s.circuit_short_name;
-            if (!seen.has(key)) { seen.add(key); raceList.push(key); }
+            if (!seen.has(key)) {
+              seen.add(key);
+              raceList.push(key);
+            }
           });
         setRaces(raceList);
-        if (raceList.length > 0) setSelectedRace(raceList[raceList.length - 1]); // default to latest
+        if (raceList.length > 0) setSelectedRace(raceList[raceList.length - 1]); // default to latest race
       } catch {
         setError("Failed to load sessions. Check your connection.");
       }
@@ -55,7 +59,7 @@ export default function SessionSearch({ onSelect }: Props) {
     load();
   }, [year]);
 
-  // Derived: sessions matching current race + type selection
+  // Find sessions matching the selected race and session type
   const matchedSessions = allSessions.filter(
     (s) => s.circuit_short_name === selectedRace && s.session_name === sessionType
   );
@@ -64,89 +68,92 @@ export default function SessionSearch({ onSelect }: Props) {
     if (matchedSessions.length > 0) onSelect(matchedSessions[0]);
   };
 
-  const selectStyle: React.CSSProperties = {
-    background: "#111",
-    border: "1px solid rgba(255,255,255,0.1)",
-    padding: "0.7rem 1rem",
-    fontFamily: "'Barlow Condensed', sans-serif",
-    fontWeight: 600,
-    fontSize: "0.95rem",
-    color: "white",
-    outline: "none",
-    cursor: "pointer",
-    flex: 1,
-    minWidth: "140px",
-  };
-
   return (
     <Panel>
-      <div style={{ padding: "1.5rem" }}>
+      <div className="p-4 md:p-6">
         <SectionLabel>Find a Session</SectionLabel>
 
         {loadingYear ? (
           <Spinner />
         ) : (
           <>
-            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1rem" }}>
-              {/* Year */}
-              <select value={year} onChange={(e) => setYear(e.target.value)} style={selectStyle}>
-                {YEARS.map((y) => <option key={y} value={y}>{y} Season</option>)}
+            {/* Responsive form group: stack on mobile, row on small screens and up */}
+            <div className="flex flex-col sm:flex-row gap-3 mb-4">
+              {/* Year dropdown */}
+              <select
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                className="w-full sm:flex-1 bg-[#111] border border-white/10 px-3 py-2 text-white font-sans text-sm focus:outline-none focus:border-f1-red"
+              >
+                {YEARS.map((y) => (
+                  <option key={y} value={y}>
+                    {y} Season
+                  </option>
+                ))}
               </select>
 
-              {/* Race */}
+              {/* Race dropdown (circuit) */}
               <select
                 value={selectedRace}
                 onChange={(e) => setSelectedRace(e.target.value)}
                 disabled={races.length === 0}
-                style={{ ...selectStyle, flex: 2 }}
+                className="w-full sm:flex-[2] bg-[#111] border border-white/10 px-3 py-2 text-white font-sans text-sm disabled:opacity-50 focus:outline-none focus:border-f1-red"
               >
-                {races.length === 0
-                  ? <option>No races found</option>
-                  : races.map((r) => <option key={r} value={r}>{r}</option>)
-                }
+                {races.length === 0 ? (
+                  <option>No races found</option>
+                ) : (
+                  races.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))
+                )}
               </select>
 
-              {/* Session type */}
-              <select value={sessionType} onChange={(e) => setSessionType(e.target.value)} style={selectStyle}>
-                {SESSION_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              {/* Session type dropdown */}
+              <select
+                value={sessionType}
+                onChange={(e) => setSessionType(e.target.value)}
+                className="w-full sm:flex-1 bg-[#111] border border-white/10 px-3 py-2 text-white font-sans text-sm focus:outline-none focus:border-f1-red"
+              >
+                {SESSION_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
               </select>
 
+              {/* Load button – full width on mobile, auto width on desktop */}
               <button
                 onClick={handleGo}
                 disabled={matchedSessions.length === 0}
-                style={{
-                  background: matchedSessions.length > 0 ? "#E10600" : "rgba(255,255,255,0.06)",
-                  border: "none",
-                  padding: "0.7rem 1.5rem",
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  fontWeight: 700,
-                  fontSize: "0.95rem",
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  color: matchedSessions.length > 0 ? "white" : "rgba(255,255,255,0.2)",
-                  cursor: matchedSessions.length > 0 ? "pointer" : "not-allowed",
-                  flexShrink: 0,
-                }}
+                className="w-full sm:w-auto bg-f1-red disabled:bg-white/10 text-white font-bold uppercase tracking-wide px-6 py-2 text-sm transition hover:bg-red-700 disabled:hover:bg-white/10"
               >
                 Load Session
               </button>
             </div>
 
+            {/* Error message */}
             {error && (
-              <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: "0.85rem", color: "#E10600", marginTop: "0.5rem" }}>
-                {error}
-              </div>
+              <div className="text-f1-red text-sm mt-2 font-sans">{error}</div>
             )}
 
+            {/* Info when no matching session exists */}
             {!loadingYear && selectedRace && matchedSessions.length === 0 && !error && (
-              <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: "0.82rem", color: "rgba(255,255,255,0.25)", marginTop: "0.25rem" }}>
+              <div className="text-white/40 text-xs mt-2">
                 No {sessionType} session found for {selectedRace} in {year}.
               </div>
             )}
 
+            {/* Session date hint */}
             {matchedSessions.length > 0 && (
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.62rem", color: "rgba(255,255,255,0.3)", marginTop: "0.25rem" }}>
-                {matchedSessions[0].country_name} · {new Date(matchedSessions[0].date_start).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+              <div className="text-white/40 text-[0.65rem] mt-2 font-mono">
+                {matchedSessions[0].country_name} ·{" "}
+                {new Date(matchedSessions[0].date_start).toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
               </div>
             )}
           </>

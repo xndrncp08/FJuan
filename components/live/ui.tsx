@@ -1,10 +1,6 @@
 export function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{
-      fontFamily: "'Rajdhani', sans-serif", fontWeight: 600,
-      fontSize: "0.68rem", letterSpacing: "0.2em", textTransform: "uppercase",
-      color: "rgba(255,255,255,0.25)", marginBottom: "1rem",
-    }}>
+    <div className="text-white/30 text-[0.65rem] uppercase tracking-[0.2em] font-semibold mb-3 md:mb-4">
       {children}
     </div>
   );
@@ -12,14 +8,12 @@ export function SectionLabel({ children }: { children: React.ReactNode }) {
 
 export function Panel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div style={{
-      background: "#0e0e0e",
-      border: "1px solid rgba(255,255,255,0.07)",
-      position: "relative",
-      overflow: "hidden",
-      ...style,
-    }}>
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "#E10600" }} />
+    <div
+      className="relative bg-[#0e0e0e] border border-white/10 overflow-hidden"
+      style={style}
+    >
+      {/* Red top accent line */}
+      <div className="absolute top-0 left-0 right-0 h-0.5 bg-f1-red" />
       {children}
     </div>
   );
@@ -27,14 +21,9 @@ export function Panel({ children, style }: { children: React.ReactNode; style?: 
 
 export function Spinner() {
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "4rem" }}>
-      <div style={{
-        width: "32px", height: "32px",
-        border: "2px solid #E10600", borderTopColor: "transparent",
-        borderRadius: "50%", animation: "spin-ring 0.8s linear infinite",
-        marginBottom: "1rem",
-      }} />
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em" }}>
+    <div className="flex flex-col items-center justify-center py-12">
+      <div className="w-8 h-8 border-2 border-f1-red border-t-transparent rounded-full animate-spin mb-3" />
+      <div className="font-mono text-[0.65rem] text-white/30 tracking-wide">
         LOADING TELEMETRY...
       </div>
     </div>
