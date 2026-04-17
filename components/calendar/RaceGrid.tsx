@@ -1,5 +1,15 @@
 "use client";
 
+/**
+ * RaceGrid – Displays all races in a responsive grid
+ * 
+ * Features:
+ * - Each race card shows round, name, location, weekend dates, qualifying date
+ * - Next race card shows live countdown
+ * - Past races link to results page
+ * - Responsive grid: auto-fill with min 280px on mobile, 300px on desktop
+ */
+
 import Link from "next/link";
 import { useState, useEffect } from "react";
 
@@ -9,7 +19,7 @@ interface RaceGridProps {
   currentYear: number;
 }
 
-// Live countdown hook
+// Live countdown hook (used only for next race card)
 function useCountdown(targetDate: Date | null) {
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
@@ -42,6 +52,7 @@ function useCountdown(targetDate: Date | null) {
   return timeLeft;
 }
 
+// Individual race card component
 function RaceCard({
   race,
   season,
@@ -53,162 +64,86 @@ function RaceCard({
   isNext: boolean;
   isPast: boolean;
 }) {
-  // Use race date (last day of weekend) as the canonical date
   const raceDate = new Date(race.date);
+  const fp1Date = race.FirstPractice?.date ? new Date(race.FirstPractice.date) : null;
+  const qualiDate = race.Qualifying?.date ? new Date(race.Qualifying.date) : null;
 
-  // Get practice/quali dates if available to show weekend span
-  const fp1Date = race.FirstPractice?.date
-    ? new Date(race.FirstPractice.date)
-    : null;
-  const qualiDate = race.Qualifying?.date
-    ? new Date(race.Qualifying.date)
-    : null;
-
-  // Weekend: from FP1 (or Thursday) to race day
+  // Weekend label: "Mar 28–30" or "Mar 28 – Apr 1"
   const weekendStart = fp1Date || raceDate;
   const sameMonth = weekendStart.getMonth() === raceDate.getMonth();
-
   const weekendLabel = sameMonth
-    ? `${weekendStart.getDate()}–${raceDate.toLocaleDateString("en-US", { day: "numeric", month: "short" })}`
-    : `${weekendStart.toLocaleDateString("en-US", { day: "numeric", month: "short" })} – ${raceDate.toLocaleDateString("en-US", { day: "numeric", month: "short" })}`;
+    ? `${weekendStart.getDate()}–${raceDate.toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "short",
+      })}`
+    : `${weekendStart.toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "short",
+      })} – ${raceDate.toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "short",
+      })}`;
 
   const countdown = useCountdown(isNext ? raceDate : null);
 
+  // Shared card content
   const cardContent = (
-    <div
-      style={{
-        position: "relative",
-        overflow: "hidden",
-        borderRight: "1px solid rgba(255,255,255,0.07)",
-        borderBottom: "1px solid rgba(255,255,255,0.07)",
-        background: isNext ? "#111" : isPast ? "#0d0d0d" : "#111",
-        height: "100%",
-      }}
-    >
-      {/* Top accent */}
+    <div className="relative overflow-hidden h-full border-r border-b border-white/10 bg-[#111] hover:bg-[#151515] transition-colors">
+      {/* Top accent bar – red for next race, subtle for others */}
       <div
+        className="h-0.5"
         style={{
-          height: "2px",
           background: isNext
             ? "#E10600"
             : isPast
-              ? "rgba(255,255,255,0.06)"
-              : "rgba(255,255,255,0.1)",
+            ? "rgba(255,255,255,0.06)"
+            : "rgba(255,255,255,0.1)",
         }}
       />
 
-      {/* Round watermark */}
-      <div
-        style={{
-          position: "absolute",
-          top: "1rem",
-          right: "1.25rem",
-          fontFamily: "'Russo One', sans-serif",
-          fontSize: "5rem",
-          color: "rgba(255,255,255,0.03)",
-          lineHeight: 1,
-          pointerEvents: "none",
-          userSelect: "none",
-        }}
-      >
+      {/* Round number watermark */}
+      <div className="absolute top-4 right-5 font-display text-6xl md:text-7xl text-white/5 leading-none select-none pointer-events-none">
         {race.round}
       </div>
 
-      <div style={{ padding: "1.5rem", position: "relative" }}>
+      <div className="p-5 md:p-6 relative">
         {/* Round badge */}
         <div
+          className="inline-flex items-center mb-4 px-2 py-1"
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            marginBottom: "1rem",
-            padding: "0.2rem 0.6rem",
             background: isNext ? "rgba(225,6,0,0.1)" : "rgba(255,255,255,0.04)",
-            border: `1px solid ${isNext ? "rgba(225,6,0,0.25)" : "rgba(255,255,255,0.07)"}`,
+            border: `1px solid ${
+              isNext ? "rgba(225,6,0,0.25)" : "rgba(255,255,255,0.07)"
+            }`,
           }}
         >
           <span
-            style={{
-              fontFamily: "'Rajdhani', sans-serif",
-              fontWeight: 700,
-              fontSize: "0.6rem",
-              letterSpacing: "0.15em",
-              textTransform: "uppercase",
-              color: isNext ? "#E10600" : "rgba(255,255,255,0.3)",
-            }}
+            className="text-[0.6rem] font-bold tracking-[0.15em] uppercase"
+            style={{ color: isNext ? "#E10600" : "rgba(255,255,255,0.3)" }}
           >
-            {isNext ? "▶ NEXT · " : ""}Round {race.round}
+            {isNext && "▶ NEXT · "}Round {race.round}
           </span>
         </div>
 
-        {/* Race name + location */}
-        <h3
-          style={{
-            fontFamily: "'Russo One', sans-serif",
-            fontSize: "1.05rem",
-            textTransform: "uppercase",
-            lineHeight: 1.05,
-            color: "white",
-            margin: "0 0 0.2rem",
-          }}
-        >
+        {/* Race name and location */}
+        <h3 className="font-display text-base md:text-lg text-white uppercase leading-tight mb-1">
           {race.raceName}
         </h3>
-        <p
-          style={{
-            fontFamily: "'Rajdhani', sans-serif",
-            fontWeight: 500,
-            fontSize: "0.8rem",
-            color: "rgba(255,255,255,0.35)",
-            margin: "0 0 1.25rem",
-            letterSpacing: "0.04em",
-          }}
-        >
+        <p className="text-white/40 text-sm mb-5">
           {race.Circuit?.Location?.locality}, {race.Circuit?.Location?.country}
         </p>
 
-        <div
-          style={{
-            height: "1px",
-            background: "rgba(255,255,255,0.06)",
-            marginBottom: "1.25rem",
-          }}
-        />
+        <div className="h-px bg-white/10 mb-5" />
 
-        {/* Date block */}
-        <div style={{ marginBottom: isNext ? "1.25rem" : "0" }}>
-          <div
-            style={{
-              fontFamily: "'Rajdhani', sans-serif",
-              fontWeight: 600,
-              fontSize: "0.6rem",
-              letterSpacing: "0.16em",
-              textTransform: "uppercase",
-              color: "rgba(255,255,255,0.25)",
-              marginBottom: "0.25rem",
-            }}
-          >
+        {/* Weekend dates */}
+        <div className="mb-4">
+          <div className="text-white/30 text-[0.6rem] uppercase tracking-wider mb-1">
             Race Weekend
           </div>
-          <div
-            style={{
-              fontFamily: "'Barlow Condensed', sans-serif",
-              fontWeight: 700,
-              fontSize: "1rem",
-              color: "rgba(255,255,255,0.85)",
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-            }}
-          >
+          <div className="font-condensed font-bold text-white/85 text-base uppercase tracking-wide">
             {weekendLabel}
           </div>
-          <div
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: "0.65rem",
-              color: "rgba(255,255,255,0.25)",
-              marginTop: "2px",
-            }}
-          >
+          <div className="font-mono text-[0.65rem] text-white/30 mt-1">
             Race:{" "}
             {raceDate.toLocaleDateString("en-US", {
               weekday: "short",
@@ -218,14 +153,7 @@ function RaceCard({
             })}
           </div>
           {qualiDate && (
-            <div
-              style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: "0.65rem",
-                color: "rgba(255,255,255,0.2)",
-                marginTop: "1px",
-              }}
-            >
+            <div className="font-mono text-[0.65rem] text-white/20 mt-0.5">
               Qualifying:{" "}
               {qualiDate.toLocaleDateString("en-US", {
                 weekday: "short",
@@ -238,49 +166,18 @@ function RaceCard({
 
         {/* Countdown for next race */}
         {isNext && (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: "1px",
-              background: "rgba(255,255,255,0.06)",
-            }}
-          >
+          <div className="grid grid-cols-4 gap-px bg-white/10 mt-4">
             {[
               { label: "Days", value: countdown.days },
               { label: "Hrs", value: countdown.hours },
               { label: "Min", value: countdown.minutes },
               { label: "Sec", value: countdown.seconds },
             ].map((t) => (
-              <div
-                key={t.label}
-                style={{
-                  background: "#0a0a0a",
-                  padding: "0.6rem 0.5rem",
-                  textAlign: "center",
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily: "'Russo One', sans-serif",
-                    fontSize: "1.4rem",
-                    color: "#E10600",
-                    lineHeight: 1,
-                  }}
-                >
+              <div key={t.label} className="bg-[#0a0a0a] py-2 text-center">
+                <div className="font-display text-xl md:text-2xl text-[#E10600] leading-tight">
                   {String(t.value).padStart(2, "0")}
                 </div>
-                <div
-                  style={{
-                    fontFamily: "'Rajdhani', sans-serif",
-                    fontWeight: 600,
-                    fontSize: "0.55rem",
-                    letterSpacing: "0.12em",
-                    textTransform: "uppercase",
-                    color: "rgba(255,255,255,0.3)",
-                    marginTop: "2px",
-                  }}
-                >
+                <div className="text-[0.55rem] text-white/40 uppercase tracking-wider font-semibold">
                   {t.label}
                 </div>
               </div>
@@ -290,17 +187,8 @@ function RaceCard({
 
         {/* Past race CTA */}
         {isPast && (
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <span
-              style={{
-                fontFamily: "'Rajdhani', sans-serif",
-                fontWeight: 700,
-                fontSize: "0.62rem",
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                color: "#E10600",
-              }}
-            >
+          <div className="flex justify-end mt-4">
+            <span className="text-[#E10600] text-[0.65rem] font-bold uppercase tracking-wider">
               Results →
             </span>
           </div>
@@ -309,53 +197,32 @@ function RaceCard({
     </div>
   );
 
+  // Past races are clickable links to results page
   return isPast ? (
     <Link
       href={`/races/${season}/${race.round}`}
-      style={{ textDecoration: "none", display: "block", height: "100%" }}
+      className="block h-full no-underline"
     >
       {cardContent}
     </Link>
   ) : (
-    <div style={{ height: "100%" }}>{cardContent}</div>
+    <div className="h-full">{cardContent}</div>
   );
 }
 
-export default function RaceGrid({
-  races,
-  season,
-  currentYear,
-}: RaceGridProps) {
+export default function RaceGrid({ races, season, currentYear }: RaceGridProps) {
   const now = new Date();
   const isCurrentSeason = season === currentYear.toString();
 
-  // Find the next upcoming race
+  // Find index of next upcoming race (only for current season)
   const nextRaceIndex = isCurrentSeason
     ? races.findIndex((r) => new Date(r.date) > now)
     : -1;
 
   if (races.length === 0) {
     return (
-      <div
-        style={{
-          maxWidth: "1280px",
-          margin: "0 auto",
-          padding: "5rem 1.5rem",
-          textAlign: "center",
-          border: "1px solid rgba(255,255,255,0.07)",
-          background: "#111",
-        }}
-      >
-        <p
-          style={{
-            fontFamily: "'Rajdhani', sans-serif",
-            fontWeight: 700,
-            fontSize: "1.1rem",
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            color: "rgba(255,255,255,0.25)",
-          }}
-        >
+      <div className="text-center py-20 border border-white/10 bg-[#111]">
+        <p className="font-condensed font-bold text-lg uppercase tracking-wider text-white/30">
           No races scheduled for {season}
         </p>
       </div>
@@ -363,22 +230,8 @@ export default function RaceGrid({
   }
 
   return (
-    <div
-      style={{
-        maxWidth: "1280px",
-        margin: "0 auto",
-        padding: "2rem 1.5rem 3rem",
-      }}
-    >
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-          border: "1px solid rgba(255,255,255,0.07)",
-          borderRight: "none",
-          borderBottom: "none",
-        }}
-      >
+    <div className="mt-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-white/10 border border-white/10 border-r-0 border-b-0">
         {races.map((race: any, index: number) => {
           const raceDate = new Date(race.date);
           const isPast = raceDate < now || !isCurrentSeason;

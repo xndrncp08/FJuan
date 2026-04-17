@@ -1,12 +1,22 @@
 "use client";
 
+/**
+ * CountdownBanner – Displays live countdown to next race
+ * 
+ * Features:
+ * - Real-time countdown updating every second
+ * - Shows race name, location, date, and round
+ * - Responsive: stacks on mobile, row on desktop
+ * - Matching styling with SeasonSelector panel
+ */
+
 import { useState, useEffect } from "react";
 
 interface Props {
   race: any;
 }
 
-// Counts down to a target date, updating every second
+// Countdown hook – updates every second
 function useCountdown(targetDate: Date | null) {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
@@ -15,7 +25,10 @@ function useCountdown(targetDate: Date | null) {
     const target = targetDate.getTime();
     const tick = () => {
       const diff = target - Date.now();
-      if (diff <= 0) { setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 }); return; }
+      if (diff <= 0) {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
       setTimeLeft({
         days: Math.floor(diff / 86400000),
         hours: Math.floor((diff % 86400000) / 3600000),
@@ -38,57 +51,56 @@ export default function CountdownBanner({ race }: Props) {
   if (!race || !raceDate) return null;
 
   const units = [
-    { label: "Days", value: countdown.days },
-    { label: "Hours", value: countdown.hours },
-    { label: "Minutes", value: countdown.minutes },
-    { label: "Seconds", value: countdown.seconds },
+    { label: "DAYS", value: countdown.days },
+    { label: "HOURS", value: countdown.hours },
+    { label: "MINUTES", value: countdown.minutes },
+    { label: "SECONDS", value: countdown.seconds },
   ];
 
   return (
-    <div
-      className="relative overflow-hidden"
-      style={{
-        background: "#111",
-        border: "1px solid rgba(255,255,255,0.07)",
-      }}
-    >
+    <div className="relative overflow-hidden bg-[#111] border border-white/10">
+      {/* Top red accent */}
       <div className="absolute top-0 left-0 right-0 h-[2px] bg-[#E10600]" />
-      <div className="p-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          {/* Race name, location, and date */}
-          <div className="flex items-center gap-4 flex-wrap">
-            <div>
-              <span className="label-overline block mb-1">Next Race</span>
-              <p className="text-white text-sm font-bold uppercase tracking-wide leading-none">
-                {race.raceName}
-              </p>
-              <p className="text-white/30 text-xs mt-1">
-                {race.Circuit?.Location?.locality}, {race.Circuit?.Location?.country} · Round {race.round}
-              </p>
+
+      <div className="p-5 md:p-6">
+        {/* Flex container: column on mobile, row on desktop */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          {/* Race info */}
+          <div className="space-y-2">
+            <span className="label-overline block">Next Race</span>
+            <h3 className="font-display text-white text-base md:text-lg uppercase tracking-wide">
+              {race.raceName}
+            </h3>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-white/40 text-xs">
+              <span>
+                {race.Circuit?.Location?.locality}, {race.Circuit?.Location?.country}
+              </span>
+              <span className="hidden md:inline">•</span>
+              <span>Round {race.round}</span>
+              <span className="hidden md:inline">•</span>
+              <span>
+                {raceDate.toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
             </div>
-            <div className="w-px h-12 bg-white/10" />
-            <p className="text-white/35 text-xs">
-              {raceDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-            </p>
           </div>
 
-          {/* Countdown blocks */}
-          <div className="flex items-center gap-px">
-            {units.map((u, i) => (
-              <div key={u.label} className="flex items-center">
-                <div className="bg-black/30 border border-white/10 px-3 py-2 text-center min-w-[56px]">
-                  <p className="text-[1.4rem] font-semibold text-[#E10600] leading-none tabular-nums m-0">
-                    {String(u.value).padStart(2, "0")}
-                  </p>
-                  <p className="text-[0.52rem] text-white/25 tracking-[0.12em] uppercase mt-1 font-semibold m-0">
-                    {u.label}
-                  </p>
+          {/* Countdown blocks – responsive grid */}
+          <div className="grid grid-cols-4 gap-1 min-w-[240px]">
+            {units.map((unit) => (
+              <div
+                key={unit.label}
+                className="bg-black/30 border border-white/10 text-center py-2 px-1"
+              >
+                <div className="font-display text-xl md:text-2xl text-[#E10600] leading-tight tabular-nums">
+                  {String(unit.value).padStart(2, "0")}
                 </div>
-                {i < units.length - 1 && (
-                  <span className="text-white/15 text-[1rem] px-1 font-['Russo_One',sans-serif]">
-                    :
-                  </span>
-                )}
+                <div className="text-[0.55rem] md:text-[0.6rem] text-white/30 uppercase tracking-wider font-semibold">
+                  {unit.label}
+                </div>
               </div>
             ))}
           </div>

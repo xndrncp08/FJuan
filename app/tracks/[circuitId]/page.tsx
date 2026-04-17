@@ -1,14 +1,32 @@
+/**
+ * TrackDetailPage – Individual circuit information page.
+ *
+ * Features:
+ * - Hero with circuit name, location, first GP, country watermark
+ * - Key stats grid (length, laps, distance, first GP)
+ * - Lap record info with holder and year
+ * - Two-column layout: track layout image + circuit info table
+ * - Responsive: columns stack on mobile, side-by-side on desktop
+ * - Back link to circuits listing
+ */
+
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCircuit } from "@/lib/api/jolpica";
-import circuitsData from '@/lib/data/circuits.json';
+import circuitsData from "@/lib/data/circuits.json";
 
-export default async function TrackDetailPage({ params }: { params: Promise<{ circuitId: string }> }) {
+export default async function TrackDetailPage({
+  params,
+}: {
+  params: Promise<{ circuitId: string }>;
+}) {
   const { circuitId } = await params;
 
-  const localData = circuitsData.find(c => c.id === circuitId);
+  // Find local data – if missing, 404
+  const localData = circuitsData.find((c) => c.id === circuitId);
   if (!localData) notFound();
 
+  // Optionally fetch extra info from API (Wikipedia link)
   let apiCircuit: any = null;
   try {
     apiCircuit = await getCircuit(circuitId);
@@ -16,183 +34,143 @@ export default async function TrackDetailPage({ params }: { params: Promise<{ ci
     // fall back to local data silently
   }
 
-  const name = localData.name;
-  const location = localData.location;
-  const country = localData.country;
+  const { name, location, country, description, length, laps, distance, firstGP, lapRecord, lapRecordHolder, lapRecordYear, layoutUrl } =
+    localData;
 
   return (
-    <main style={{ background: "#060606", minHeight: "100vh" }}>
+    <main className="min-h-screen bg-[#060606]">
+      {/* Hero Section */}
+      <section className="relative border-b border-white/10 overflow-hidden">
+        {/* Top red line */}
+        <div className="h-[2px] bg-[#E10600]" />
 
-      {/* Hero */}
-      <section style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden" }}>
-        <div style={{ height: "2px", background: "#E10600" }} />
-
-        <div style={{
-          position: "absolute", right: 0, top: 0, bottom: 0,
-          display: "flex", alignItems: "center", paddingRight: "2rem",
-          pointerEvents: "none", userSelect: "none", overflow: "hidden",
-        }}>
-          <span style={{
-            fontFamily: "'Russo One', sans-serif",
-            fontSize: "clamp(5rem, 14vw, 12rem)",
-            color: "rgba(255,255,255,0.025)",
-            lineHeight: 1, letterSpacing: "-0.03em",
-          }}>{country.toUpperCase()}</span>
+        {/* Country watermark */}
+        <div className="absolute right-0 top-0 bottom-0 flex items-center pr-4 md:pr-8 pointer-events-none select-none">
+          <span className="font-display text-[clamp(4rem,12vw,12rem)] text-white/5 leading-none tracking-[-0.03em]">
+            {country.toUpperCase()}
+          </span>
         </div>
 
-        <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "3rem 1.5rem" }}>
-          <Link href="/tracks" style={{
-            display: "inline-flex", alignItems: "center", gap: "8px", marginBottom: "2rem",
-            fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.75rem",
-            letterSpacing: "0.15em", textTransform: "uppercase",
-            color: "rgba(255,255,255,0.3)", textDecoration: "none",
-          }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
+          {/* Back link */}
+          <Link
+            href="/tracks"
+            className="inline-flex items-center gap-2 text-white/40 text-xs uppercase tracking-[0.15em] mb-6 hover:text-white/70 transition"
+          >
             ← All Circuits
           </Link>
 
-          <div style={{ marginBottom: "0.5rem" }}>
-            <span style={{
-              fontFamily: "'Rajdhani', sans-serif", fontWeight: 600,
-              fontSize: "0.72rem", letterSpacing: "0.28em",
-              textTransform: "uppercase", color: "#E10600",
-            }}>{location} · Since {localData.firstGP}</span>
+          {/* Location + first GP */}
+          <div className="mb-2">
+            <span className="text-[#E10600] text-[0.7rem] md:text-xs font-semibold tracking-[0.28em] uppercase">
+              {location} · Since {firstGP}
+            </span>
           </div>
 
-          <h1 style={{
-            fontFamily: "'Russo One', sans-serif",
-            fontSize: "clamp(2rem, 5vw, 4rem)",
-            color: "white", lineHeight: 0.95,
-            letterSpacing: "-0.02em", margin: "0 0 1.25rem",
-          }}>{name.toUpperCase()}</h1>
+          {/* Circuit name */}
+          <h1 className="font-display text-[clamp(2rem,5vw,4rem)] text-white leading-[0.95] tracking-[-0.02em] mb-4">
+            {name.toUpperCase()}
+          </h1>
 
-          <p style={{
-            fontFamily: "'Rajdhani', sans-serif", fontWeight: 400,
-            fontSize: "1rem", lineHeight: 1.75,
-            color: "rgba(255,255,255,0.42)", maxWidth: "520px",
-          }}>{localData.description}</p>
+          {/* Description */}
+          <p className="text-white/45 text-sm md:text-base leading-relaxed max-w-lg">
+            {description}
+          </p>
         </div>
       </section>
 
-      <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "3rem 1.5rem" }}>
-
-        <div style={{
-          display: "grid", gridTemplateColumns: "repeat(4, 1fr)",
-          background: "rgba(255,255,255,0.05)", marginBottom: "1px",
-        }}>
+      {/* Main content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
+        {/* Key Stats Grid – 2x2 on mobile, 4 columns on desktop */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-white/10 mb-6">
           {[
-            { label: "Length", value: localData.length },
-            { label: "Race Laps", value: String(localData.laps) },
-            { label: "Distance", value: localData.distance },
-            { label: "First GP", value: String(localData.firstGP) },
+            { label: "Length", value: length },
+            { label: "Race Laps", value: String(laps) },
+            { label: "Distance", value: distance },
+            { label: "First GP", value: String(firstGP) },
           ].map((s, i) => (
-            <div key={s.label} style={{
-              background: "#0a0a0a", padding: "1.25rem 1.5rem",
-              borderRight: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none",
-            }}>
-              <div style={{
-                fontFamily: "'Rajdhani', sans-serif", fontWeight: 600,
-                fontSize: "0.65rem", letterSpacing: "0.16em",
-                textTransform: "uppercase", color: "rgba(255,255,255,0.25)",
-                marginBottom: "0.3rem",
-              }}>{s.label}</div>
-              <div style={{
-                fontFamily: "'Russo One', sans-serif",
-                fontSize: "1.4rem", color: "white", lineHeight: 1,
-              }}>{s.value}</div>
+            <div
+              key={s.label}
+              className="bg-[#0a0a0a] p-5"
+              style={{ borderRight: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none" }}
+            >
+              <div className="stat-label text-[0.65rem] mb-1">{s.label}</div>
+              <div className="font-display text-xl md:text-2xl text-white leading-tight">
+                {s.value}
+              </div>
             </div>
           ))}
         </div>
 
-        <div style={{
-          background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.05)",
-          borderTop: "none", padding: "0.875rem 1.5rem",
-          display: "flex", gap: "2rem", alignItems: "center", marginBottom: "2rem",
-        }}>
-          <div>
-            <span style={{
-              fontFamily: "'Rajdhani', sans-serif", fontWeight: 600,
-              fontSize: "0.65rem", letterSpacing: "0.14em",
-              textTransform: "uppercase", color: "rgba(255,255,255,0.25)",
-              marginRight: "0.75rem",
-            }}>Lap Record</span>
-            <span style={{
-              fontFamily: "'Russo One', sans-serif",
-              fontSize: "1rem", color: "#E10600",
-            }}>{localData.lapRecord}</span>
+        {/* Lap Record Banner */}
+        <div className="bg-[#0d0d0d] border border-white/10 border-t-0 px-5 py-3 flex flex-wrap items-center gap-4 mb-8">
+          <div className="flex items-center gap-2">
+            <span className="stat-label text-[0.65rem]">Lap Record</span>
+            <span className="font-display text-sm md:text-base text-[#E10600]">{lapRecord}</span>
           </div>
-          <div style={{ width: "1px", height: "16px", background: "rgba(255,255,255,0.08)" }} />
-          <div style={{
-            fontFamily: "'Rajdhani', sans-serif", fontWeight: 500,
-            fontSize: "0.82rem", color: "rgba(255,255,255,0.4)",
-          }}>{localData.lapRecordHolder} · {localData.lapRecordYear}</div>
+          <div className="w-px h-4 bg-white/10 hidden sm:block" />
+          <div className="text-white/40 text-xs md:text-sm font-mono">
+            {lapRecordHolder} · {lapRecordYear}
+          </div>
         </div>
 
-        <div style={{
-          display: "grid", gridTemplateColumns: "1fr 1fr",
-          gap: "1px", background: "rgba(255,255,255,0.05)",
-        }}>
-          <div style={{ background: "#0a0a0a", padding: "2rem" }}>
-            <div style={{
-              fontFamily: "'Rajdhani', sans-serif", fontWeight: 600,
-              fontSize: "0.68rem", letterSpacing: "0.2em",
-              textTransform: "uppercase", color: "rgba(255,255,255,0.25)",
-              marginBottom: "1.5rem",
-            }}>Track Layout</div>
-            <div style={{
-              background: "#060606", border: "1px solid rgba(255,255,255,0.04)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              minHeight: "260px", padding: "1.5rem",
-            }}>
+        {/* Two-column layout – stacks on mobile */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-px bg-white/10">
+          {/* Left: Track Layout */}
+          <div className="bg-[#0a0a0a] p-6">
+            <div className="stat-label text-[0.65rem] mb-4">Track Layout</div>
+            <div className="bg-[#060606] border border-white/10 flex items-center justify-center min-h-[260px] p-6">
               <img
-                src={localData.layoutUrl}
+                src={layoutUrl}
                 alt={`${name} layout`}
-                style={{ maxHeight: "220px", width: "auto", objectFit: "contain", opacity: 0.9 }}
+                className="max-h-[220px] w-auto object-contain opacity-90"
               />
             </div>
-            <div style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: "0.7rem", color: "rgba(255,255,255,0.18)",
-              marginTop: "1rem", textAlign: "center", letterSpacing: "0.05em",
-            }}>{localData.laps} laps · {localData.distance}</div>
+            <div className="font-mono text-[0.7rem] text-white/20 text-center mt-4 tracking-wide">
+              {laps} laps · {distance}
+            </div>
           </div>
 
-          <div style={{ background: "#0a0a0a", padding: "2rem" }}>
-            <div style={{
-              fontFamily: "'Rajdhani', sans-serif", fontWeight: 600,
-              fontSize: "0.68rem", letterSpacing: "0.2em",
-              textTransform: "uppercase", color: "rgba(255,255,255,0.25)",
-              marginBottom: "1.5rem",
-            }}>Circuit Info</div>
-
-            <div style={{ display: "flex", flexDirection: "column" }}>
+          {/* Right: Circuit Info Table */}
+          <div className="bg-[#0a0a0a] p-6">
+            <div className="stat-label text-[0.65rem] mb-4">Circuit Info</div>
+            <div className="flex flex-col">
               {[
                 { label: "Country", value: country },
                 { label: "Location", value: location },
-                { label: "Circuit Length", value: localData.length },
-                { label: "Race Laps", value: String(localData.laps) },
-                { label: "Race Distance", value: localData.distance },
-                { label: "First Grand Prix", value: String(localData.firstGP) },
-                ...(apiCircuit?.url ? [{ label: "Wikipedia", value: "View Article →", href: apiCircuit.url }] : []),
+                { label: "Circuit Length", value: length },
+                { label: "Race Laps", value: String(laps) },
+                { label: "Race Distance", value: distance },
+                { label: "First Grand Prix", value: String(firstGP) },
+                ...(apiCircuit?.url
+                  ? [
+                      {
+                        label: "Wikipedia",
+                        value: "View Article →",
+                        href: apiCircuit.url,
+                        external: true,
+                      },
+                    ]
+                  : []),
               ].map((row) => (
-                <div key={row.label} style={{
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                  padding: "0.75rem 0", borderBottom: "1px solid rgba(255,255,255,0.04)",
-                }}>
-                  <span style={{
-                    fontFamily: "'Rajdhani', sans-serif", fontWeight: 600,
-                    fontSize: "0.75rem", letterSpacing: "0.1em",
-                    textTransform: "uppercase", color: "rgba(255,255,255,0.28)",
-                  }}>{row.label}</span>
+                <div
+                  key={row.label}
+                  className="flex justify-between items-center py-3 border-b border-white/10 first:pt-0 last:border-0"
+                >
+                  <span className="text-white/30 text-xs uppercase tracking-wider font-semibold">
+                    {row.label}
+                  </span>
                   {"href" in row ? (
-                    <a href={(row as any).href} target="_blank" rel="noopener noreferrer" style={{
-                      fontFamily: "'Russo One', sans-serif",
-                      fontSize: "0.85rem", color: "#E10600", textDecoration: "none",
-                    }}>{row.value}</a>
+                    <a
+                      href={row.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-display text-sm text-[#E10600] hover:underline"
+                    >
+                      {row.value}
+                    </a>
                   ) : (
-                    <span style={{
-                      fontFamily: "'Russo One', sans-serif",
-                      fontSize: "0.85rem", color: "white",
-                    }}>{row.value}</span>
+                    <span className="font-display text-sm text-white">{row.value}</span>
                   )}
                 </div>
               ))}
@@ -200,13 +178,14 @@ export default async function TrackDetailPage({ params }: { params: Promise<{ ci
           </div>
         </div>
 
-        <div style={{ marginTop: "3rem", paddingTop: "1.5rem", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-          <Link href="/tracks" style={{
-            fontFamily: "'Rajdhani', sans-serif", fontWeight: 600,
-            fontSize: "0.75rem", letterSpacing: "0.15em",
-            textTransform: "uppercase", color: "rgba(255,255,255,0.3)",
-            textDecoration: "none",
-          }}>← Back to All Circuits</Link>
+        {/* Bottom back link */}
+        <div className="mt-10 pt-6 border-t border-white/10">
+          <Link
+            href="/tracks"
+            className="text-white/40 text-xs uppercase tracking-[0.15em] hover:text-white/70 transition"
+          >
+            ← Back to All Circuits
+          </Link>
         </div>
       </div>
     </main>

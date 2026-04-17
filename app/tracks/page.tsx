@@ -1,21 +1,18 @@
 /**
- * TracksPage — Race Circuits listing page.
+ * TracksPage – Race Circuits listing page.
  *
- * Data:  prioritises Jolpica API circuit order for the current season;
- *        enriches with local circuits.json (layout images, lap records, stats).
+ * Data: prioritises Jolpica API circuit order for the current season;
+ *       enriches with local circuits.json (layout images, lap records, stats).
  *
- * Layout:
- *   1. Hero section (title, stats strip: circuits / races / countries)
- *   2. Auto-fill grid of CircuitCards — each shows:
- *      - Track layout image
- *      - Location + circuit name
- *      - Length / Laps / Since stats
- *      - Lap record
+ * Layout (responsive):
+ *   1. Hero section (title, stats strip)
+ *   2. Auto-fill grid of CircuitCards (1 column on mobile, 2 on tablet, 3 on desktop)
+ *   3. Each card shows layout image, location, name, length/laps/since, lap record
  */
 
 "use client";
 
-import React, { useEffect, useState } from "react"; // Add React import
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { getCircuits } from "@/lib/api/jolpica";
 import circuitsData from "@/lib/data/circuits.json";
@@ -23,176 +20,136 @@ import circuitsData from "@/lib/data/circuits.json";
 export default function TracksPage() {
   const [circuits, setCircuits] = useState<any[]>([]);
 
+  // Load circuits on mount – use API order if available, fallback to local JSON
   useEffect(() => {
     async function loadCircuits() {
-      /* Fetch live circuit order from the API */
       let apiCircuits: any[] = [];
       try {
         apiCircuits = await getCircuits("current");
-      } catch { /* fall back to local JSON order */ }
+      } catch {
+        /* fall back to local JSON order */
+      }
 
-      /* Merge API order with local enrichment data; drop any circuit missing local data */
+      // Merge API order with local enrichment data; drop any circuit missing local data
       const mergedCircuits = (apiCircuits.length > 0 ? apiCircuits : circuitsData)
         .map((api: any) => {
           const local = circuitsData.find(c => c.id === api.circuitId || c.id === api.id);
           return local ?? null;
         })
         .filter(Boolean) as typeof circuitsData;
-      
+
       setCircuits(mergedCircuits);
     }
-    
+
     loadCircuits();
   }, []);
 
   return (
-    <main style={{ background: "#080808", minHeight: "100vh" }}>
+    <main className="min-h-screen bg-[#080808]">
+      {/* Hero Section */}
+      <section className="relative border-b border-white/10 overflow-hidden">
+        {/* Top red line */}
+        <div className="h-[2px] bg-[#E10600]" />
 
-      {/* ── Hero ────────────────────────────────────────────────────────── */}
-      <section style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden" }}>
-        <div style={{ height: "2px", background: "#E10600" }} />
-
-        {/* Giant watermark */}
-        <div style={{
-          position: "absolute", right: 0, top: 0, bottom: 0,
-          display: "flex", alignItems: "center", paddingRight: "2rem",
-          pointerEvents: "none", userSelect: "none", overflow: "hidden",
-        }}>
-          <span style={{
-            fontFamily: "'Russo One', sans-serif",
-            fontSize: "clamp(8rem, 20vw, 18rem)",
-            color: "rgba(255,255,255,0.02)", lineHeight: 1, letterSpacing: "-0.04em",
-          }}>
+        {/* Giant F1 watermark */}
+        <div className="absolute right-0 top-0 bottom-0 flex items-center pr-4 md:pr-8 pointer-events-none select-none">
+          <span className="font-display text-[clamp(6rem,15vw,18rem)] text-white/5 leading-none tracking-[-0.04em]">
             F1
           </span>
         </div>
 
-        <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "3rem 1.5rem" }}>
-          {/* Back navigation */}
-          <Link href="/" className="nav-back" style={{ display: "inline-flex", marginBottom: "2rem" }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
+          {/* Back link */}
+          <Link href="/" className="nav-back inline-flex mb-6 md:mb-8">
             ← Home
           </Link>
 
-          {/* Season overline */}
-          <div className="label-overline" style={{ marginBottom: "0.5rem" }}>
-            Formula 1 · 2026 Season
-          </div>
+          {/* Season label */}
+          <div className="label-overline mb-2">Formula 1 · 2026 Season</div>
 
-          {/* Page title */}
-          <h1 style={{
-            fontFamily: "'Russo One', sans-serif",
-            fontSize: "clamp(3rem, 8vw, 6rem)", color: "white",
-            lineHeight: 0.92, letterSpacing: "-0.02em", margin: "0 0 1.25rem",
-          }}>
+          {/* Title */}
+          <h1 className="font-display text-[clamp(2.5rem,8vw,6rem)] text-white leading-[0.92] tracking-[-0.02em] mb-4">
             RACE<br />
-            <span style={{ color: "rgba(255,255,255,0.15)" }}>CIRCUITS</span>
+            <span className="text-white/15">CIRCUITS</span>
           </h1>
 
-          <p style={{
-            fontFamily: "'Rajdhani', sans-serif", fontWeight: 400,
-            fontSize: "1rem", lineHeight: 1.7,
-            color: "rgba(255,255,255,0.4)", maxWidth: "420px", margin: "0 0 2.5rem",
-          }}>
+          <p className="text-white/40 text-sm md:text-base max-w-md mb-8">
             Every circuit on the Formula 1 calendar — track layouts, lap records, and history.
           </p>
 
-          {/* Key stats strip */}
-          <div style={{ display: "inline-grid", gridTemplateColumns: "repeat(3, auto)", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          {/* Stats strip – wraps on mobile */}
+          <div className="inline-flex flex-wrap border-t border-white/10">
             {[
               { value: circuits.length, label: "Circuits" },
-              { value: "24",            label: "Races"    },
-              { value: "21",            label: "Countries"},
+              { value: "24", label: "Races" },
+              { value: "21", label: "Countries" },
             ].map((s, i) => (
-              <div key={i} style={{ padding: "1rem 2rem 0", borderRight: i < 2 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
-                <div className="stat-value" style={{ fontSize: "2rem" }}>{s.value}</div>
-                <div className="stat-label">{s.label}</div>
+              <div
+                key={i}
+                className="px-6 md:px-8 pt-4 first:pl-0 last:pr-0"
+                style={{ borderRight: i < 2 ? "1px solid rgba(255,255,255,0.06)" : "none" }}
+              >
+                <div className="stat-value text-2xl md:text-3xl">{s.value}</div>
+                <div className="stat-label text-[0.65rem] md:text-[0.7rem]">{s.label}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Circuit cards grid ───────────────────────────────────────────── */}
-      <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "3rem 1.5rem" }}>
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-          gap: "1px",
-          background: "rgba(255,255,255,0.05)",
-        }}>
+      {/* Circuit Cards Grid */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
+        {/* Responsive grid: 1 column mobile, 2 columns tablet, 3 columns desktop */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-white/10">
           {circuits.map((circuit) => (
-            <Link key={circuit.id} href={`/tracks/${circuit.id}`} style={{ textDecoration: "none" }}>
-              <div style={{
-                background: "#0a0a0a", padding: "1.5rem",
-                height: "100%", display: "flex", flexDirection: "column",
-                transition: "background 0.2s ease",
-              }}
-              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "#0e0e0e"}
-              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "#0a0a0a"}
-              >
-                {/* 32px red accent line */}
-                <div style={{ height: "2px", width: "32px", background: "#E10600", marginBottom: "1.25rem" }} />
+            <Link
+              key={circuit.id}
+              href={`/tracks/${circuit.id}`}
+              className="block h-full group no-underline"
+            >
+              <div className="bg-[#0a0a0a] p-5 md:p-6 h-full flex flex-col transition-colors hover:bg-[#0e0e0e]">
+                {/* Red accent line */}
+                <div className="w-8 h-0.5 bg-[#E10600] mb-5" />
 
                 {/* Track layout image */}
-                <div style={{
-                  background: "#060606",
-                  border: "1px solid rgba(255,255,255,0.04)",
-                  height: "120px",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  marginBottom: "1.25rem", overflow: "hidden",
-                }}>
+                <div className="bg-[#060606] border border-white/10 h-[120px] flex items-center justify-center mb-5 overflow-hidden">
                   <img
                     src={circuit.layoutUrl}
                     alt={circuit.name}
-                    style={{ height: "100%", width: "100%", objectFit: "contain", padding: "0.5rem", opacity: 0.85 }}
+                    className="h-full w-full object-contain p-2 opacity-85"
                     loading="lazy"
                   />
                 </div>
 
                 {/* Location */}
-                <div className="stat-label" style={{ margin: "0 0 0.3rem" }}>{circuit.location}</div>
+                <div className="stat-label text-[0.65rem] mb-1">{circuit.location}</div>
 
                 {/* Circuit name */}
-                <div style={{
-                  fontFamily: "'Russo One', sans-serif",
-                  fontSize: "1rem", color: "white", lineHeight: 1.2, marginBottom: "1rem", flex: 1,
-                }}>
+                <div className="font-display text-white text-base leading-tight mb-4 flex-1">
                   {circuit.name}
                 </div>
 
-                {/* Length / Laps / Since */}
-                <div style={{
-                  display: "grid", gridTemplateColumns: "repeat(3, 1fr)",
-                  borderTop: "1px solid rgba(255,255,255,0.05)",
-                  paddingTop: "1rem", gap: "0.5rem",
-                }}>
+                {/* Stats: Length / Laps / Since */}
+                <div className="grid grid-cols-3 gap-2 border-t border-white/10 pt-4">
                   {[
-                    { label: "Length", value: circuit.length  },
-                    { label: "Laps",   value: circuit.laps    },
-                    { label: "Since",  value: circuit.firstGP },
+                    { label: "Length", value: circuit.length },
+                    { label: "Laps", value: circuit.laps },
+                    { label: "Since", value: circuit.firstGP },
                   ].map((s) => (
                     <div key={s.label}>
-                      <div className="stat-label" style={{ margin: "0 0 0.15rem" }}>{s.label}</div>
-                      <div style={{ fontFamily: "'Russo One', sans-serif", fontSize: "0.85rem", color: "white" }}>
-                        {s.value}
-                      </div>
+                      <div className="stat-label text-[0.6rem] mb-1">{s.label}</div>
+                      <div className="font-display text-sm text-white">{s.value}</div>
                     </div>
                   ))}
                 </div>
 
-                {/* Lap record */}
-                <div style={{
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                  marginTop: "0.75rem", paddingTop: "0.75rem",
-                  borderTop: "1px solid rgba(255,255,255,0.04)",
-                }}>
+                {/* Lap record row */}
+                <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/5">
                   <div>
-                    <div className="stat-label" style={{ margin: "0 0 0.1rem" }}>Lap Record</div>
-                    <div style={{ fontFamily: "'Russo One', sans-serif", fontSize: "0.9rem", color: "#E10600" }}>
-                      {circuit.lapRecord}
-                    </div>
+                    <div className="stat-label text-[0.6rem] mb-0.5">Lap Record</div>
+                    <div className="font-display text-sm text-[#E10600]">{circuit.lapRecord}</div>
                   </div>
-                  <div className="nav-back" style={{ fontSize: "0.72rem" }}>View →</div>
+                  <div className="nav-back text-[0.7rem] group-hover:opacity-80">View →</div>
                 </div>
               </div>
             </Link>

@@ -1,3 +1,14 @@
+/**
+ * CalendarHero – Hero section for calendar page
+ * 
+ * Features:
+ * - Giant F1 watermark
+ * - Back to home link
+ * - Season title with red accent
+ * - Description text
+ * - Responsive padding and font sizes
+ */
+
 import Link from "next/link";
 
 interface CalendarHeroProps {
@@ -6,31 +17,47 @@ interface CalendarHeroProps {
 
 export default function CalendarHero({ season }: CalendarHeroProps) {
   return (
-    <section style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden" }}>
-      <div style={{ height: "2px", background: "#E10600" }} />
+    <section className="relative border-b border-white/10 overflow-hidden">
+      {/* Top red line */}
+      <div className="h-[2px] bg-[#E10600]" />
 
-      <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", paddingRight: "2rem", pointerEvents: "none", overflow: "hidden" }}>
-        <span style={{ fontFamily: "'Russo One', sans-serif", fontSize: "clamp(6rem, 18vw, 16rem)", color: "rgba(255,255,255,0.02)", lineHeight: 1 }}>F1</span>
+      {/* Giant F1 watermark – responsive clamp */}
+      <div className="absolute right-0 top-0 bottom-0 flex items-center pr-4 md:pr-8 pointer-events-none select-none">
+        <span className="font-display text-[clamp(4rem,15vw,16rem)] text-white/5 leading-none">
+          F1
+        </span>
       </div>
 
-      <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "3rem 1.5rem" }}>
-        <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginBottom: "2rem", fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.75rem", letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", textDecoration: "none" }}>
+      {/* Content container */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
+        {/* Back link */}
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-white/40 text-xs uppercase tracking-[0.15em] mb-6 hover:text-white/70 transition"
+        >
           ← Home
         </Link>
-        <div style={{ marginBottom: "0.5rem" }}>
-          <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.72rem", letterSpacing: "0.28em", textTransform: "uppercase", color: "#E10600" }}>
+
+        {/* Season label */}
+        <div className="mb-2">
+          <span className="text-[#E10600] text-[0.7rem] md:text-xs font-semibold tracking-[0.28em] uppercase">
             Formula 1 · Race Schedule
           </span>
         </div>
-        <h1 style={{ fontFamily: "'Russo One', sans-serif", fontSize: "clamp(3rem, 8vw, 6rem)", color: "white", lineHeight: 0.92, letterSpacing: "-0.02em", margin: "0 0 0.75rem" }}>
-          {season} <span style={{ color: "#E10600" }}>CALENDAR</span>
+
+        {/* Title */}
+        <h1 className="font-display text-[clamp(2.5rem,8vw,6rem)] text-white leading-[0.92] tracking-[-0.02em] mb-3">
+          {season} <span className="text-[#E10600]">CALENDAR</span>
         </h1>
-        <p style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 400, fontSize: "1rem", color: "rgba(255,255,255,0.38)", maxWidth: "420px" }}>
+
+        {/* Description */}
+        <p className="text-white/40 text-sm md:text-base max-w-md">
           Complete Formula 1 season schedule with results and countdown.
         </p>
       </div>
 
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "80px", background: "linear-gradient(to bottom, transparent, #060606)", pointerEvents: "none" }} />
+      {/* Bottom fade */}
+      <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-[#060606] to-transparent pointer-events-none" />
     </section>
   );
 }

@@ -1,5 +1,40 @@
+/**
+ * RaceDetailPage – Displays race results and qualifying for a specific F1 race.
+ *
+ * Features:
+ * - Race header with name, location, date, round watermark
+ * - Race results table (position, driver, team, grid, laps, points)
+ * - Qualifying results table (position, driver, team, Q1, Q2, Q3)
+ * - Responsive tables with horizontal scroll on mobile
+ * - Team colour accents
+ * - Links to driver profiles
+ * - Back navigation to calendar
+ */
+
 import Link from "next/link";
 import { getRaceResults, getQualifyingResults, getRaceSchedule } from "@/lib/api/jolpica";
+
+// Team colour mapping for constructor accents
+const TEAM_COLORS: Record<string, string> = {
+  mercedes: "#00D2BE",
+  ferrari: "#E8002D",
+  red_bull: "#3671C6",
+  mclaren: "#FF8000",
+  alpine: "#FF87BC",
+  aston_martin: "#229971",
+  williams: "#64C4FF",
+  haas: "#B6BABD",
+  sauber: "#52E252",
+  rb: "#6692FF",
+};
+
+function getTeamColor(teamName: string): string {
+  const lower = teamName.toLowerCase();
+  for (const [key, color] of Object.entries(TEAM_COLORS)) {
+    if (lower.includes(key)) return color;
+  }
+  return "#E10600";
+}
 
 export default async function RaceDetailPage({
   params,
@@ -8,6 +43,7 @@ export default async function RaceDetailPage({
 }) {
   const { season, round } = await params;
 
+  // Fetch all required data in parallel
   const [raceResults, qualifyingResults, scheduleResult] = await Promise.allSettled([
     getRaceResults(season, round),
     getQualifyingResults(season, round),
@@ -20,27 +56,21 @@ export default async function RaceDetailPage({
   const scheduleRace = schedule?.find((r: any) => r.round === round);
   const raceInfo = race || scheduleRace;
 
-  if (!raceInfo) return (
-    <main style={{ background: "#060606", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ textAlign: "center" }}>
-        <p style={{ fontFamily: "'Rajdhani', sans-serif", color: "rgba(255,255,255,0.3)", fontSize: "1rem", letterSpacing: "0.1em" }}>Race not found</p>
-        <Link href="/calendar" style={{ color: "#E10600", textDecoration: "none", fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.8rem", letterSpacing: "0.15em", textTransform: "uppercase" }}>← Calendar</Link>
-      </div>
-    </main>
-  );
-
-  const TEAM_COLORS: Record<string, string> = {
-    mercedes: "#00D2BE", ferrari: "#E8002D", red_bull: "#3671C6",
-    mclaren: "#FF8000", alpine: "#FF87BC", aston_martin: "#229971",
-    williams: "#64C4FF", haas: "#B6BABD", sauber: "#52E252", rb: "#6692FF",
-  };
-
-  function getTeamColor(teamName: string): string {
-    const lower = teamName.toLowerCase();
-    for (const [key, color] of Object.entries(TEAM_COLORS)) {
-      if (lower.includes(key)) return color;
-    }
-    return "#E10600";
+  // Early return if no race info found
+  if (!raceInfo) {
+    return (
+      <main className="min-h-screen bg-[#060606] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-white/30 text-sm tracking-wider">Race not found</p>
+          <Link
+            href="/calendar"
+            className="text-[#E10600] text-xs font-semibold tracking-[0.15em] uppercase hover:underline"
+          >
+            ← Calendar
+          </Link>
+        </div>
+      </main>
+    );
   }
 
   const hasResults = race?.Results && race.Results.length > 0;
@@ -48,69 +78,152 @@ export default async function RaceDetailPage({
   const raceDate = raceInfo.date ? new Date(raceInfo.date) : null;
 
   return (
-    <main style={{ background: "#060606", minHeight: "100vh" }}>
-      <div style={{ height: "2px", background: "#E10600" }} />
+    <main className="min-h-screen bg-[#060606]">
+      {/* Top red line */}
+      <div className="h-[2px] bg-[#E10600]" />
 
-      <section style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", paddingRight: "2rem", pointerEvents: "none", overflow: "hidden" }}>
-          <span style={{ fontFamily: "'Russo One', sans-serif", fontSize: "clamp(6rem, 16vw, 14rem)", color: "rgba(255,255,255,0.02)", lineHeight: 1 }}>R{round}</span>
+      {/* Hero section */}
+      <section className="relative border-b border-white/10 overflow-hidden">
+        {/* Round watermark */}
+        <div className="absolute right-0 top-0 bottom-0 flex items-center pr-4 md:pr-8 pointer-events-none select-none">
+          <span className="font-display text-[clamp(4rem,15vw,14rem)] text-white/5 leading-none">
+            R{round}
+          </span>
         </div>
-        <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "clamp(1.5rem, 4vw, 3rem) 1.5rem" }}>
-          <Link href="/calendar" style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginBottom: "1.5rem", fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.75rem", letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", textDecoration: "none" }}>← Calendar</Link>
-          <div style={{ marginBottom: "0.5rem" }}>
-            <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.72rem", letterSpacing: "0.28em", textTransform: "uppercase", color: "#E10600" }}>{season} · Round {round}</span>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
+          {/* Back link */}
+          <Link
+            href="/calendar"
+            className="inline-flex items-center gap-2 text-white/40 text-xs uppercase tracking-[0.15em] mb-6 hover:text-white/70 transition"
+          >
+            ← Calendar
+          </Link>
+
+          {/* Season & round label */}
+          <div className="mb-2">
+            <span className="text-[#E10600] text-[0.7rem] md:text-xs font-semibold tracking-[0.28em] uppercase">
+              {season} · Round {round}
+            </span>
           </div>
-          <h1 style={{ fontFamily: "'Russo One', sans-serif", fontSize: "clamp(1.8rem, 5vw, 4rem)", color: "white", lineHeight: 0.95, letterSpacing: "-0.02em", margin: "0 0 0.75rem" }}>
+
+          {/* Race name */}
+          <h1 className="font-display text-[clamp(1.8rem,6vw,4rem)] text-white leading-[0.95] tracking-[-0.02em] mb-3">
             {raceInfo.raceName?.toUpperCase()}
           </h1>
-          <p style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 500, fontSize: "0.9rem", color: "rgba(255,255,255,0.35)", letterSpacing: "0.06em" }}>
+
+          {/* Location and date */}
+          <p className="text-white/40 text-sm md:text-base tracking-wide">
             {raceInfo.Circuit?.Location?.locality}, {raceInfo.Circuit?.Location?.country}
-            {raceDate && ` · ${raceDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`}
+            {raceDate &&
+              ` · ${raceDate.toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}`}
           </p>
         </div>
       </section>
 
-      <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "clamp(1.5rem, 4vw, 3rem) 1.5rem" }}>
-
+      {/* Main content container */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
+        {/* No results placeholder */}
         {!hasResults && !hasQualifying && (
-          <div style={{ padding: "4rem 2rem", textAlign: "center", border: "1px solid rgba(255,255,255,0.06)", background: "#0a0a0a" }}>
-            <div style={{ fontFamily: "'Russo One', sans-serif", fontSize: "0.9rem", color: "rgba(255,255,255,0.2)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.5rem" }}>No Results Yet</div>
-            <p style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: "0.9rem", color: "rgba(255,255,255,0.2)" }}>Results will appear here after the race weekend.</p>
+          <div className="py-16 text-center border border-white/10 bg-[#0a0a0a]">
+            <div className="font-display text-sm uppercase tracking-wider text-white/20 mb-2">
+              No Results Yet
+            </div>
+            <p className="text-white/20 text-sm">
+              Results will appear here after the race weekend.
+            </p>
           </div>
         )}
 
-        {/* Race Results */}
+        {/* Race Results Section */}
         {hasResults && (
-          <div style={{ marginBottom: "3rem" }}>
-            <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.68rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", display: "block", marginBottom: "1rem" }}>Race Results</span>
-            <div style={{ border: "1px solid rgba(255,255,255,0.06)", overflowX: "auto" }}>
-              <div style={{ minWidth: "480px" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "3rem 1fr 8rem 4rem 4rem 5rem", padding: "0.6rem 1rem", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "#0d0d0d" }}>
+          <div className="mb-12">
+            <span className="label-overline block mb-4">Race Results</span>
+
+            {/* Horizontal scroll container for mobile */}
+            <div className="overflow-x-auto border border-white/10">
+              <div className="min-w-[640px]">
+                {/* Table header */}
+                <div className="grid grid-cols-[3rem_1fr_8rem_4rem_4rem_5rem] bg-[#0d0d0d] border-b border-white/10 px-4 py-3">
                   {["Pos", "Driver", "Team", "Grid", "Laps", "Pts"].map((h) => (
-                    <div key={h} style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.62rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>{h}</div>
+                    <div
+                      key={h}
+                      className="text-white/30 text-[0.65rem] uppercase tracking-wider font-semibold"
+                    >
+                      {h}
+                    </div>
                   ))}
                 </div>
+
+                {/* Table rows */}
                 {race.Results.map((result: any) => {
                   const pos = parseInt(result.position);
                   const isWin = pos === 1;
                   const isPodium = pos <= 3;
                   const teamColor = getTeamColor(result.Constructor?.name || "");
                   return (
-                    <div key={result.position} style={{ display: "grid", gridTemplateColumns: "3rem 1fr 8rem 4rem 4rem 5rem", padding: "0.7rem 1rem", borderBottom: "1px solid rgba(255,255,255,0.04)", alignItems: "center" }}>
-                      <div style={{ fontFamily: "'Russo One', sans-serif", fontSize: "1rem", color: isWin ? "#FFD700" : isPodium ? "#FF8C00" : "white" }}>{result.position}</div>
+                    <div
+                      key={result.position}
+                      className="grid grid-cols-[3rem_1fr_8rem_4rem_4rem_5rem] items-center px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors"
+                    >
+                      {/* Position */}
+                      <div
+                        className="font-display text-base"
+                        style={{
+                          color: isWin ? "#FFD700" : isPodium ? "#FF8C00" : "white",
+                        }}
+                      >
+                        {result.position}
+                      </div>
+
+                      {/* Driver info with link */}
                       <div>
-                        <Link href={`/drivers/${result.Driver?.driverId}`} style={{ textDecoration: "none" }}>
-                          <div style={{ fontFamily: "'Russo One', sans-serif", fontSize: "0.82rem", color: "white", lineHeight: 1.1 }}>{result.Driver?.givenName} {result.Driver?.familyName}</div>
-                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.62rem", color: "rgba(255,255,255,0.3)" }}>{result.status}</div>
+                        <Link
+                          href={`/drivers/${result.Driver?.driverId}`}
+                          className="no-underline hover:opacity-80 transition"
+                        >
+                          <div className="font-display text-sm text-white leading-tight">
+                            {result.Driver?.givenName} {result.Driver?.familyName}
+                          </div>
+                          <div className="font-mono text-[0.6rem] text-white/40">
+                            {result.status}
+                          </div>
                         </Link>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                        <div style={{ width: "2px", height: "12px", background: teamColor, flexShrink: 0 }} />
-                        <span style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: "0.68rem", color: "rgba(255,255,255,0.4)" }}>{result.Constructor?.name}</span>
+
+                      {/* Team with colour stripe */}
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-0.5 h-3 flex-shrink-0"
+                          style={{ background: teamColor }}
+                        />
+                        <span className="text-white/50 text-xs">
+                          {result.Constructor?.name}
+                        </span>
                       </div>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>{result.grid}</div>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>{result.laps}</div>
-                      <div style={{ fontFamily: "'Russo One', sans-serif", fontSize: "0.85rem", color: parseFloat(result.points) > 0 ? "#E10600" : "rgba(255,255,255,0.25)" }}>{result.points}</div>
+
+                      {/* Grid, Laps, Points */}
+                      <div className="font-mono text-sm text-white/50">
+                        {result.grid}
+                      </div>
+                      <div className="font-mono text-sm text-white/50">
+                        {result.laps}
+                      </div>
+                      <div
+                        className="font-display text-sm"
+                        style={{
+                          color:
+                            parseFloat(result.points) > 0
+                              ? "#E10600"
+                              : "rgba(255,255,255,0.25)",
+                        }}
+                      >
+                        {result.points}
+                      </div>
                     </div>
                   );
                 })}
@@ -119,34 +232,78 @@ export default async function RaceDetailPage({
           </div>
         )}
 
-        {/* Qualifying Results */}
+        {/* Qualifying Section */}
         {hasQualifying && (
           <div>
-            <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.68rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", display: "block", marginBottom: "1rem" }}>Qualifying</span>
-            <div style={{ border: "1px solid rgba(255,255,255,0.06)", overflowX: "auto" }}>
-              <div style={{ minWidth: "480px" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "3rem 1fr 7rem 5.5rem 5.5rem 5.5rem", padding: "0.6rem 1rem", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "#0d0d0d" }}>
+            <span className="label-overline block mb-4">Qualifying</span>
+
+            <div className="overflow-x-auto border border-white/10">
+              <div className="min-w-[640px]">
+                {/* Header */}
+                <div className="grid grid-cols-[3rem_1fr_7rem_5.5rem_5.5rem_5.5rem] bg-[#0d0d0d] border-b border-white/10 px-4 py-3">
                   {["Pos", "Driver", "Team", "Q1", "Q2", "Q3"].map((h) => (
-                    <div key={h} style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.62rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>{h}</div>
+                    <div
+                      key={h}
+                      className="text-white/30 text-[0.65rem] uppercase tracking-wider font-semibold"
+                    >
+                      {h}
+                    </div>
                   ))}
                 </div>
+
+                {/* Rows */}
                 {qualifying.QualifyingResults.map((result: any) => {
                   const teamColor = getTeamColor(result.Constructor?.name || "");
                   const isPole = result.position === "1";
                   return (
-                    <div key={result.position} style={{ display: "grid", gridTemplateColumns: "3rem 1fr 7rem 5.5rem 5.5rem 5.5rem", padding: "0.7rem 1rem", borderBottom: "1px solid rgba(255,255,255,0.04)", alignItems: "center" }}>
-                      <div style={{ fontFamily: "'Russo One', sans-serif", fontSize: "1rem", color: isPole ? "#FFD700" : "white" }}>{result.position}</div>
+                    <div
+                      key={result.position}
+                      className="grid grid-cols-[3rem_1fr_7rem_5.5rem_5.5rem_5.5rem] items-center px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors"
+                    >
+                      {/* Position */}
+                      <div
+                        className="font-display text-base"
+                        style={{ color: isPole ? "#FFD700" : "white" }}
+                      >
+                        {result.position}
+                      </div>
+
+                      {/* Driver */}
                       <div>
-                        <Link href={`/drivers/${result.Driver?.driverId}`} style={{ textDecoration: "none" }}>
-                          <div style={{ fontFamily: "'Russo One', sans-serif", fontSize: "0.82rem", color: "white" }}>{result.Driver?.givenName} {result.Driver?.familyName}</div>
+                        <Link
+                          href={`/drivers/${result.Driver?.driverId}`}
+                          className="no-underline hover:opacity-80 transition"
+                        >
+                          <div className="font-display text-sm text-white">
+                            {result.Driver?.givenName} {result.Driver?.familyName}
+                          </div>
                         </Link>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                        <div style={{ width: "2px", height: "12px", background: teamColor, flexShrink: 0 }} />
-                        <span style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: "0.68rem", color: "rgba(255,255,255,0.4)" }}>{result.Constructor?.name}</span>
+
+                      {/* Team */}
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-0.5 h-3 flex-shrink-0"
+                          style={{ background: teamColor }}
+                        />
+                        <span className="text-white/50 text-xs">
+                          {result.Constructor?.name}
+                        </span>
                       </div>
+
+                      {/* Q1, Q2, Q3 times */}
                       {["Q1", "Q2", "Q3"].map((q) => (
-                        <div key={q} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", color: result[q] ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.15)" }}>{result[q] || "—"}</div>
+                        <div
+                          key={q}
+                          className="font-mono text-sm"
+                          style={{
+                            color: result[q]
+                              ? "rgba(255,255,255,0.6)"
+                              : "rgba(255,255,255,0.15)",
+                          }}
+                        >
+                          {result[q] || "—"}
+                        </div>
                       ))}
                     </div>
                   );
@@ -156,8 +313,14 @@ export default async function RaceDetailPage({
           </div>
         )}
 
-        <div style={{ marginTop: "3rem", paddingTop: "1.5rem", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-          <Link href="/calendar" style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.75rem", letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", textDecoration: "none" }}>← Back to Calendar</Link>
+        {/* Bottom back link */}
+        <div className="mt-12 pt-6 border-t border-white/10">
+          <Link
+            href="/calendar"
+            className="text-white/40 text-xs uppercase tracking-[0.15em] hover:text-white/70 transition"
+          >
+            ← Back to Calendar
+          </Link>
         </div>
       </div>
     </main>
