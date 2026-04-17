@@ -4,7 +4,7 @@
 
 FJuan is a full-stack Formula 1 web application that aggregates race schedules, live telemetry, driver statistics, constructor standings, track information, and news – all in one place. It's built for people who want to know when qualifying starts, how late Verstappen brakes into Turn 1, and whether their favourite driver is statistically overrated.
 
-🔗 **Live Demo**: [https://fjuan.vercel.app](https://fjuan.vercel.app) *(replace with your actual URL)*
+🔗 **Live Demo**: https://f-juan.vercel.app/
 
 ## Features
 
