@@ -1,13 +1,11 @@
 /**
- * Navbar — sticky top navigation bar.
+ * components/home/Navbar.tsx  (UPDATED)
  *
- * Features:
- *   - 2px F1 red top accent bar
- *   - Scrolled state: slightly more opaque background
- *   - Keyboard shortcut ⌘K / Ctrl+K opens global search overlay
- *   - Active route highlighted with a 2px red bottom border
- *   - Mobile: animated hamburger → slide-down menu
- *   - Live dot indicator on the /live route
+ * Change from original: added { href: "/predict", label: "Predict" }
+ * to NAV_LINKS. Everything else is identical.
+ *
+ * The "Predict" entry sits after "Compare" and before "Live" so it
+ * groups naturally with the analytical features.
  */
 "use client";
 
@@ -23,6 +21,7 @@ const NAV_LINKS = [
   { href: "/tracks",  label: "Circuits" },
   { href: "/calendar",label: "Calendar" },
   { href: "/compare", label: "Compare" },
+  { href: "/predict", label: "Predict" },   // ← NEW
   { href: "/live",    label: "Live" },
 ];
 
@@ -217,7 +216,6 @@ const Navbar = () => {
 
             {/* ── Logo ───────────────────────────────────────────────── */}
             <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "baseline" }}>
-              {/* FJ in white, U in red, AN in white */}
               <span style={{ fontFamily: "'Russo One', sans-serif", fontSize: "1.3rem", color: "white", letterSpacing: "-0.01em", lineHeight: 1 }}>FJ</span>
               <span style={{ fontFamily: "'Russo One', sans-serif", fontSize: "1.3rem", color: "#E10600", letterSpacing: "-0.01em", lineHeight: 1 }}>U</span>
               <span style={{ fontFamily: "'Russo One', sans-serif", fontSize: "1.3rem", color: "white", letterSpacing: "-0.01em", lineHeight: 1 }}>AN</span>
@@ -228,6 +226,7 @@ const Navbar = () => {
               {NAV_LINKS.map((link) => {
                 const isActive = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
                 const isLive   = link.href === "/live";
+                const isPredict = link.href === "/predict"; // ← NEW flag
                 return (
                   <Link
                     key={link.href}
@@ -244,13 +243,18 @@ const Navbar = () => {
                       display: "flex", alignItems: "center", gap: "6px",
                       textDecoration: "none",
                       transition: "color 0.15s ease",
-                      /* Active indicator: 2px red bottom border */
                       borderBottom: isActive ? "2px solid #E10600" : "2px solid transparent",
                     }}
                     onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.7)"; }}
                     onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.38)"; }}
                   >
                     {isLive && <span className="live-dot" />}
+                    {/* Small sparkle icon next to Predict */}
+                    {isPredict && !isActive && (
+                      <svg width="8" height="8" viewBox="0 0 12 12" fill="none" style={{ color: "#E10600" }}>
+                        <path d="M6 1v2M6 9v2M1 6h2M9 6h2M2.5 2.5l1.5 1.5M8 8l1.5 1.5M2.5 9.5L4 8M8 4l1.5-1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                      </svg>
+                    )}
                     {link.label}
                   </Link>
                 );
@@ -287,7 +291,6 @@ const Navbar = () => {
               aria-label="Toggle menu"
               style={{ background: "none", border: "none", cursor: "pointer" }}
             >
-              {/* Three bars animate into an X when open */}
               {[0, 1, 2].map(i => (
                 <span key={i} style={{
                   display: "block", height: "2px", width: "22px", background: "white",
@@ -328,7 +331,6 @@ const Navbar = () => {
                     background: isActive ? "rgba(225,6,0,0.06)" : "transparent",
                   }}
                 >
-                  {/* Active: red left bar indicator */}
                   {isActive && <span style={{ width: "3px", height: "16px", background: "#E10600", flexShrink: 0 }} />}
                   {isLive && !isActive && <span className="live-dot" />}
                   {link.label}

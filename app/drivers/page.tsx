@@ -29,7 +29,7 @@ const PODIUM_COLORS = [
 ];
 
 /* Quick-access year buttons shown next to the "Current" button */
-const QUICK_YEARS = [2024, 2023, 2022, 2021, 2020];
+const QUICK_YEARS = [2025, 2024, 2023, 2022, 2021];
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 

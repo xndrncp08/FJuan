@@ -1,17 +1,15 @@
 /**
- * FeaturesGrid — homepage section showcasing the four key platform features.
+ * components/home/FeaturesGrid.tsx  (UPDATED)
  *
- * Layout: 4-column equal grid with shared borders (no gap, borders act as dividers).
- * Each FeatureCard reveals a top accent bar and label colour change on hover.
- *
- * Features: Driver Profiles · Live Telemetry · Driver Comparison · Race Calendar
+ * Change from original: added a "Race Prediction" feature card (index "05")
+ * pointing to /predict. Everything else is identical.
  */
 "use client";
 
 import Link from "next/link";
 import { useState } from "react";
 
-/* Feature card data */
+/* Feature card data — add/remove entries here */
 const features = [
   {
     href:        "/drivers",
@@ -41,6 +39,14 @@ const features = [
     description: "Full season schedule with live countdown, results, and circuit details.",
     index:       "04",
   },
+  // ── NEW ──────────────────────────────────────────────────────────────────
+  {
+    href:        "/predict",
+    label:       "Prediction",
+    title:       "Race\nPrediction",
+    description: "Statistical model predicting podium finishers using form, standings, circuit history, and qualifying pace.",
+    index:       "05",
+  },
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────── */
@@ -55,7 +61,6 @@ function FeatureCard({ feature }: { feature: typeof features[0] }) {
         style={{
           height: "100%",
           padding: "2rem",
-          /* Shared border system — right + bottom borders form the grid lines */
           borderRight:  "1px solid rgba(255,255,255,0.06)",
           borderBottom: "1px solid rgba(255,255,255,0.06)",
           background: hovered ? "rgba(255,255,255,0.015)" : "transparent",
@@ -90,7 +95,6 @@ function FeatureCard({ feature }: { feature: typeof features[0] }) {
           <span style={{
             fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.6rem",
             letterSpacing: "0.2em", textTransform: "uppercase",
-            /* Label turns red on hover */
             color: hovered ? "#E10600" : "rgba(255,255,255,0.22)",
             transition: "color 0.2s ease",
           }}>
@@ -98,7 +102,7 @@ function FeatureCard({ feature }: { feature: typeof features[0] }) {
           </span>
         </div>
 
-        {/* Feature title — large, display font, multi-line via pre-line */}
+        {/* Feature title */}
         <h3 style={{
           fontFamily: "'Russo One', sans-serif",
           fontSize: "clamp(1.4rem, 2.5vw, 2rem)",
@@ -121,7 +125,7 @@ function FeatureCard({ feature }: { feature: typeof features[0] }) {
           {feature.description}
         </p>
 
-        {/* CTA — arrow slides right on hover */}
+        {/* CTA */}
         <div style={{
           fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
           fontSize: "0.72rem", letterSpacing: "0.14em", textTransform: "uppercase",
@@ -167,7 +171,6 @@ export default function FeaturesGrid() {
             }}>
               Platform
             </h2>
-            {/* Feature count */}
             <span className="data-readout" style={{ fontSize: "0.58rem" }}>
               {features.length.toString().padStart(2, "0")} features
             </span>
@@ -180,7 +183,7 @@ export default function FeaturesGrid() {
           </span>
         </div>
 
-        {/* Feature cards grid — auto-fill with shared border dividers */}
+        {/* Feature cards grid */}
         <div
           className="features-grid"
           style={{

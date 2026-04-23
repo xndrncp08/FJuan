@@ -45,7 +45,7 @@ export default function TracksPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-[#080808]">
+    <main className="min-h-screen" style={{ background: "#080808" }}>
       {/* Hero Section */}
       <section className="relative border-b border-white/10 overflow-hidden">
         {/* Top red line */}
