@@ -27,16 +27,16 @@ interface PredictionClientProps {
 
 // ─── Team colours ─────────────────────────────────────────────────────────────
 const TEAM_COLORS: Record<string, string> = {
-  red_bull:     "#3671C6",
-  ferrari:      "#E8002D",
-  mercedes:     "#27F4D2",
-  mclaren:      "#FF8000",
+  red_bull: "#3671C6",
+  ferrari: "#E8002D",
+  mercedes: "#27F4D2",
+  mclaren: "#FF8000",
   aston_martin: "#229971",
-  alpine:       "#FF87BC",
-  williams:     "#64C4FF",
-  rb:           "#6692FF",
-  kick_sauber:  "#52E252",
-  haas:         "#B6BABD",
+  alpine: "#FF87BC",
+  williams: "#64C4FF",
+  rb: "#6692FF",
+  kick_sauber: "#52E252",
+  haas: "#B6BABD",
 };
 
 const RANK_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32"];
@@ -83,8 +83,8 @@ function PodiumStepCard({
         background: hovered
           ? "rgba(255,255,255,0.03)"
           : isWinner
-          ? "rgba(255,215,0,0.03)"
-          : "rgba(255,255,255,0.01)",
+            ? "rgba(255,215,0,0.03)"
+            : "rgba(255,255,255,0.01)",
         borderTop: `3px solid ${rankColor}`,
         border: `1px solid rgba(255,255,255,0.07)`,
         borderTopColor: rankColor,
@@ -140,7 +140,11 @@ function PodiumStepCard({
           </div>
           <div
             className="data-readout"
-            style={{ fontSize: "0.5rem", color: "rgba(255,255,255,0.25)", marginTop: "2px" }}
+            style={{
+              fontSize: "0.5rem",
+              color: "rgba(255,255,255,0.25)",
+              marginTop: "2px",
+            }}
           >
             probability
           </div>
@@ -254,7 +258,9 @@ function FinisherRow({ driver }: { driver: DriverPrediction }) {
         padding: "0.9rem 1.25rem",
         borderBottom: "1px solid rgba(255,255,255,0.05)",
         background: hovered ? "rgba(255,255,255,0.025)" : "transparent",
-        borderLeft: hovered ? "2px solid rgba(225,6,0,0.4)" : "2px solid transparent",
+        borderLeft: hovered
+          ? "2px solid rgba(225,6,0,0.4)"
+          : "2px solid transparent",
         transition: "all 0.15s ease",
       }}
     >
@@ -488,14 +494,13 @@ export default function PredictionClient({
 
   // Prefer live data if it exists (after refresh), else use server-fetched
   const prediction = livePrediction ?? initialPrediction;
-  const error      = liveError ?? initialError;
+  const error = liveError ?? initialError;
 
   const handleRefresh = () => {
     if (!refreshEnabled) {
-      // First click: enable the hook so it fires
       setRefreshEnabled(true);
+      setTimeout(() => refetch(), 0);
     } else {
-      // Subsequent clicks: re-fetch
       refetch();
     }
   };
@@ -577,9 +582,7 @@ export default function PredictionClient({
       <PredictionHero prediction={prediction} />
 
       {/* ── Podium ──────────────────────────────────────────────────────── */}
-      <section
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
-      >
+      <section style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <div
           style={{
             maxWidth: "1280px",
@@ -617,7 +620,9 @@ export default function PredictionClient({
               style={{
                 background: "transparent",
                 border: "1px solid rgba(255,255,255,0.1)",
-                color: isLoading ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.45)",
+                color: isLoading
+                  ? "rgba(255,255,255,0.2)"
+                  : "rgba(255,255,255,0.45)",
                 padding: "0.4rem 0.9rem",
                 fontFamily: "'Rajdhani', sans-serif",
                 fontWeight: 600,
@@ -637,7 +642,9 @@ export default function PredictionClient({
                 height="10"
                 viewBox="0 0 16 16"
                 fill="none"
-                style={{ animation: isLoading ? "spin 1s linear infinite" : "none" }}
+                style={{
+                  animation: isLoading ? "spin 1s linear infinite" : "none",
+                }}
               >
                 <path
                   d="M14 8A6 6 0 1 1 8 2M14 2v4h-4"
@@ -664,7 +671,8 @@ export default function PredictionClient({
               display: "grid",
               // On mobile: single column. On desktop: 3 equal columns.
               // clamp ensures it collapses to 1 col below ~640px naturally.
-              gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(min(100%, 260px), 1fr))",
               gap: "1px",
               background: "rgba(255,255,255,0.06)",
               alignItems: "end", // step effect — P1 card starts higher
@@ -727,19 +735,33 @@ export default function PredictionClient({
             >
               <span
                 className="data-readout"
-                style={{ flex: 1, fontSize: "0.5rem", color: "rgba(255,255,255,0.2)" }}
+                style={{
+                  flex: 1,
+                  fontSize: "0.5rem",
+                  color: "rgba(255,255,255,0.2)",
+                }}
               >
                 Driver
               </span>
               <span
                 className="data-readout"
-                style={{ fontSize: "0.5rem", color: "rgba(255,255,255,0.2)", minWidth: "2.5rem", textAlign: "right" }}
+                style={{
+                  fontSize: "0.5rem",
+                  color: "rgba(255,255,255,0.2)",
+                  minWidth: "2.5rem",
+                  textAlign: "right",
+                }}
               >
                 Score
               </span>
               <span
                 className="data-readout"
-                style={{ fontSize: "0.5rem", color: "rgba(255,255,255,0.2)", minWidth: "2.5rem", textAlign: "right" }}
+                style={{
+                  fontSize: "0.5rem",
+                  color: "rgba(255,255,255,0.2)",
+                  minWidth: "2.5rem",
+                  textAlign: "right",
+                }}
               >
                 Prob
               </span>

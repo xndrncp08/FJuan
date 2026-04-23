@@ -46,10 +46,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
 
     // Allow overriding season/round via query params for testing
-    const currentYear = new Date().getFullYear();
-    // Jolpica only has data up to 2025 for now
-    const seasonYear = currentYear > 2025 ? "2025" : currentYear.toString();
-    const season = searchParams.get("season") ?? seasonYear;
+    const season =
+      searchParams.get("season") ?? new Date().getFullYear().toString();
 
     let round = searchParams.get("round");
     let raceName = "";
