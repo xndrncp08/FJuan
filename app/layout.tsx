@@ -5,20 +5,14 @@ import Navbar from "@/components/home/Navbar";
 import Footer from "@/components/home/Footer";
 import PageTransition from "@/components/PageTransition";
 import PredictionChat from "@/components/prediction/PredictionChat";
+import { getNextRace } from "@/lib/api/jolpica";
+import { generateRacePrediction } from "@/lib/types/prediction/engine";
 
 export const metadata: Metadata = {
   title: "FJuanDASH — Formula 1 Statistics & Analytics",
   description:
     "Real-time Formula 1 driver statistics, live telemetry, race calendar, and historical data analysis",
-  keywords: [
-    "F1",
-    "Formula 1",
-    "statistics",
-    "telemetry",
-    "racing",
-    "drivers",
-    "standings",
-  ],
+  keywords: ["F1", "Formula 1", "statistics", "telemetry", "racing", "drivers", "standings"],
   authors: [{ name: "F1 Stats" }],
   openGraph: {
     title: "F1DASH — Formula 1 Statistics & Analytics",
@@ -27,24 +21,21 @@ export const metadata: Metadata = {
   },
 };
 
-// ─── Fetch next race prediction for Nacho Bot ─────────────────────────────────
-// Runs server-side at layout level, cached 10 minutes.
-// If the fetch fails for any reason, Nacho Bot simply won't render —
-// the rest of the app is completely unaffected.
-
+// ─── Get prediction directly — no internal HTTP fetch ────────────────────────
 async function getNextRacePrediction() {
   try {
-    const origin =
-      process.env.NEXT_PUBLIC_APP_URL ??
-      (process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : "http://localhost:3000");
+    const nextRace = await getNextRace();
+    if (!nextRace) return null;
 
-    const res = await fetch(`${origin}/api/prediction`, {
-      next: { revalidate: 600 },
-    });
-    if (!res.ok) return null;
-    return res.json();
+    return await generateRacePrediction(
+      new Date().getFullYear().toString(),
+      nextRace.round,
+      nextRace.raceName,
+      nextRace.Circuit.circuitId,
+      nextRace.Circuit.circuitName,
+      nextRace.date,
+      3,
+    );
   } catch {
     return null;
   }
@@ -68,9 +59,6 @@ export default async function RootLayout({
           <Footer />
         </Providers>
 
-        {/* Nacho Bot — outside <Providers> and all page wrappers so
-            position: fixed is always relative to the viewport, never
-            trapped inside a transformed or overflow-clipped ancestor. */}
         {prediction && <PredictionChat prediction={prediction} />}
       </body>
     </html>
