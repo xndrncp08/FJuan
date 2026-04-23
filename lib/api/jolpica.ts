@@ -14,11 +14,10 @@ export interface ApiResponse<T> {
 }
 
 // Generic fetch function with error handling
-async function fetchFromAPI<T>(endpoint: string, noCache = false): Promise<T> {
+async function fetchFromAPI<T>(endpoint: string, revalidateSecs = 300): Promise<T> {
   try {
     const response = await fetch(`${BASE_URL}${endpoint}`, {
-      next: noCache ? undefined : { revalidate: 300 },
-      cache: noCache ? "no-store" : undefined,
+      next: { revalidate: revalidateSecs },
     });
 
     if (!response.ok) {
@@ -121,7 +120,7 @@ export async function getNextRace() {
 export async function getRaceResults(season: string, round: string) {
   const data = await fetchFromAPI<any>(
     `/${season}/${round}/results.json`,
-    true,
+    60, // re-fetch every 60s — fresh enough, avoids no-store build error
   );
   return data?.MRData?.RaceTable?.Races?.[0] ?? null;
 }
@@ -129,7 +128,7 @@ export async function getRaceResults(season: string, round: string) {
 export async function getQualifyingResults(season: string, round: string) {
   const data = await fetchFromAPI<any>(
     `/${season}/${round}/qualifying.json`,
-    true,
+    60, // re-fetch every 60s
   );
   return data?.MRData?.RaceTable?.Races?.[0] ?? null;
 }
@@ -227,6 +226,9 @@ export async function getLastRace() {
   if (past.length === 0) return null;
   const last = past[past.length - 1];
   // Fetch full results for that round
-  const result = await getRaceResults(last.season ?? new Date().getFullYear().toString(), last.round);
+  const result = await getRaceResults(
+    last.season ?? new Date().getFullYear().toString(),
+    last.round,
+  );
   return result;
 }
