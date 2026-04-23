@@ -1,30 +1,17 @@
 "use client";
 
-/**
- * Calendar Page – Main entry point for F1 race schedule
- * 
- * Features:
- * - Hero section with season title
- * - Countdown banner for next race (current season only)
- * - Season selector dropdown (years from 1950 to current)
- * - Race grid with cards for each race
- * - Fully responsive: works on mobile, tablet, desktop
- */
-
 import { useState, useEffect } from "react";
 import { getRaceSchedule } from "@/lib/api/jolpica";
 import CalendarHero from "@/components/calendar/CalendarHero";
 import SeasonSelector from "@/components/calendar/SeasonSelector";
 import RaceGrid from "@/components/calendar/RaceGrid";
-import CountdownBanner from "@/components/calendar/CountdownBanner";
 
 export default function CalendarPage() {
   const currentYear = new Date().getFullYear();
-  const [season, setSeason] = useState(currentYear.toString());
-  const [races, setRaces] = useState<any[]>([]);
+  const [season, setSeason]   = useState(currentYear.toString());
+  const [races, setRaces]     = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch races when season changes
   useEffect(() => {
     async function fetchRaces() {
       setIsLoading(true);
@@ -40,34 +27,27 @@ export default function CalendarPage() {
     fetchRaces();
   }, [season]);
 
-  const now = new Date();
-  const isCurrentSeason = season === currentYear.toString();
-  const nextRace = isCurrentSeason
-    ? races.find((r) => new Date(r.date) > now)
-    : null;
-
   return (
-    <main className="min-h-screen bg-[#060606]">
-      {/* Hero section – full width with centered content */}
+    <main className="min-h-screen" style={{ background: "#060606" }}>
       <CalendarHero season={season} />
-
-      {/* Countdown banner – only for current season, same width as SeasonSelector */}
-      {!isLoading && nextRace && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 mb-8">
-          <CountdownBanner race={nextRace} />
-        </div>
-      )}
-
-      {/* Season selector + race grid – centered container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-12">
+      <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "2rem clamp(1.25rem,4vw,1.5rem)" }}>
         <SeasonSelector season={season} onSeasonChange={setSeason} />
-
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="w-10 h-10 border-2 border-red-600/20 border-t-red-600 rounded-full animate-spin" />
-            <p className="font-mono text-[0.7rem] text-white/30 mt-4 tracking-wider">
-              LOADING SCHEDULE...
-            </p>
+          <div style={{
+            display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center",
+            padding: "8rem 2rem", gap: "1rem",
+          }}>
+            <div style={{
+              width: "32px", height: "32px", borderRadius: "50%",
+              border: "2px solid rgba(225,6,0,0.2)",
+              borderTop: "2px solid #E10600",
+              animation: "spin 0.8s linear infinite",
+            }} />
+            <span className="data-readout" style={{ fontSize: "0.55rem" }}>
+              Loading schedule...
+            </span>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </div>
         ) : (
           <RaceGrid races={races} season={season} currentYear={currentYear} />

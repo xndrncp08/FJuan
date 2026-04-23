@@ -219,3 +219,14 @@ export async function getStatus(statusId: string) {
   const data = await fetchFromAPI<any>(`/status/${statusId}.json`);
   return data.MRData.StatusTable.Status[0];
 }
+
+/** Returns the most recently completed race with full results */
+export async function getLastRace() {
+  const races = await getRaceCalendar("current");
+  const past = races.filter((r: any) => r.isPast);
+  if (past.length === 0) return null;
+  const last = past[past.length - 1];
+  // Fetch full results for that round
+  const result = await getRaceResults(last.season ?? new Date().getFullYear().toString(), last.round);
+  return result;
+}
