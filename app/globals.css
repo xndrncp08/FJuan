@@ -339,9 +339,13 @@
   100% { background-position: -200% 0; }
 }
 @keyframes page-enter {
-  0%   { opacity:0; transform:translateY(18px); filter:blur(3px); }
-  55%  { filter:blur(0); }
-  100% { opacity:1; transform:translateY(0); filter:blur(0); }
+  /*
+    filter: blur() removed — it creates a new containing block that breaks
+    position: fixed on descendants (Nacho Bot FAB + panel).
+    opacity + translateY gives the same feel without the side-effect.
+  */
+  0%   { opacity: 0; transform: translateY(18px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 @keyframes border-glow-pulse {
   0%,100% { border-color: rgba(225,6,0,0.15); }
