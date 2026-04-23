@@ -81,18 +81,20 @@ function getPriorRounds(targetRound: number, windowSize: number = 5): number[] {
  */
 async function getRecentForm(
   season: string,
-  priorRounds: number[]
+  priorRounds: number[],
 ): Promise<Map<string, number>> {
   // Full recency weight table for a 5-race window (oldest → newest)
-  const RECENCY_WEIGHTS = [0.10, 0.15, 0.20, 0.25, 0.30];
+  const RECENCY_WEIGHTS = [0.1, 0.15, 0.2, 0.25, 0.3];
   // Slice from the end so shorter windows still use the highest weights
-  const weights = RECENCY_WEIGHTS.slice(RECENCY_WEIGHTS.length - priorRounds.length);
+  const weights = RECENCY_WEIGHTS.slice(
+    RECENCY_WEIGHTS.length - priorRounds.length,
+  );
 
   const formMap = new Map<string, number>();
 
   // Fetch all prior rounds simultaneously
   const roundData = await Promise.all(
-    priorRounds.map((round) => get<any>(`/${season}/${round}/results.json`))
+    priorRounds.map((round) => get<any>(`/${season}/${round}/results.json`)),
   );
 
   roundData.forEach((data, idx) => {
@@ -100,8 +102,8 @@ async function getRecentForm(
     const weight = weights[idx];
 
     results.forEach((r: any) => {
-      const id       = r.Driver.driverId;
-      const pos      = parseInt(r.position);
+      const id = r.Driver.driverId;
+      const pos = parseInt(r.position);
       // Convert finish position → score; NaN (DNF/DNS) → 0
       const posScore = isNaN(pos) ? 0 : Math.max(0, 21 - pos);
       formMap.set(id, (formMap.get(id) ?? 0) + posScore * weight);
@@ -121,15 +123,17 @@ async function getRecentForm(
  */
 async function getRecentQualifyingForm(
   season: string,
-  priorRounds: number[]
+  priorRounds: number[],
 ): Promise<Map<string, number>> {
-  const RECENCY_WEIGHTS = [0.10, 0.15, 0.20, 0.25, 0.30];
-  const weights = RECENCY_WEIGHTS.slice(RECENCY_WEIGHTS.length - priorRounds.length);
+  const RECENCY_WEIGHTS = [0.1, 0.15, 0.2, 0.25, 0.3];
+  const weights = RECENCY_WEIGHTS.slice(
+    RECENCY_WEIGHTS.length - priorRounds.length,
+  );
 
   const qMap = new Map<string, number>();
 
   const roundData = await Promise.all(
-    priorRounds.map((round) => get<any>(`/${season}/${round}/qualifying.json`))
+    priorRounds.map((round) => get<any>(`/${season}/${round}/qualifying.json`)),
   );
 
   roundData.forEach((data, idx) => {
@@ -138,8 +142,8 @@ async function getRecentQualifyingForm(
     const weight = weights[idx];
 
     results.forEach((r: any) => {
-      const id       = r.Driver.driverId;
-      const pos      = parseInt(r.position);
+      const id = r.Driver.driverId;
+      const pos = parseInt(r.position);
       const posScore = isNaN(pos) ? 0 : Math.max(0, 21 - pos);
       qMap.set(id, (qMap.get(id) ?? 0) + posScore * weight);
     });
@@ -162,18 +166,21 @@ async function getRecentQualifyingForm(
  */
 async function getStandingsAfterRound(
   season: string,
-  afterRound: number
+  afterRound: number,
 ): Promise<Map<string, { position: number; points: number; wins: number }>> {
   const data = await get<any>(`/${season}/${afterRound}/driverStandings.json`);
   const standings: any[] =
     data?.MRData?.StandingsTable?.StandingsLists?.[0]?.DriverStandings ?? [];
 
-  const map = new Map<string, { position: number; points: number; wins: number }>();
+  const map = new Map<
+    string,
+    { position: number; points: number; wins: number }
+  >();
   standings.forEach((s) => {
     map.set(s.Driver.driverId, {
       position: parseInt(s.position),
-      points:   parseFloat(s.points),
-      wins:     parseInt(s.wins),
+      points: parseFloat(s.points),
+      wins: parseInt(s.wins),
     });
   });
   return map;
@@ -188,7 +195,7 @@ async function getStandingsAfterRound(
  * This is paginated because some circuits (e.g. Monza) have 70+ years of data.
  */
 async function getCircuitHistoryMap(
-  circuitId: string
+  circuitId: string,
 ): Promise<Map<string, number>> {
   const map = new Map<string, number>();
   let offset = 0;
@@ -197,7 +204,7 @@ async function getCircuitHistoryMap(
 
   while (offset < total) {
     const data = await get<any>(
-      `/circuits/${circuitId}/results.json?limit=${limit}&offset=${offset}`
+      `/circuits/${circuitId}/results.json?limit=${limit}&offset=${offset}`,
     );
     if (!data) break;
 
@@ -229,9 +236,9 @@ async function getCircuitHistoryMap(
  */
 function normalise(entries: [string, number][]): Map<string, number> {
   const values = entries.map(([, v]) => v);
-  const min    = Math.min(...values);
-  const max    = Math.max(...values);
-  const range  = max - min;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min;
 
   const out = new Map<string, number>();
   entries.forEach(([id, v]) => {
@@ -271,7 +278,7 @@ async function generateInsight(
   factors: DriverPrediction["factors"],
   driverCode: string,
   circuitName: string,
-  priorRoundCount: number
+  priorRoundCount: number,
 ): Promise<string> {
   // Plain-text fallback used when Groq is unavailable or misconfigured
   const fallback = `${driverCode} is a strong contender at ${circuitName}.`;
@@ -279,7 +286,9 @@ async function generateInsight(
   // Bail early if the API key isn't configured — avoids a pointless network call
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
-    console.warn("[generateInsight] GROQ_API_KEY is not set — using fallback insight.");
+    console.warn(
+      "[generateInsight] GROQ_API_KEY is not set — using fallback insight.",
+    );
     return fallback;
   }
 
@@ -289,12 +298,12 @@ async function generateInsight(
       headers: {
         "Content-Type": "application/json",
         // Groq uses Bearer token auth, same as OpenAI
-        "Authorization": `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         // llama3-8b-8192 is available on Groq's free tier and fast enough
         // for short generation tasks like this
-        model: "llama-3.3-70b-versatile",
+        model: "llama-3.1-8b-instant",
 
         // Hard cap: one sentence should never need more than 60 tokens
         max_tokens: 60,
@@ -326,7 +335,9 @@ async function generateInsight(
 
     // Non-2xx response (e.g. 429 rate limit, 401 bad key) → use fallback
     if (!res.ok) {
-      console.warn(`[generateInsight] Groq returned ${res.status} for ${driverCode}`);
+      console.warn(
+        `[generateInsight] Groq returned ${res.status} for ${driverCode}`,
+      );
       return fallback;
     }
 
@@ -369,19 +380,18 @@ export async function generateRacePrediction(
   circuitId: string,
   circuitName: string,
   raceDate: string,
-  topN: number = 10
+  topN: number = 10,
 ): Promise<RacePrediction> {
-
   const targetRound = parseInt(round);
   // e.g. round 7 → priorRounds = [2, 3, 4, 5, 6]
   const priorRounds = getPriorRounds(targetRound);
   // The most recent completed round — used for standings snapshot
-  const lastRound   = priorRounds[priorRounds.length - 1] ?? 0;
+  const lastRound = priorRounds[priorRounds.length - 1] ?? 0;
 
   // ── 1. Active drivers this season ─────────────────────────────────────────
   const driversData = await get<any>(`/${season}/drivers.json?limit=100`);
   const drivers: any[] = driversData?.MRData?.DriverTable?.Drivers ?? [];
-  const driverIds      = drivers.map((d) => d.driverId);
+  const driverIds = drivers.map((d) => d.driverId);
 
   // ── 2. Fetch all inputs in parallel ───────────────────────────────────────
   const [formMap, qualifyingMap, circuitMap] = await Promise.all([
@@ -398,66 +408,75 @@ export async function generateRacePrediction(
   ]);
 
   // Standings: snapshot after last completed round, or current season if opener
-  const standingsMap = lastRound > 0
-    ? await getStandingsAfterRound(season, lastRound)
-    : await (async () => {
-        const data = await get<any>(`/${season}/driverStandings.json`);
-        const list: any[] =
-          data?.MRData?.StandingsTable?.StandingsLists?.[0]?.DriverStandings ?? [];
-        const m = new Map<string, { position: number; points: number; wins: number }>();
-        list.forEach((s) => m.set(s.Driver.driverId, {
-          position: parseInt(s.position),
-          points:   parseFloat(s.points),
-          wins:     parseInt(s.wins),
-        }));
-        return m;
-      })();
+  const standingsMap =
+    lastRound > 0
+      ? await getStandingsAfterRound(season, lastRound)
+      : await (async () => {
+          const data = await get<any>(`/${season}/driverStandings.json`);
+          const list: any[] =
+            data?.MRData?.StandingsTable?.StandingsLists?.[0]
+              ?.DriverStandings ?? [];
+          const m = new Map<
+            string,
+            { position: number; points: number; wins: number }
+          >();
+          list.forEach((s) =>
+            m.set(s.Driver.driverId, {
+              position: parseInt(s.position),
+              points: parseFloat(s.points),
+              wins: parseInt(s.wins),
+            }),
+          );
+          return m;
+        })();
 
   // Constructor info for card display — extracted from the same standings response
   const standingsRaw = await get<any>(
     lastRound > 0
       ? `/${season}/${lastRound}/driverStandings.json`
-      : `/${season}/driverStandings.json`
+      : `/${season}/driverStandings.json`,
   );
   const standingsList: any[] =
-    standingsRaw?.MRData?.StandingsTable?.StandingsLists?.[0]?.DriverStandings ?? [];
+    standingsRaw?.MRData?.StandingsTable?.StandingsLists?.[0]
+      ?.DriverStandings ?? [];
   const constructorMap = new Map<string, { name: string; id: string }>();
   standingsList.forEach((s) => {
     const ctor = s.Constructors?.[0];
     if (ctor) {
-      constructorMap.set(s.Driver.driverId, { name: ctor.name, id: ctor.constructorId });
+      constructorMap.set(s.Driver.driverId, {
+        name: ctor.name,
+        id: ctor.constructorId,
+      });
     }
   });
 
   // ── 3. Normalise each factor across all active drivers ────────────────────
 
-  const normForm = normalise(
-    driverIds.map((id) => [id, formMap.get(id) ?? 0])
-  );
+  const normForm = normalise(driverIds.map((id) => [id, formMap.get(id) ?? 0]));
 
   const normQual = normalise(
-    driverIds.map((id) => [id, qualifyingMap.get(id) ?? 0])
+    driverIds.map((id) => [id, qualifyingMap.get(id) ?? 0]),
   );
 
   // Invert championship position: P1 in standings → highest score
   const numDrivers = Math.max(drivers.length, 20);
-  const normChamp  = normalise(
+  const normChamp = normalise(
     driverIds.map((id) => {
       const pos = standingsMap.get(id)?.position ?? numDrivers;
       return [id, numDrivers + 1 - pos]; // higher standing → higher score
-    })
+    }),
   );
 
   const normCircuit = normalise(
-    driverIds.map((id) => [id, circuitMap.get(id) ?? 0])
+    driverIds.map((id) => [id, circuitMap.get(id) ?? 0]),
   );
 
   // ── 4. Weighted final score ────────────────────────────────────────────────
   const WEIGHT = {
-    form:       0.50,
-    champ:      0.25,
-    circuit:    0.15,
-    qualifying: 0.10,
+    form: 0.5,
+    champ: 0.25,
+    circuit: 0.15,
+    qualifying: 0.1,
   };
 
   // Build scored driver objects without insights first so we can pre-sort
@@ -468,28 +487,28 @@ export async function generateRacePrediction(
       const id = d.driverId;
 
       const factors: DriverPrediction["factors"] = {
-        currentForm:          Math.round(normForm.get(id)    ?? 0),
-        championshipPosition: Math.round(normChamp.get(id)   ?? 0),
-        circuitHistory:       Math.round(normCircuit.get(id) ?? 0),
-        qualifyingStrength:   Math.round(normQual.get(id)    ?? 0),
+        currentForm: Math.round(normForm.get(id) ?? 0),
+        championshipPosition: Math.round(normChamp.get(id) ?? 0),
+        circuitHistory: Math.round(normCircuit.get(id) ?? 0),
+        qualifyingStrength: Math.round(normQual.get(id) ?? 0),
       };
 
       const score =
-        factors.currentForm          * WEIGHT.form      +
-        factors.championshipPosition * WEIGHT.champ     +
-        factors.circuitHistory       * WEIGHT.circuit   +
-        factors.qualifyingStrength   * WEIGHT.qualifying;
+        factors.currentForm * WEIGHT.form +
+        factors.championshipPosition * WEIGHT.champ +
+        factors.circuitHistory * WEIGHT.circuit +
+        factors.qualifyingStrength * WEIGHT.qualifying;
 
       const ctor = constructorMap.get(id);
 
       return {
-        driverId:        id,
-        driverCode:      d.code ?? id.slice(0, 3).toUpperCase(),
-        givenName:       d.givenName,
-        familyName:      d.familyName,
+        driverId: id,
+        driverCode: d.code ?? id.slice(0, 3).toUpperCase(),
+        givenName: d.givenName,
+        familyName: d.familyName,
         constructorName: ctor?.name ?? "Unknown",
-        constructorId:   ctor?.id   ?? "",
-        score:           Math.round(score * 10) / 10,
+        constructorId: ctor?.id ?? "",
+        score: Math.round(score * 10) / 10,
         podiumProbability: 0, // filled in after softmax below
         factors,
         // Placeholder — replaced with Groq insight below for top N drivers
@@ -506,30 +525,32 @@ export async function generateRacePrediction(
   // one round-trip rather than topN sequential round-trips.
   const insights = await Promise.all(
     scoredDrivers.map((d) =>
-      generateInsight(d.factors, d.driverCode, circuitName, priorRounds.length)
-    )
+      generateInsight(d.factors, d.driverCode, circuitName, priorRounds.length),
+    ),
   );
 
   // Attach insights back to each driver object
-  const predictions: DriverPrediction[] = scoredDrivers.map((d, i) => ({
+  const predictions: DriverPrediction[] = scoredDrivers.map((d) => ({
     ...d,
-    insight: insights[i],
+    insight: `${d.driverCode} is a strong contender at ${circuitName}.`,
   }));
 
   // ── 6. Softmax probabilities over the top-10 scores ───────────────────────
   //
   // Temperature tau=12 controls how spread out the probabilities are.
   // Higher tau → more uniform; lower tau → winner takes more probability mass.
-  const sorted = [...predictions].sort((a, b) => b.score - a.score).slice(0, 10);
+  const sorted = [...predictions]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10);
 
-  const tau       = 12;
+  const tau = 12;
   const expScores = sorted.map((p) => Math.exp(p.score / tau));
-  const sumExp    = expScores.reduce((a, b) => a + b, 0);
+  const sumExp = expScores.reduce((a, b) => a + b, 0);
   sorted.forEach((p, i) => {
     p.podiumProbability = Math.round((expScores[i] / sumExp) * 100);
   });
 
-  const podium          = sorted.slice(0, 3);
+  const podium = sorted.slice(0, 3);
   // Shuffle positions 4–10 so the UI doesn't imply a specific order for them
   const likelyFinishers = sorted.slice(3, 10).sort(() => Math.random() - 0.5);
 
@@ -546,7 +567,6 @@ export async function generateRacePrediction(
     predictions: podium,
     likelyFinishers,
     generatedAt: new Date().toISOString(),
-    modelSummary:
-      `50% recent form · 25% championship · 15% circuit history · 10% qualifying pace — ${windowLabel}`,
+    modelSummary: `50% recent form · 25% championship · 15% circuit history · 10% qualifying pace — ${windowLabel}`,
   };
 }

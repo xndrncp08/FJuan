@@ -240,7 +240,7 @@ export async function POST(req: NextRequest) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "llama-3.1-8b-instant",
 
         // Cap at 256 tokens — Nacho Bot is concise by design.
         // Raise this if you want to allow longer breakdowns.
