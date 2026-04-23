@@ -792,7 +792,7 @@ export default function PredictionClient({
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
       `}</style>
 
-      <PredictionChat prediction={prediction} />
+      {/* <PredictionChat prediction={prediction} /> */}
     </>
   );
 }
