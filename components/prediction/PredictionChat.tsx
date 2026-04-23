@@ -85,23 +85,8 @@ function MessageBubble({ message }: { message: Message }) {
 
 function TypingIndicator() {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        marginBottom: "0.75rem",
-      }}
-    >
-      <div
-        style={{
-          width: "6px",
-          height: "6px",
-          borderRadius: "50%",
-          background: "#E10600",
-          flexShrink: 0,
-        }}
-      />
+    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "0.75rem" }}>
+      <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#E10600", flexShrink: 0 }} />
       <div style={{ display: "flex", gap: "3px" }}>
         {[0, 1, 2].map((i) => (
           <div
@@ -123,9 +108,9 @@ function TypingIndicator() {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function PredictionChat({ prediction }: PredictionChatProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
+  const [isOpen, setIsOpen]           = useState(false);
+  const [messages, setMessages]       = useState<Message[]>([]);
+  const [input, setInput]             = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
 
   // Tooltip state:
@@ -192,7 +177,7 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
 
       if (!res.ok || !res.body) throw new Error("Chat API error");
 
-      const reader = res.body.getReader();
+      const reader  = res.body.getReader();
       const decoder = new TextDecoder();
       let assistantText = "";
 
@@ -211,28 +196,20 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
           if (raw === "[DONE]") break;
           try {
             const parsed = JSON.parse(raw);
-            const delta = parsed.choices?.[0]?.delta?.content ?? "";
+            const delta  = parsed.choices?.[0]?.delta?.content ?? "";
             assistantText += delta;
             setMessages((prev) => {
               const updated = [...prev];
-              updated[updated.length - 1] = {
-                role: "assistant",
-                content: assistantText,
-              };
+              updated[updated.length - 1] = { role: "assistant", content: assistantText };
               return updated;
             });
-          } catch {
-            /* malformed chunk — skip */
-          }
+          } catch { /* malformed chunk — skip */ }
         }
       }
     } catch {
       setMessages((prev) => [
         ...prev,
-        {
-          role: "assistant",
-          content: "Ay, something went wrong ese. Try again.",
-        },
+        { role: "assistant", content: "Ay, something went wrong ese. Try again." },
       ]);
     } finally {
       setIsStreaming(false);
@@ -293,9 +270,7 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
               </div>
             </div>
 
-            <div
-              style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
-            >
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
               {messages.length > 0 && (
                 <button
                   onClick={() => setMessages([])}
@@ -334,12 +309,7 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
                 }}
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path
-                    d="M1 1l12 12M13 1L1 13"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                  />
+                  <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
               </button>
             </div>
@@ -374,13 +344,7 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
                     {prediction.raceName}
                   </span>
                 </p>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.4rem",
-                  }}
-                >
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
                   {SUGGESTIONS.map((s) => (
                     <button
                       key={s}
@@ -410,10 +374,9 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
               <MessageBubble key={i} message={msg} />
             ))}
 
-            {isStreaming &&
-              messages[messages.length - 1]?.role !== "assistant" && (
-                <TypingIndicator />
-              )}
+            {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
+              <TypingIndicator />
+            )}
 
             <div ref={bottomRef} />
           </div>
@@ -453,23 +416,16 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
               onClick={() => handleSend()}
               disabled={isStreaming || !input.trim()}
               style={{
-                background:
-                  input.trim() && !isStreaming
-                    ? "#E10600"
-                    : "rgba(255,255,255,0.04)",
+                background: input.trim() && !isStreaming ? "#E10600" : "rgba(255,255,255,0.04)",
                 border: "none",
-                color:
-                  input.trim() && !isStreaming
-                    ? "white"
-                    : "rgba(255,255,255,0.2)",
+                color: input.trim() && !isStreaming ? "white" : "rgba(255,255,255,0.2)",
                 height: "44px",
                 padding: "0 1rem",
                 fontFamily: "'Russo One', sans-serif",
                 fontSize: "0.65rem",
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
-                cursor:
-                  input.trim() && !isStreaming ? "pointer" : "not-allowed",
+                cursor: input.trim() && !isStreaming ? "pointer" : "not-allowed",
                 flexShrink: 0,
               }}
             >
@@ -548,18 +504,12 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
           boxShadow: isOpen
             ? "0 2px 12px rgba(0,0,0,0.4)"
             : "0 4px 20px rgba(225,6,0,0.5), 0 2px 8px rgba(0,0,0,0.4)",
-          transition:
-            "background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease",
+          transition: "background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease",
         }}
       >
         {isOpen ? (
           <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
-            <path
-              d="M1 1l12 12M13 1L1 13"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-            />
+            <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
         ) : (
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
