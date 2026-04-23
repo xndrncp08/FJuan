@@ -9,6 +9,8 @@ import LastRaceSection from "@/components/home/LastRaceSection";
 import PredictionPreview from "@/components/home/PredictionPreview";
 import FeaturesGrid from "@/components/home/FeaturesGrid";
 
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   const [standings, nextRace, lastRace, news] = await Promise.all([
     getCurrentStandings(),

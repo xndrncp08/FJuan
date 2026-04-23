@@ -4,13 +4,14 @@
  * "Nacho Bot" — floating F1 AI chat widget, bottom-right of the prediction page.
  * Tagline: "I'm not your bot, ese."
  *
- * New in this version:
- *   - position: fixed so it stays visible while the user scrolls
- *   - 5-second intro tooltip ("Psst. Ask me anything, ese.") that auto-dismisses
- *     and never shows again once the user opens the chat (stored in sessionStorage)
- *   - Mobile-friendly: on screens < 640px the chat panel goes full-screen so
- *     the keyboard doesn't crush the layout
- *   - Touch-safe: 44px minimum tap targets, no hover-only interactions on mobile
+ * Mobile improvements:
+ *   - Panel uses dvh units and clamps height so the keyboard never crushes it
+ *   - Input row lifts above the iOS/Android keyboard via visualViewport tracking
+ *   - font-size 16px on input prevents iOS auto-zoom
+ *   - 44px min tap targets throughout
+ *   - Safe-area insets honoured on notched devices
+ *   - Tooltip hidden on mobile (too cramped next to FAB)
+ *   - Panel width fills the screen on small viewports with side margins
  */
 
 "use client";
@@ -26,8 +27,6 @@ interface Message {
 interface PredictionChatProps {
   prediction: RacePrediction;
 }
-
-// ─── Suggested starter questions ─────────────────────────────────────────────
 
 const SUGGESTIONS = [
   "Who is most likely to win?",
@@ -112,32 +111,47 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
   const [messages, setMessages]       = useState<Message[]>([]);
   const [input, setInput]             = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-
-  // Tooltip state:
-  //   showTooltip  — whether the "Psst" bubble is currently visible
-  //   tooltipDone  — true once the user has opened the chat (never show again)
   const [showTooltip, setShowTooltip] = useState(false);
   const [tooltipDone, setTooltipDone] = useState(false);
 
-  // Auto-scroll anchor
+  // Tracks how far the keyboard has pushed up the visual viewport on mobile
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
+
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isStreaming]);
 
-  // ── 5-second intro tooltip ───────────────────────────────────────────────
-  // Shows 1 second after mount, auto-hides after 5 seconds.
-  // Once the user clicks the button the tooltip is gone for the session.
+  // ── visualViewport: shift panel up when keyboard appears ────────────────
+  // When the soft keyboard opens on mobile, window.visualViewport shrinks.
+  // We measure the gap between the layout viewport and the visual viewport
+  // and apply it as a bottom offset so the panel floats above the keyboard.
   useEffect(() => {
-    // If already interacted this session, skip entirely
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    function onViewportChange() {
+      const gap = window.innerHeight - vv!.height - vv!.offsetTop;
+      setKeyboardOffset(Math.max(0, gap));
+    }
+
+    vv.addEventListener("resize", onViewportChange);
+    vv.addEventListener("scroll", onViewportChange);
+    return () => {
+      vv.removeEventListener("resize", onViewportChange);
+      vv.removeEventListener("scroll", onViewportChange);
+    };
+  }, []);
+
+  // ── 5-second intro tooltip (desktop only) ───────────────────────────────
+  useEffect(() => {
     if (sessionStorage.getItem("nachobot-seen")) return;
+    if (window.innerWidth < 640) return; // too cramped on mobile
 
-    // Small delay so it doesn't fire before the page has settled
     const showTimer = setTimeout(() => setShowTooltip(true), 1000);
-
-    // Auto-dismiss after 5 seconds
-    const hideTimer = setTimeout(() => setShowTooltip(false), 6000); // 1s delay + 5s visible
-
+    const hideTimer = setTimeout(() => setShowTooltip(false), 6000);
     return () => {
       clearTimeout(showTimer);
       clearTimeout(hideTimer);
@@ -147,7 +161,6 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
   // ── Open / close toggle ──────────────────────────────────────────────────
   function handleToggle() {
     if (!isOpen) {
-      // First open — mark as seen so tooltip never shows again this session
       sessionStorage.setItem("nachobot-seen", "1");
       setShowTooltip(false);
       setTooltipDone(true);
@@ -155,7 +168,7 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
     setIsOpen((o) => !o);
   }
 
-  // ── Send a message and stream the Groq response ──────────────────────────
+  // ── Send a message and stream the response ───────────────────────────────
   async function handleSend(text?: string) {
     const userText = (text ?? input).trim();
     if (!userText || isStreaming) return;
@@ -181,7 +194,6 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
       const decoder = new TextDecoder();
       let assistantText = "";
 
-      // Seed empty assistant bubble — will grow token by token
       setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
       while (true) {
@@ -223,15 +235,15 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
     }
   }
 
+  // Dynamic bottom values — keyboard offset lifts both the FAB and panel
+  const panelBottom = `calc(5.5rem + ${keyboardOffset}px)`;
+  const fabBottom   = `calc(max(1.5rem, env(safe-area-inset-bottom) + 0.75rem) + ${keyboardOffset}px)`;
+
   return (
     <>
-      {/* ── Chat panel ────────────────────────────────────────────────────
-          Desktop: 380px wide, 520px tall, anchored bottom-right.
-          Mobile (<640px): full-screen overlay so the keyboard doesn't
-          crush the panel — achieved via the nachoMobile CSS class below.
-      ─────────────────────────────────────────────────────────────────── */}
+      {/* ── Chat panel ──────────────────────────────────────────────────── */}
       {isOpen && (
-        <div className="nacho-panel">
+        <div className="nacho-panel" style={{ bottom: panelBottom }}>
           {/* Header */}
           <div
             style={{
@@ -279,7 +291,6 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
                     background: "transparent",
                     border: "1px solid rgba(255,255,255,0.08)",
                     color: "rgba(255,255,255,0.25)",
-                    // 44px min tap target height for mobile
                     minHeight: "44px",
                     padding: "0 0.6rem",
                     fontFamily: "'Rajdhani', sans-serif",
@@ -300,7 +311,6 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
                   border: "none",
                   color: "rgba(255,255,255,0.3)",
                   cursor: "pointer",
-                  // 44px min tap target for mobile
                   minWidth: "44px",
                   minHeight: "44px",
                   display: "flex",
@@ -322,11 +332,10 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
               overflowY: "auto",
               padding: "1rem",
               scrollbarWidth: "none",
-              // Smooth momentum scroll on iOS
               WebkitOverflowScrolling: "touch",
+              overscrollBehavior: "contain",
             }}
           >
-            {/* Empty state */}
             {messages.length === 0 && (
               <div>
                 <p
@@ -353,7 +362,6 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
                         background: "rgba(255,255,255,0.02)",
                         border: "1px solid rgba(255,255,255,0.07)",
                         color: "rgba(255,255,255,0.4)",
-                        // 44px min tap target
                         minHeight: "44px",
                         padding: "0 0.75rem",
                         fontFamily: "'Rajdhani', sans-serif",
@@ -389,8 +397,6 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
               display: "flex",
               gap: "0.5rem",
               flexShrink: 0,
-              // Lifts the input above the iOS home indicator
-              paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
             }}
           >
             <input
@@ -399,7 +405,6 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
               onKeyDown={handleKeyDown}
               placeholder="Ask Nacho Bot…"
               disabled={isStreaming}
-              // font-size 16px prevents iOS auto-zoom on focus
               style={{
                 flex: 1,
                 background: "rgba(255,255,255,0.03)",
@@ -408,8 +413,10 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
                 padding: "0 0.75rem",
                 height: "44px",
                 fontFamily: "'Rajdhani', sans-serif",
+                // 16px prevents iOS auto-zoom on focus
                 fontSize: "16px",
                 outline: "none",
+                borderRadius: "2px",
               }}
             />
             <button
@@ -427,6 +434,7 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
                 textTransform: "uppercase",
                 cursor: input.trim() && !isStreaming ? "pointer" : "not-allowed",
                 flexShrink: 0,
+                borderRadius: "2px",
               }}
             >
               Send
@@ -435,10 +443,7 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
         </div>
       )}
 
-      {/* ── Intro tooltip ─────────────────────────────────────────────────
-          Slides in from the right after 1s, auto-dismisses after 5s.
-          Clicking it opens the chat directly.
-      ─────────────────────────────────────────────────────────────────── */}
+      {/* ── Intro tooltip (desktop only) ─────────────────────────────────── */}
       {showTooltip && !tooltipDone && !isOpen && (
         <button
           onClick={handleToggle}
@@ -446,7 +451,6 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
           style={{
             position: "fixed",
             bottom: "1.65rem",
-            // Sits to the left of the FAB (52px button + 0.5rem gap + 1.5rem right)
             right: "5rem",
             background: "#0a0a0a",
             border: "1px solid rgba(225,6,0,0.35)",
@@ -462,7 +466,6 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
             animation: "nachoTooltipIn 0.3s cubic-bezier(0.16,1,0.3,1)",
           }}
         >
-          {/* Small red triangle pointing right toward the FAB */}
           <span
             style={{
               position: "absolute",
@@ -480,17 +483,14 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
         </button>
       )}
 
-      {/* ── Floating action button (FAB) ──────────────────────────────────
-          Always visible, position: fixed so it follows the scroll.
-          56px on mobile for easier tapping, 52px on desktop.
-      ─────────────────────────────────────────────────────────────────── */}
+      {/* ── FAB ─────────────────────────────────────────────────────────── */}
       <button
         onClick={handleToggle}
         aria-label={isOpen ? "Close Nacho Bot" : "Open Nacho Bot"}
         className="nacho-fab"
         style={{
           position: "fixed",
-          bottom: "1.5rem",
+          bottom: fabBottom,
           right: "1.5rem",
           borderRadius: "50%",
           background: isOpen ? "#1a1a1a" : "#E10600",
@@ -524,12 +524,7 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
         )}
       </button>
 
-      {/* ── Styles ────────────────────────────────────────────────────────
-          Using a <style> block to handle the mobile breakpoint cleanly
-          without needing a separate CSS file or Tailwind.
-      ─────────────────────────────────────────────────────────────────── */}
       <style>{`
-        /* ── Keyframes ── */
         @keyframes nachoSlideUp {
           from { opacity: 0; transform: translateY(14px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -543,25 +538,25 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
           to   { opacity: 1; transform: translateX(0); }
         }
 
-        /* ── FAB — desktop default ── */
+        /* ── FAB ── */
         .nacho-fab {
           width: 52px;
           height: 52px;
         }
-        .nacho-fab:hover {
-          transform: scale(1.07);
-        }
-        .nacho-fab:active {
-          transform: scale(0.94);
-        }
+        .nacho-fab:hover { transform: scale(1.07); }
+        .nacho-fab:active { transform: scale(0.94); }
 
-        /* ── Chat panel — desktop default ── */
+        /* ── Panel — desktop default (bottom-right, fixed size) ── */
         .nacho-panel {
           position: fixed;
-          bottom: 5.5rem;
           right: 1.5rem;
-          width: min(380px, calc(100vw - 2rem));
-          height: 520px;
+          /* bottom is driven by inline style (keyboard offset) */
+          width: min(380px, calc(100vw - 3rem));
+          /*
+            Clamp height so it never overflows the screen.
+            dvh shrinks as the browser chrome collapses on mobile scroll.
+          */
+          height: min(520px, calc(100dvh - 9rem));
           background: #0a0a0a;
           border: 1px solid rgba(255,255,255,0.08);
           border-top: 2px solid #E10600;
@@ -573,26 +568,20 @@ export default function PredictionChat({ prediction }: PredictionChatProps) {
         }
 
         /* ── Mobile overrides (<= 640px) ──
-           Panel goes full-screen so the on-screen keyboard doesn't
-           push content offscreen. FAB grows to 56px for easier tapping.
+           Panel stays floating (not full-screen). It fills the available
+           width and reduces its height to avoid overflowing the screen.
+           The visualViewport listener handles keyboard avoidance dynamically.
         ── */
         @media (max-width: 640px) {
           .nacho-panel {
-            bottom: 0;
-            right: 0;
-            left: 0;
-            width: 100%;
-            /* dvh accounts for the browser chrome shrinking on scroll */
-            height: 100dvh;
-            border-left: none;
-            border-right: none;
-            border-bottom: none;
-            border-radius: 0;
-            animation: nachoSlideUp 0.25s cubic-bezier(0.16,1,0.3,1);
+            right: 0.75rem;
+            width: calc(100vw - 1.5rem);
+            height: min(460px, calc(100dvh - 8rem));
           }
           .nacho-fab {
             width: 56px;
             height: 56px;
+            right: 0.75rem !important;
           }
         }
       `}</style>
