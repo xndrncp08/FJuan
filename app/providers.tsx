@@ -1,24 +1,31 @@
-'use client';
+"use client";
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
+/**
+ * app/providers.tsx
+ *
+ * Client-side providers wrapper.
+ * Named export { Providers } to match the original layout import.
+ */
+
+import { useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  // useState ensures each browser session gets its own QueryClient
+  // rather than sharing one instance across server requests
   const [queryClient] = useState(
     () =>
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 60 * 1000, // 1 minute
-            refetchOnWindowFocus: false,
+            staleTime: 10 * 60 * 1000, // 10 minutes — matches server cache
+            retry: 1,
           },
         },
       })
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 }

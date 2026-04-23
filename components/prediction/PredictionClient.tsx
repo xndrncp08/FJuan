@@ -18,6 +18,7 @@ import { RacePrediction, DriverPrediction } from "@/lib/types/prediction";
 import { usePrediction } from "@/lib/hooks/usePrediction";
 import PredictionHero from "./PredictionHero";
 import PredictionCard from "@/components/prediction/PredictionCard";
+import PredictionChat from "./PredictionChat";
 
 interface PredictionClientProps {
   /** Pre-fetched on the server for instant paint */
@@ -790,6 +791,8 @@ export default function PredictionClient({
         @keyframes spin  { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
       `}</style>
+
+      <PredictionChat prediction={prediction} />
     </>
   );
 }
