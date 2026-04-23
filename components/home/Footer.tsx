@@ -65,7 +65,7 @@ const Footer = () => (
 
           {/* Author credit */}
           <p className="data-readout" style={{ fontSize: "0.68rem" }}>
-            Built by Xander Ranc
+            Independently built by Xander Ranc
           </p>
         </div>
 
