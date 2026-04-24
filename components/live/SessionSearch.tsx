@@ -1,164 +1,380 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Session } from "./types";
-import { Panel, SectionLabel, Spinner } from "./ui";
+
+const SESSION_TYPES = ["Race", "Qualifying", "Sprint", "Practice 1", "Practice 2", "Practice 3"];
+const YEARS = Array.from({ length: 6 }, (_, i) => String(2026 - i));
 
 interface Props {
   onSelect: (session: Session) => void;
 }
 
-const SESSION_TYPES = ["Race", "Qualifying", "Sprint", "Practice 1", "Practice 2", "Practice 3"];
-const YEARS = Array.from({ length: 6 }, (_, i) => String(2026 - i)); // 2026 down to 2021
+interface RaceGroup {
+  circuit:     string;
+  country:     string;
+  round:       number;
+  dateStart:   string;
+  sessions:    Record<string, Session>; // session_name → Session
+}
 
 export default function SessionSearch({ onSelect }: Props) {
-  const [year, setYear] = useState("2026");
-  const [allSessions, setAllSessions] = useState<Session[]>([]);
-  const [races, setRaces] = useState<string[]>([]);
-  const [selectedRace, setSelectedRace] = useState<string>("");
-  const [sessionType, setSessionType] = useState<string>("Race");
-  const [loadingYear, setLoadingYear] = useState(false);
-  const [error, setError] = useState("");
+  const [year,          setYear         ] = useState("2026");
+  const [allSessions,   setAllSessions  ] = useState<Session[]>([]);
+  const [loading,       setLoading      ] = useState(false);
+  const [error,         setError        ] = useState("");
+  const [query,         setQuery        ] = useState("");
+  const [sessionType,   setSessionType  ] = useState("Race");
+  const [selectedRace,  setSelectedRace ] = useState<string | null>(null);
 
-  // Load all sessions for the selected year when year changes
+  // Fetch all sessions for the year
   useEffect(() => {
     const load = async () => {
-      setLoadingYear(true);
+      setLoading(true);
       setError("");
       setAllSessions([]);
-      setRaces([]);
-      setSelectedRace("");
+      setSelectedRace(null);
+      setQuery("");
       try {
-        const res = await fetch(`https://api.openf1.org/v1/sessions?year=${year}`);
+        const res  = await fetch(`https://api.openf1.org/v1/sessions?year=${year}`);
         const data: Session[] = await res.json();
-        // Only keep sessions that match our predefined types (Race, Quali, etc.)
         const filtered = Array.isArray(data)
           ? data.filter((s) => SESSION_TYPES.includes(s.session_name))
           : [];
         setAllSessions(filtered);
-
-        // Build unique list of race locations in chronological order
-        const seen = new Set<string>();
-        const raceList: string[] = [];
-        [...filtered]
-          .sort((a, b) => new Date(a.date_start).getTime() - new Date(b.date_start).getTime())
-          .forEach((s) => {
-            const key = s.circuit_short_name;
-            if (!seen.has(key)) {
-              seen.add(key);
-              raceList.push(key);
-            }
-          });
-        setRaces(raceList);
-        if (raceList.length > 0) setSelectedRace(raceList[raceList.length - 1]); // default to latest race
       } catch {
-        setError("Failed to load sessions. Check your connection.");
+        setError("Failed to load sessions.");
       }
-      setLoadingYear(false);
+      setLoading(false);
     };
     load();
   }, [year]);
 
-  // Find sessions matching the selected race and session type
-  const matchedSessions = allSessions.filter(
-    (s) => s.circuit_short_name === selectedRace && s.session_name === sessionType
-  );
+  // Group sessions by race (circuit + date weekend)
+  const raceGroups = useMemo<RaceGroup[]>(() => {
+    const map = new Map<string, RaceGroup>();
+    [...allSessions]
+      .sort((a, b) => new Date(a.date_start).getTime() - new Date(b.date_start).getTime())
+      .forEach((s) => {
+        const key = s.circuit_short_name;
+        if (!map.has(key)) {
+          map.set(key, {
+            circuit:   s.circuit_short_name,
+            country:   s.country_name,
+            round:     map.size + 1,
+            dateStart: s.date_start,
+            sessions:  {},
+          });
+        }
+        map.get(key)!.sessions[s.session_name] = s;
+      });
+    return Array.from(map.values());
+  }, [allSessions]);
 
-  const handleGo = () => {
-    if (matchedSessions.length > 0) onSelect(matchedSessions[0]);
+  // Filter by search query
+  const filtered = useMemo(() => {
+    if (!query.trim()) return raceGroups;
+    const q = query.toLowerCase();
+    return raceGroups.filter(
+      (r) => r.circuit.toLowerCase().includes(q) || r.country.toLowerCase().includes(q)
+    );
+  }, [raceGroups, query]);
+
+  const handleRaceClick = (race: RaceGroup) => {
+    setSelectedRace(race.circuit);
+    // If the chosen session type exists for this race, fire immediately
+    const session = race.sessions[sessionType];
+    if (session) {
+      onSelect(session);
+    }
+    // If not, still highlight the race so user can pick another type
   };
 
+  const handleSessionTypeClick = (type: string, race: RaceGroup) => {
+    setSessionType(type);
+    const session = race.sessions[type];
+    if (session) onSelect(session);
+  };
+
+  const isPast = (dateStr: string) => new Date(dateStr) < new Date();
+
+  const fmtDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
   return (
-    <Panel>
-      <div className="p-4 md:p-6">
-        <SectionLabel>Find a Session</SectionLabel>
+    <div style={{ background: "#060606", border: "1px solid rgba(255,255,255,0.07)", borderTop: "2px solid #E10600" }}>
 
-        {loadingYear ? (
-          <Spinner />
-        ) : (
-          <>
-            {/* Responsive form group: stack on mobile, row on small screens and up */}
-            <div className="flex flex-col sm:flex-row gap-3 mb-4">
-              {/* Year dropdown */}
-              <select
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                className="w-full sm:flex-1 bg-[#111] border border-white/10 px-3 py-2 text-white font-sans text-sm focus:outline-none focus:border-f1-red"
-              >
-                {YEARS.map((y) => (
-                  <option key={y} value={y}>
-                    {y} Season
-                  </option>
-                ))}
-              </select>
+      {/* ── Controls bar ─────────────────────────────────────────────────── */}
+      <div style={{
+        padding: "1rem 1.25rem",
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
+        display: "flex", gap: "2px", flexWrap: "wrap",
+      }}>
+        {/* Year tabs */}
+        <div style={{ display: "flex", gap: "2px", marginRight: "0.75rem" }}>
+          {YEARS.map((y) => (
+            <button
+              key={y}
+              onClick={() => setYear(y)}
+              style={{
+                fontFamily: "'Russo One', sans-serif",
+                fontSize: "0.65rem",
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+                padding: "0.4rem 0.75rem",
+                border: "none",
+                background: year === y ? "#E10600" : "rgba(255,255,255,0.04)",
+                color: year === y ? "white" : "rgba(255,255,255,0.3)",
+                cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={(e) => { if (year !== y) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)"; }}
+              onMouseLeave={(e) => { if (year !== y) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)"; }}
+            >
+              {y}
+            </button>
+          ))}
+        </div>
 
-              {/* Race dropdown (circuit) */}
-              <select
-                value={selectedRace}
-                onChange={(e) => setSelectedRace(e.target.value)}
-                disabled={races.length === 0}
-                className="w-full sm:flex-[2] bg-[#111] border border-white/10 px-3 py-2 text-white font-sans text-sm disabled:opacity-50 focus:outline-none focus:border-f1-red"
-              >
-                {races.length === 0 ? (
-                  <option>No races found</option>
-                ) : (
-                  races.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))
-                )}
-              </select>
+        {/* Search input */}
+        <div style={{ flex: 1, minWidth: "160px", position: "relative" }}>
+          <svg
+            width="12" height="12" viewBox="0 0 16 16" fill="none"
+            style={{ position: "absolute", left: "0.7rem", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.2)", pointerEvents: "none" }}
+          >
+            <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5"/>
+            <path d="M10 10l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+          <input
+            type="text"
+            placeholder="Search circuit or country..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            style={{
+              width: "100%",
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              padding: "0.4rem 0.75rem 0.4rem 2rem",
+              color: "rgba(255,255,255,0.75)",
+              fontFamily: "'Rajdhani', sans-serif",
+              fontSize: "0.7rem",
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+            onFocus={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = "rgba(225,6,0,0.4)"; }}
+            onBlur={(e)  => { (e.currentTarget as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.08)"; }}
+          />
+        </div>
 
-              {/* Session type dropdown */}
-              <select
-                value={sessionType}
-                onChange={(e) => setSessionType(e.target.value)}
-                className="w-full sm:flex-1 bg-[#111] border border-white/10 px-3 py-2 text-white font-sans text-sm focus:outline-none focus:border-f1-red"
-              >
-                {SESSION_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+        {/* Session type filter */}
+        <div style={{ display: "flex", gap: "2px", flexWrap: "wrap" }}>
+          {SESSION_TYPES.map((t) => (
+            <button
+              key={t}
+              onClick={() => setSessionType(t)}
+              style={{
+                fontFamily: "'Rajdhani', sans-serif",
+                fontSize: "0.55rem", fontWeight: 700,
+                letterSpacing: "0.12em", textTransform: "uppercase",
+                padding: "0.4rem 0.65rem",
+                border: sessionType === t ? "1px solid rgba(225,6,0,0.5)" : "1px solid rgba(255,255,255,0.07)",
+                background: sessionType === t ? "rgba(225,6,0,0.1)" : "transparent",
+                color: sessionType === t ? "#E10600" : "rgba(255,255,255,0.25)",
+                cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={(e) => { if (sessionType !== t) (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.5)"; }}
+              onMouseLeave={(e) => { if (sessionType !== t) (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.25)"; }}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
 
-              {/* Load button – full width on mobile, auto width on desktop */}
-              <button
-                onClick={handleGo}
-                disabled={matchedSessions.length === 0}
-                className="w-full sm:w-auto bg-f1-red disabled:bg-white/10 text-white font-bold uppercase tracking-wide px-6 py-2 text-sm transition hover:bg-red-700 disabled:hover:bg-white/10"
-              >
-                Load Session
-              </button>
-            </div>
+      {/* ── Race grid ────────────────────────────────────────────────────── */}
+      <div style={{ padding: "1rem 1.25rem" }}>
+        {loading && (
+          <div style={{
+            padding: "2.5rem 0", textAlign: "center",
+            fontFamily: "'Rajdhani', sans-serif", fontSize: "0.6rem",
+            fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase",
+            color: "rgba(255,255,255,0.2)",
+          }}>
+            Loading {year} calendar...
+          </div>
+        )}
 
-            {/* Error message */}
-            {error && (
-              <div className="text-f1-red text-sm mt-2 font-sans">{error}</div>
-            )}
+        {error && (
+          <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: "0.65rem", color: "#E10600", padding: "1rem 0" }}>
+            {error}
+          </div>
+        )}
 
-            {/* Info when no matching session exists */}
-            {!loadingYear && selectedRace && matchedSessions.length === 0 && !error && (
-              <div className="text-white/40 text-xs mt-2">
-                No {sessionType} session found for {selectedRace} in {year}.
-              </div>
-            )}
+        {!loading && !error && filtered.length === 0 && query && (
+          <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: "0.65rem", color: "rgba(255,255,255,0.2)", padding: "1rem 0" }}>
+            No races match "{query}"
+          </div>
+        )}
 
-            {/* Session date hint */}
-            {matchedSessions.length > 0 && (
-              <div className="text-white/40 text-[0.65rem] mt-2 font-mono">
-                {matchedSessions[0].country_name} ·{" "}
-                {new Date(matchedSessions[0].date_start).toLocaleDateString("en-US", {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </div>
-            )}
-          </>
+        {!loading && !error && (
+          <div
+            className="race-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+              gap: "2px",
+            }}
+          >
+            {filtered.map((race) => {
+              const isSelected   = selectedRace === race.circuit;
+              const past         = isPast(race.dateStart);
+              const hasSession   = !!race.sessions[sessionType];
+              const availTypes   = SESSION_TYPES.filter((t) => !!race.sessions[t]);
+
+              return (
+                <div
+                  key={race.circuit}
+                  style={{
+                    position: "relative",
+                    background: isSelected ? "rgba(225,6,0,0.07)" : past ? "rgba(255,255,255,0.015)" : "rgba(255,255,255,0.03)",
+                    borderTop:    `2px solid ${isSelected ? "#E10600" : past ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.15)"}`,
+                    borderRight:  "1px solid rgba(255,255,255,0.07)",
+                    borderBottom: "1px solid rgba(255,255,255,0.07)",
+                    borderLeft:   "1px solid rgba(255,255,255,0.07)",
+                    cursor: hasSession ? "pointer" : "default",
+                    transition: "background 0.15s, border-top-color 0.15s",
+                    opacity: hasSession ? 1 : 0.45,
+                  }}
+                  onClick={() => hasSession && handleRaceClick(race)}
+                  onMouseEnter={(e) => {
+                    if (!hasSession) return;
+                    const el = e.currentTarget as HTMLDivElement;
+                    if (!isSelected) {
+                      el.style.background    = "rgba(225,6,0,0.05)";
+                      el.style.borderTopColor = "rgba(225,6,0,0.5)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!hasSession) return;
+                    const el = e.currentTarget as HTMLDivElement;
+                    if (!isSelected) {
+                      el.style.background    = past ? "rgba(255,255,255,0.015)" : "rgba(255,255,255,0.03)";
+                      el.style.borderTopColor = past ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.15)";
+                    }
+                  }}
+                >
+                  <div style={{ padding: "0.85rem 1rem" }}>
+                    {/* Round number */}
+                    <div style={{
+                      fontFamily: "'Rajdhani', sans-serif",
+                      fontSize: "0.45rem", fontWeight: 700,
+                      letterSpacing: "0.18em", textTransform: "uppercase",
+                      color: isSelected ? "#E10600" : "rgba(255,255,255,0.2)",
+                      marginBottom: "0.3rem",
+                    }}>
+                      Round {race.round}
+                    </div>
+
+                    {/* Circuit name */}
+                    <div style={{
+                      fontFamily: "'Russo One', sans-serif",
+                      fontSize: "0.85rem", textTransform: "uppercase",
+                      letterSpacing: "0.01em", lineHeight: 1.1,
+                      color: isSelected ? "white" : past ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.85)",
+                      marginBottom: "0.2rem",
+                    }}>
+                      {race.circuit}
+                    </div>
+
+                    {/* Country + date */}
+                    <div style={{
+                      fontFamily: "'Rajdhani', sans-serif",
+                      fontSize: "0.55rem", fontWeight: 600,
+                      letterSpacing: "0.08em", textTransform: "uppercase",
+                      color: "rgba(255,255,255,0.25)",
+                      marginBottom: "0.65rem",
+                    }}>
+                      {race.country} · {fmtDate(race.dateStart)}
+                    </div>
+
+                    {/* Available session type chips */}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "2px" }}>
+                      {availTypes.map((t) => {
+                        const isActiveType = t === sessionType;
+                        const short = t === "Practice 1" ? "FP1"
+                          : t === "Practice 2" ? "FP2"
+                          : t === "Practice 3" ? "FP3"
+                          : t === "Qualifying" ? "QUALI"
+                          : t === "Sprint" ? "SPR"
+                          : t.toUpperCase();
+                        return (
+                          <button
+                            key={t}
+                            onClick={(e) => { e.stopPropagation(); handleSessionTypeClick(t, race); }}
+                            style={{
+                              fontFamily: "'Rajdhani', sans-serif",
+                              fontSize: "0.42rem", fontWeight: 700,
+                              letterSpacing: "0.1em", textTransform: "uppercase",
+                              padding: "2px 6px",
+                              border: isActiveType && isSelected
+                                ? "1px solid #E10600"
+                                : "1px solid rgba(255,255,255,0.1)",
+                              background: isActiveType && isSelected ? "#E10600" : "transparent",
+                              color: isActiveType && isSelected ? "white" : "rgba(255,255,255,0.3)",
+                              cursor: "pointer",
+                              transition: "all 0.12s",
+                            }}
+                            onMouseEnter={(e) => {
+                              const el = e.currentTarget as HTMLButtonElement;
+                              if (!(isActiveType && isSelected)) {
+                                el.style.borderColor = "rgba(225,6,0,0.5)";
+                                el.style.color = "#E10600";
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              const el = e.currentTarget as HTMLButtonElement;
+                              if (!(isActiveType && isSelected)) {
+                                el.style.borderColor = "rgba(255,255,255,0.1)";
+                                el.style.color = "rgba(255,255,255,0.3)";
+                              }
+                            }}
+                          >
+                            {short}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Past race dim overlay indicator */}
+                  {past && !isSelected && (
+                    <div style={{
+                      position: "absolute", top: "0.5rem", right: "0.5rem",
+                      fontFamily: "'Rajdhani', sans-serif", fontSize: "0.4rem",
+                      fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase",
+                      color: "rgba(255,255,255,0.15)",
+                    }}>
+                      DONE
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
-    </Panel>
+
+      <style>{`
+        @media (max-width: 600px) {
+          .race-grid { grid-template-columns: 1fr 1fr !important; }
+        }
+        @media (max-width: 380px) {
+          .race-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+    </div>
   );
 }

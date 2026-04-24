@@ -1,14 +1,24 @@
 "use client";
 
 /**
- * RaceGrid – Full season race grid.
+ * RaceGrid – Season race timeline.
  *
- * Layout:
- *   - Next race: full-width featured card with large countdown
- *   - Past races: compact horizontal rows (no wasted space)
- *   - Future races: standard cards
+ * Layout: single continuous vertical timeline — no columns, no tables.
  *
- * The next race always stands out visually above the rest.
+ *   ┌─ NEXT RACE ──────────────────────────────────────────────────────┐
+ *   │  Cinematic feature card with live countdown                      │
+ *   └──────────────────────────────────────────────────────────────────┘
+ *
+ *   Then every other race flows as a timeline entry:
+ *
+ *   [month]  ●──── Past race row  ────────────── Results →
+ *   [month]  ●──── Past race row  ────────────── Results →
+ *            ●  ← NEXT RACE (already shown above, skipped here)
+ *   [month]  ○──── Future race row (dimmer, no link)
+ *   [month]  ○──── Future race row
+ *
+ *   Month labels appear as sticky section dividers when the month changes.
+ *   No grid, no two-column split — just one clean vertical flow.
  */
 
 import Link from "next/link";
@@ -43,12 +53,12 @@ function useCountdown(targetDate: Date | null) {
   return timeLeft;
 }
 
-/* ── Next race featured card ─────────────────────────────────────────────── */
+/* ── Next race cinematic card ────────────────────────────────────────────── */
 function NextRaceCard({ race, season }: { race: any; season: string }) {
-  const raceDate   = new Date(race.date + "T15:00:00Z");
-  const qualiDate  = race.Qualifying?.date ? new Date(race.Qualifying.date) : null;
-  const fp1Date    = race.FirstPractice?.date ? new Date(race.FirstPractice.date) : null;
-  const countdown  = useCountdown(raceDate);
+  const raceDate  = new Date(race.date + "T15:00:00Z");
+  const qualiDate = race.Qualifying?.date    ? new Date(race.Qualifying.date)    : null;
+  const fp1Date   = race.FirstPractice?.date ? new Date(race.FirstPractice.date) : null;
+  const countdown = useCountdown(raceDate);
 
   const units = [
     { label: "Days",    value: countdown.days    },
@@ -61,97 +71,106 @@ function NextRaceCard({ race, season }: { race: any; season: string }) {
     <div style={{
       position: "relative", overflow: "hidden",
       background: "#0a0a0a",
-      border: "1px solid rgba(255,255,255,0.08)",
+      border: "1px solid rgba(225,6,0,0.15)",
       borderTop: "3px solid #E10600",
-      marginBottom: "1px",
+      marginBottom: "3rem",
+      animation: "raceSlideUp 0.7s cubic-bezier(0.16,1,0.3,1) both",
     }}>
-      {/* Ambient glow */}
+      {/* Red top glow */}
       <div style={{
-        position: "absolute", inset: 0, pointerEvents: "none",
-        background: "radial-gradient(ellipse 50% 100% at 100% 50%, rgba(225,6,0,0.06) 0%, transparent 65%)",
+        position: "absolute", top: 0, left: 0, right: 0, height: "140px",
+        background: "linear-gradient(180deg, rgba(225,6,0,0.08) 0%, transparent 100%)",
+        pointerEvents: "none",
       }} />
 
-      {/* Round watermark */}
+      {/* Ghost round number */}
       <div style={{
-        position: "absolute", top: 0, right: "1.5rem", bottom: 0,
-        display: "flex", alignItems: "center",
+        position: "absolute", right: "-1%", top: "50%",
+        transform: "translateY(-50%)",
         fontFamily: "'Russo One', sans-serif",
-        fontSize: "clamp(6rem, 15vw, 14rem)",
-        color: "rgba(255,255,255,0.015)", lineHeight: 1,
-        pointerEvents: "none", userSelect: "none",
+        fontSize: "clamp(6rem, 20vw, 14rem)",
+        color: "transparent",
+        WebkitTextStroke: "1px rgba(255,255,255,0.025)",
+        lineHeight: 1, pointerEvents: "none", userSelect: "none",
       }}>
         {race.round}
       </div>
 
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "1fr auto",
-        gap: 0,
-        position: "relative",
-      }}>
-        {/* Left: race info */}
-        <div style={{ padding: "2rem 1.5rem", borderRight: "1px solid rgba(255,255,255,0.06)" }}>
-          {/* Next badge */}
+      {/* Content */}
+      <div style={{ position: "relative", padding: "2rem clamp(1.25rem, 4vw, 2.5rem)" }}>
+
+        {/* Next badge */}
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: "0.4rem",
+          padding: "0.25rem 0.6rem", marginBottom: "1.25rem",
+          background: "rgba(225,6,0,0.1)",
+          border: "1px solid rgba(225,6,0,0.25)",
+        }}>
           <div style={{
-            display: "inline-flex", alignItems: "center", gap: "0.4rem",
-            padding: "0.25rem 0.6rem", marginBottom: "1rem",
-            background: "rgba(225,6,0,0.1)",
-            border: "1px solid rgba(225,6,0,0.25)",
+            width: "5px", height: "5px", borderRadius: "50%",
+            background: "#E10600",
+            animation: "livePulse 1.2s ease-in-out infinite",
+          }} />
+          <span style={{
+            fontFamily: "'Rajdhani', sans-serif", fontWeight: 700,
+            fontSize: "0.6rem", letterSpacing: "0.18em",
+            textTransform: "uppercase", color: "#E10600",
           }}>
-            <div style={{
-              width: "5px", height: "5px", borderRadius: "50%",
-              background: "#E10600", animation: "livePulse 1.2s ease-in-out infinite",
-            }} />
-            <span style={{
-              fontFamily: "'Rajdhani', sans-serif", fontWeight: 700,
-              fontSize: "0.6rem", letterSpacing: "0.18em",
-              textTransform: "uppercase", color: "#E10600",
-            }}>
-              Next · Round {race.round}
-            </span>
-          </div>
+            Next · Round {race.round}
+          </span>
+        </div>
 
-          {/* Race name */}
-          <h2 style={{
-            fontFamily: "'Russo One', sans-serif",
-            fontSize: "clamp(1.8rem, 4vw, 3rem)",
-            lineHeight: 0.92, letterSpacing: "-0.02em",
-            textTransform: "uppercase", color: "white",
-            margin: "0 0 0.5rem",
-          }}>
-            {race.raceName}
-          </h2>
+        {/* Race name */}
+        <h2 style={{
+          fontFamily: "'Russo One', sans-serif",
+          fontSize: "clamp(1.8rem, 6vw, 3.5rem)",
+          lineHeight: 0.92, letterSpacing: "-0.02em",
+          textTransform: "uppercase", color: "white",
+          margin: "0 0 0.5rem",
+        }}>
+          {race.raceName}
+        </h2>
 
-          {/* Location */}
-          <p style={{
-            fontFamily: "'Rajdhani', sans-serif", fontWeight: 500,
-            fontSize: "0.9rem", color: "rgba(255,255,255,0.3)",
-            letterSpacing: "0.06em", margin: "0 0 1.5rem",
-          }}>
-            {race.Circuit?.Location?.locality}, {race.Circuit?.Location?.country}
-          </p>
+        {/* Location */}
+        <p style={{
+          fontFamily: "'Rajdhani', sans-serif", fontWeight: 500,
+          fontSize: "0.85rem", color: "rgba(255,255,255,0.3)",
+          letterSpacing: "0.06em", margin: "0 0 1.75rem",
+        }}>
+          {race.Circuit?.Location?.locality}, {race.Circuit?.Location?.country}
+        </p>
 
+        {/* Two rows: info cells + countdown stacked on mobile */}
+        <div style={{
+          display: "flex", flexDirection: "column", gap: "1rem",
+        }}>
           {/* Info cells */}
           <div style={{
-            display: "flex", gap: "1px",
+            display: "flex", flexWrap: "wrap", gap: "1px",
             background: "rgba(255,255,255,0.05)",
-            flexWrap: "wrap",
           }}>
             {[
-              { label: "Circuit",      value: race.Circuit?.circuitName },
-              { label: "Race",         value: raceDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) },
-              fp1Date && { label: "Practice",  value: fp1Date.toLocaleDateString("en-US",  { weekday: "short", month: "short", day: "numeric" }) },
-              qualiDate && { label: "Qualifying", value: qualiDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) },
+              { label: "Circuit",    value: race.Circuit?.circuitName },
+              { label: "Race Date",  value: raceDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) },
+              fp1Date   && { label: "Practice",   value: fp1Date.toLocaleDateString("en-US",  { weekday: "short", month: "short", day: "numeric" }) },
+              qualiDate && { label: "Qualifying",  value: qualiDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) },
             ].filter(Boolean).map((item: any) => (
               <div key={item.label} style={{
-                background: "#0a0a0a", padding: "0.7rem 1rem", flex: "1 1 auto",
+                background: "#0a0a0a", padding: "0.7rem 1rem",
+                flex: "1 1 auto", minWidth: "120px",
               }}>
-                <div className="data-readout" style={{ fontSize: "0.48rem", marginBottom: "3px" }}>
+                <div style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: "0.46rem", fontWeight: 500,
+                  color: "rgba(255,255,255,0.2)",
+                  letterSpacing: "0.08em", textTransform: "uppercase",
+                  marginBottom: "3px",
+                }}>
                   {item.label}
                 </div>
                 <div style={{
                   fontFamily: "'Rajdhani', sans-serif", fontWeight: 700,
-                  fontSize: "0.8rem", color: "rgba(255,255,255,0.7)",
+                  fontSize: "0.78rem", color: "rgba(255,255,255,0.6)",
                   textTransform: "uppercase", letterSpacing: "0.04em",
                 }}>
                   {item.value}
@@ -159,191 +178,271 @@ function NextRaceCard({ race, season }: { race: any; season: string }) {
               </div>
             ))}
           </div>
-        </div>
 
-        {/* Right: countdown */}
-        <div style={{
-          padding: "2rem 1.5rem",
-          display: "flex", flexDirection: "column",
-          justifyContent: "center", gap: "0.75rem",
-          minWidth: "clamp(140px, 20vw, 200px)",
-        }}>
-          <span className="data-readout" style={{ fontSize: "0.5rem", letterSpacing: "0.2em" }}>
-            Race Countdown
-          </span>
-          <div style={{
-            display: "grid", gridTemplateColumns: "1fr 1fr",
-            gap: "1px", background: "rgba(255,255,255,0.06)",
-          }}>
-            {units.map((u) => (
-              <div key={u.label} style={{
-                background: "#060606", padding: "0.9rem 0.5rem",
-                textAlign: "center", position: "relative",
-              }}>
-                <div style={{
-                  position: "absolute", top: 0, left: 0, right: 0,
-                  height: "2px", background: "#E10600",
-                }} />
-                <div style={{
-                  fontFamily: "'Russo One', sans-serif",
-                  fontSize: "clamp(1.3rem, 3vw, 1.9rem)",
-                  color: "white", lineHeight: 1,
-                  fontVariantNumeric: "tabular-nums",
+          {/* Countdown */}
+          <div>
+            <div style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "0.46rem", fontWeight: 500,
+              color: "rgba(255,255,255,0.18)",
+              letterSpacing: "0.16em", textTransform: "uppercase",
+              marginBottom: "0.5rem",
+            }}>
+              Race Countdown
+            </div>
+            <div style={{
+              display: "flex", gap: "1px",
+              background: "rgba(255,255,255,0.06)",
+              maxWidth: "320px",
+            }}>
+              {units.map((u) => (
+                <div key={u.label} style={{
+                  flex: 1, background: "#060606",
+                  padding: "0.85rem 0.5rem",
+                  textAlign: "center", position: "relative",
                 }}>
-                  {String(u.value).padStart(2, "0")}
+                  <div style={{
+                    position: "absolute", top: 0, left: 0, right: 0,
+                    height: "2px", background: "#E10600",
+                  }} />
+                  <div style={{
+                    fontFamily: "'Russo One', sans-serif",
+                    fontSize: "clamp(1.1rem, 3vw, 1.7rem)",
+                    color: "white", lineHeight: 1,
+                    fontVariantNumeric: "tabular-nums",
+                    letterSpacing: "-0.02em",
+                  }}>
+                    {String(u.value).padStart(2, "0")}
+                  </div>
+                  <div style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: "0.42rem", fontWeight: 500,
+                    color: "rgba(255,255,255,0.18)",
+                    letterSpacing: "0.1em", textTransform: "uppercase",
+                    marginTop: "3px",
+                  }}>
+                    {u.label}
+                  </div>
                 </div>
-                <div className="data-readout" style={{ fontSize: "0.48rem", marginTop: "3px" }}>
-                  {u.label}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Keyframes */}
-      <style>{`
-        @keyframes livePulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50%       { opacity: 0.4; transform: scale(0.7); }
-        }
-      `}</style>
     </div>
   );
 }
 
-/* ── Past race row ────────────────────────────────────────────────────────── */
-function PastRaceRow({ race, season }: { race: any; season: string }) {
+/* ── Timeline entry ──────────────────────────────────────────────────────── */
+interface TimelineEntryProps {
+  race: any;
+  season: string;
+  isPast: boolean;
+  index: number;
+}
+
+function TimelineEntry({ race, season, isPast, index }: TimelineEntryProps) {
   const [hovered, setHovered] = useState(false);
-  const raceDate = new Date(race.date + "T00:00:00");
+  const raceDate  = new Date(race.date + "T00:00:00");
+  const qualiDate = race.Qualifying?.date ? new Date(race.Qualifying.date) : null;
 
-  return (
-    <Link href={`/races/${season}/${race.round}`} style={{ textDecoration: "none", display: "block" }}>
-      <div
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        style={{
-          display: "flex", alignItems: "center", gap: "1rem",
-          padding: "0.85rem 1.25rem",
-          borderBottom: "1px solid rgba(255,255,255,0.04)",
-          background: hovered ? "rgba(255,255,255,0.02)" : "transparent",
-          borderLeft: hovered ? "2px solid rgba(225,6,0,0.4)" : "2px solid transparent",
-          transition: "all 0.15s ease",
-        }}
-      >
-        {/* Round */}
-        <span className="data-readout" style={{ fontSize: "0.55rem", minWidth: "2rem", flexShrink: 0 }}>
-          R{race.round}
+  const day   = raceDate.getDate();
+  const month = raceDate.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
+
+  const content = (
+    <div
+      onMouseEnter={() => isPast ? setHovered(true) : undefined}
+      onMouseLeave={() => isPast ? setHovered(false) : undefined}
+      style={{
+        display: "grid",
+        gridTemplateColumns: "3rem 1px 1fr",
+        gap: "0 1.25rem",
+        alignItems: "stretch",
+        minHeight: "68px",
+        animation: `raceSlideUp 0.45s ${Math.min(index * 0.035, 0.5)}s cubic-bezier(0.16,1,0.3,1) both`,
+        cursor: isPast ? "pointer" : "default",
+      }}
+    >
+      {/* Date */}
+      <div style={{
+        display: "flex", flexDirection: "column",
+        alignItems: "flex-end", justifyContent: "center",
+        paddingTop: "0.85rem", paddingBottom: "0.85rem",
+      }}>
+        <span style={{
+          fontFamily: "'Russo One', sans-serif",
+          fontSize: "clamp(1.1rem, 3vw, 1.4rem)",
+          color: isPast
+            ? (hovered ? "#E10600" : "rgba(255,255,255,0.18)")
+            : "rgba(255,255,255,0.08)",
+          lineHeight: 1,
+          transition: "color 0.15s ease",
+        }}>
+          {String(day).padStart(2, "0")}
         </span>
+        <span style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: "0.42rem", fontWeight: 500,
+          color: isPast ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.1)",
+          letterSpacing: "0.08em",
+        }}>
+          {month}
+        </span>
+      </div>
 
-        {/* Race name + location */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+      {/* Spine */}
+      <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div style={{
+          width: "1px", flex: 1,
+          background: isPast
+            ? (hovered
+                ? "linear-gradient(180deg, transparent 0%, #E10600 15%, #E10600 85%, transparent 100%)"
+                : "linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.1) 15%, rgba(255,255,255,0.1) 85%, transparent 100%)")
+            : "linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.05) 15%, rgba(255,255,255,0.05) 85%, transparent 100%)",
+          transition: "background 0.2s ease",
+        }} />
+        {/* Node */}
+        <div style={{
+          position: "absolute", top: "50%", transform: "translateY(-50%)",
+          width: isPast ? (hovered ? "8px" : "6px") : "4px",
+          height: isPast ? (hovered ? "8px" : "6px") : "4px",
+          borderRadius: "50%",
+          background: isPast
+            ? (hovered ? "#E10600" : "rgba(255,255,255,0.25)")
+            : "rgba(255,255,255,0.08)",
+          boxShadow: (isPast && hovered) ? "0 0 10px rgba(225,6,0,0.6)" : "none",
+          border: (isPast && hovered) ? "1px solid rgba(225,6,0,0.5)" : "1px solid transparent",
+          transition: "all 0.15s ease",
+        }} />
+      </div>
+
+      {/* Race info */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        gap: "1rem",
+        padding: "0.85rem 0",
+        borderBottom: "1px solid rgba(255,255,255,0.04)",
+      }}>
+        <div style={{ minWidth: 0 }}>
+          {/* Round + location */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: "0.5rem",
+            marginBottom: "3px", flexWrap: "wrap",
+          }}>
+            <span style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "0.44rem", fontWeight: 500,
+              color: isPast ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.1)",
+              letterSpacing: "0.08em",
+            }}>
+              R{race.round}
+            </span>
+            <div style={{ width: "1px", height: "8px", background: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
+            <span style={{
+              fontFamily: "'Rajdhani', sans-serif", fontWeight: 500,
+              fontSize: "0.62rem",
+              color: isPast ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.1)",
+              letterSpacing: "0.04em",
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+            }}>
+              {race.Circuit?.Location?.locality}, {race.Circuit?.Location?.country}
+            </span>
+          </div>
+
+          {/* Race name */}
           <div style={{
             fontFamily: "'Russo One', sans-serif",
-            fontSize: "0.85rem", textTransform: "uppercase",
-            color: "rgba(255,255,255,0.75)", letterSpacing: "-0.01em",
+            fontSize: "clamp(0.78rem, 2vw, 0.95rem)",
+            textTransform: "uppercase", letterSpacing: "-0.01em",
+            color: isPast
+              ? (hovered ? "white" : "rgba(255,255,255,0.55)")
+              : "rgba(255,255,255,0.22)",
+            transition: "color 0.15s ease",
             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
           }}>
             {race.raceName}
           </div>
-          <div style={{
-            fontFamily: "'Rajdhani', sans-serif", fontWeight: 500,
-            fontSize: "0.7rem", color: "rgba(255,255,255,0.25)",
-            letterSpacing: "0.04em",
-          }}>
-            {race.Circuit?.Location?.locality}, {race.Circuit?.Location?.country}
-          </div>
-        </div>
 
-        {/* Date */}
-        <div style={{
-          fontFamily: "'Rajdhani', sans-serif", fontWeight: 600,
-          fontSize: "0.7rem", color: "rgba(255,255,255,0.25)",
-          flexShrink: 0, textAlign: "right",
-        }}>
-          {raceDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-        </div>
-
-        {/* Results arrow */}
-        <div style={{
-          fontFamily: "'Rajdhani', sans-serif", fontWeight: 700,
-          fontSize: "0.65rem", letterSpacing: "0.12em",
-          textTransform: "uppercase",
-          color: hovered ? "#E10600" : "rgba(255,255,255,0.15)",
-          flexShrink: 0, transition: "color 0.15s ease",
-          display: "flex", alignItems: "center", gap: "4px",
-        }}>
-          Results
-          <svg width="8" height="8" viewBox="0 0 12 12" fill="none" style={{
-            transform: hovered ? "translateX(3px)" : "none",
-            transition: "transform 0.15s ease",
-          }}>
-            <path d="M1 6h10M6 1l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-/* ── Future race card ─────────────────────────────────────────────────────── */
-function FutureRaceCard({ race }: { race: any }) {
-  const raceDate  = new Date(race.date + "T00:00:00");
-  const qualiDate = race.Qualifying?.date ? new Date(race.Qualifying.date) : null;
-
-  return (
-    <div style={{
-      padding: "1.25rem",
-      borderBottom: "1px solid rgba(255,255,255,0.04)",
-      borderLeft: "2px solid transparent",
-    }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem" }}>
-        {/* Round */}
-        <span className="data-readout" style={{ fontSize: "0.55rem", minWidth: "2rem", flexShrink: 0, paddingTop: "2px" }}>
-          R{race.round}
-        </span>
-
-        {/* Info */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{
-            fontFamily: "'Russo One', sans-serif",
-            fontSize: "0.9rem", textTransform: "uppercase",
-            color: "rgba(255,255,255,0.6)", letterSpacing: "-0.01em",
-            marginBottom: "2px",
-          }}>
-            {race.raceName}
-          </div>
-          <div style={{
-            fontFamily: "'Rajdhani', sans-serif", fontWeight: 500,
-            fontSize: "0.7rem", color: "rgba(255,255,255,0.22)",
-            letterSpacing: "0.04em", marginBottom: "0.5rem",
-          }}>
-            {race.Circuit?.Location?.locality}, {race.Circuit?.Location?.country}
-          </div>
-          <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-            <span style={{
-              fontFamily: "'Rajdhani', sans-serif", fontWeight: 600,
-              fontSize: "0.65rem", color: "rgba(255,255,255,0.3)",
+          {/* Quali chip — future races only */}
+          {!isPast && qualiDate && (
+            <div style={{
+              marginTop: "0.4rem",
+              display: "inline-flex", alignItems: "center", gap: "0.35rem",
+              padding: "0.15rem 0.4rem",
+              border: "1px solid rgba(255,255,255,0.06)",
             }}>
-              Race: {raceDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-            </span>
-            {qualiDate && (
+              <span style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "0.4rem", fontWeight: 500,
+                color: "rgba(255,255,255,0.15)", letterSpacing: "0.08em",
+              }}>
+                QUALI
+              </span>
               <span style={{
                 fontFamily: "'Rajdhani', sans-serif", fontWeight: 600,
-                fontSize: "0.65rem", color: "rgba(255,255,255,0.18)",
+                fontSize: "0.6rem", color: "rgba(255,255,255,0.22)",
               }}>
-                Quali: {qualiDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                {qualiDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
               </span>
-            )}
-          </div>
+            </div>
+          )}
         </div>
+
+        {/* Results CTA — past only */}
+        {isPast && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: "4px", flexShrink: 0,
+            fontFamily: "'Rajdhani', sans-serif", fontWeight: 700,
+            fontSize: "0.58rem", letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: hovered ? "#E10600" : "rgba(255,255,255,0.12)",
+            transition: "color 0.15s ease",
+          }}>
+            Results
+            <svg width="7" height="7" viewBox="0 0 12 12" fill="none" style={{
+              transform: hovered ? "translateX(3px)" : "none",
+              transition: "transform 0.15s ease",
+            }}>
+              <path d="M1 6h10M6 1l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+        )}
       </div>
+    </div>
+  );
+
+  if (isPast) {
+    return (
+      <Link href={`/races/${season}/${race.round}`} style={{ textDecoration: "none", display: "block" }}>
+        {content}
+      </Link>
+    );
+  }
+
+  return content;
+}
+
+/* ── Month divider ───────────────────────────────────────────────────────── */
+function MonthDivider({ month, year }: { month: string; year: string }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: "0.75rem",
+      padding: "1.5rem 0 0.5rem",
+    }}>
+      <div style={{ width: "16px", height: "2px", background: "#E10600", flexShrink: 0 }} />
+      <span style={{
+        fontFamily: "'Rajdhani', sans-serif", fontWeight: 700,
+        fontSize: "0.58rem", letterSpacing: "0.22em",
+        textTransform: "uppercase", color: "rgba(255,255,255,0.25)",
+      }}>
+        {month} {year}
+      </span>
+      <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.05)" }} />
     </div>
   );
 }
 
 /* ── Main export ─────────────────────────────────────────────────────────── */
-
 export default function RaceGrid({ races, season, currentYear }: RaceGridProps) {
   const now             = new Date();
   const isCurrentSeason = parseInt(season) === currentYear;
@@ -357,6 +456,7 @@ export default function RaceGrid({ races, season, currentYear }: RaceGridProps) 
         textAlign: "center", padding: "5rem 2rem",
         border: "1px solid rgba(255,255,255,0.06)",
       }}>
+        <div style={{ width: "32px", height: "2px", background: "#E10600", margin: "0 auto 1rem" }} />
         <p style={{
           fontFamily: "'Russo One', sans-serif",
           fontSize: "1rem", textTransform: "uppercase",
@@ -368,84 +468,56 @@ export default function RaceGrid({ races, season, currentYear }: RaceGridProps) 
     );
   }
 
-  const pastRaces   = races.filter((_, i) => i < nextRaceIndex || (!isCurrentSeason));
-  const nextRace    = nextRaceIndex >= 0 ? races[nextRaceIndex] : null;
-  const futureRaces = nextRaceIndex >= 0 ? races.slice(nextRaceIndex + 1) : [];
+  const nextRace = nextRaceIndex >= 0 ? races[nextRaceIndex] : null;
+
+  // All races except the next one go into the timeline
+  const timelineRaces = races.filter((_, i) => i !== nextRaceIndex);
+
+  // Group by month for dividers
+  let lastMonth = "";
 
   return (
     <div style={{ marginTop: "1rem" }}>
 
-      {/* Next race — full-width featured */}
+      {/* Next race feature card */}
       {nextRace && <NextRaceCard race={nextRace} season={season} />}
 
-      {/* Past + future in a two-column layout on desktop */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: futureRaces.length > 0 && pastRaces.length > 0
-          ? "1fr 1fr" : "1fr",
-        gap: "1px",
-        background: "rgba(255,255,255,0.04)",
-        border: "1px solid rgba(255,255,255,0.06)",
-        marginTop: "1px",
-      }}>
+      {/* Single vertical timeline */}
+      <div>
+        {timelineRaces.map((race, i) => {
+          const raceDate  = new Date(race.date + "T00:00:00");
+          const monthKey  = raceDate.toLocaleDateString("en-US", { month: "long" });
+          const showDivider = monthKey !== lastMonth;
+          lastMonth = monthKey;
 
-        {/* Past races — compact rows */}
-        {pastRaces.length > 0 && (
-          <div style={{ background: "#060606" }}>
-            <div style={{
-              padding: "0.75rem 1.25rem",
-              borderBottom: "1px solid rgba(255,255,255,0.05)",
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-            }}>
-              <span className="label-overline">Completed</span>
-              <span className="data-readout" style={{ fontSize: "0.5rem" }}>
-                {pastRaces.length} races
-              </span>
-            </div>
-            {[...pastRaces].reverse().map((race) => (
-              <PastRaceRow key={race.round} race={race} season={season} />
-            ))}
-          </div>
-        )}
+          const isPast = isCurrentSeason
+            ? nextRaceIndex < 0 || races.indexOf(race) < nextRaceIndex
+            : true;
 
-        {/* Future races */}
-        {futureRaces.length > 0 && (
-          <div style={{ background: "#060606" }}>
-            <div style={{
-              padding: "0.75rem 1.25rem",
-              borderBottom: "1px solid rgba(255,255,255,0.05)",
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-            }}>
-              <span className="label-overline">Upcoming</span>
-              <span className="data-readout" style={{ fontSize: "0.5rem" }}>
-                {futureRaces.length} races
-              </span>
+          return (
+            <div key={race.round}>
+              {showDivider && <MonthDivider month={monthKey} year={season} />}
+              <TimelineEntry
+                race={race}
+                season={season}
+                isPast={isPast}
+                index={i}
+              />
             </div>
-            {futureRaces.map((race) => (
-              <FutureRaceCard key={race.round} race={race} />
-            ))}
-          </div>
-        )}
-
-        {/* Historical season — all races as past rows */}
-        {!isCurrentSeason && (
-          <div style={{ background: "#060606", gridColumn: "1 / -1" }}>
-            <div style={{
-              padding: "0.75rem 1.25rem",
-              borderBottom: "1px solid rgba(255,255,255,0.05)",
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-            }}>
-              <span className="label-overline">{season} Season</span>
-              <span className="data-readout" style={{ fontSize: "0.5rem" }}>
-                {races.length} races
-              </span>
-            </div>
-            {[...races].reverse().map((race) => (
-              <PastRaceRow key={race.round} race={race} season={season} />
-            ))}
-          </div>
-        )}
+          );
+        })}
       </div>
+
+      <style>{`
+        @keyframes raceSlideUp {
+          from { opacity: 0; transform: translateY(12px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes livePulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50%       { opacity: 0.4; transform: scale(0.7); }
+        }
+      `}</style>
     </div>
   );
 }

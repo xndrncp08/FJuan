@@ -70,7 +70,7 @@ const Footer = () => (
         </div>
 
         {/* Navigation column */}
-        <div>
+        {/* <div>
           <div className="label-overline" style={{ marginBottom: "1rem" }}>Navigate</div>
           <nav style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
             {NAV_LINKS.map((link) => (
@@ -86,7 +86,7 @@ const Footer = () => (
               </Link>
             ))}
           </nav>
-        </div>
+        </div> */}
 
         {/* Data sources column */}
         <div>

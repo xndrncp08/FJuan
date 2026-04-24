@@ -2,53 +2,51 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Session, Driver, LapData, Stint, PitStop, CarTelemetry, safeArray } from "@/components/live/types";
-import { Spinner } from "@/components/live/ui";
-import SessionSearch from "@/components/live/SessionSearch";
-import DriverSelector from "@/components/live/DriverSelector";
-import StatsSummary from "@/components/live/StatsSummary";
-import TelemetryPanel from "@/components/live/TelemetryPanel";
-import TyrePanel from "@/components/live/TyrePanel";
-import LapTimesPanel from "@/components/live/LapTimesPanel";
+import {
+  Session, Driver, LapData, Stint, PitStop, CarTelemetry, safeArray,
+} from "@/components/live/types";
+import SessionSearch   from "@/components/live/SessionSearch";
+import DriverSelector  from "@/components/live/DriverSelector";
+import StatsSummary    from "@/components/live/StatsSummary";
+import TelemetryPanel  from "@/components/live/TelemetryPanel";
+import TyrePanel       from "@/components/live/TyrePanel";
+import LapTimesPanel   from "@/components/live/LapTimesPanel";
+import LapTrendChart from "@/components/live/LapTrendChart";
+import SectorDeltaPanel from "@/components/live/SectorDeltaPanel";
 
 export default function LivePage() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [session,        setSession       ] = useState<Session | null>(null);
+  const [drivers,        setDrivers       ] = useState<Driver[]>([]);
   const [selectedDriver, setSelectedDriver] = useState<number | null>(null);
-  const [laps, setLaps] = useState<LapData[]>([]);
-  const [stints, setStints] = useState<Stint[]>([]);
-  const [pits, setPits] = useState<PitStop[]>([]);
-  const [car, setCar] = useState<CarTelemetry | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [laps,           setLaps          ] = useState<LapData[]>([]);
+  const [stints,         setStints        ] = useState<Stint[]>([]);
+  const [pits,           setPits          ] = useState<PitStop[]>([]);
+  const [car,            setCar           ] = useState<CarTelemetry | null>(null);
+  const [loading,        setLoading       ] = useState(false);
 
-  // Fetch drivers when a session is selected
   useEffect(() => {
     if (!session) return;
     const load = async () => {
       try {
-        const res = await fetch(`https://api.openf1.org/v1/drivers?session_key=${session.session_key}`);
+        const res  = await fetch(`https://api.openf1.org/v1/drivers?session_key=${session.session_key}`);
         const data = await res.json();
-        // Remove duplicates by driver_number
         const unique = Array.from(
           new Map(safeArray<Driver>(data).map((d) => [d.driver_number, d])).values()
         ).sort((a, b) => a.driver_number - b.driver_number);
         setDrivers(unique);
         setSelectedDriver(null);
         setLaps([]); setStints([]); setPits([]); setCar(null);
-      } catch {
-        setDrivers([]);
-      }
+      } catch { setDrivers([]); }
     };
     load();
   }, [session]);
 
-  // Fetch detailed data when a driver is selected
   useEffect(() => {
     if (!session || !selectedDriver) return;
     const load = async () => {
       setLoading(true);
       const key = session.session_key;
-      const dn = selectedDriver;
+      const dn  = selectedDriver;
       try {
         const [lapsRes, stintsRes, pitsRes, carRes] = await Promise.allSettled([
           fetch(`https://api.openf1.org/v1/laps?session_key=${key}&driver_number=${dn}`).then((r) => r.json()),
@@ -56,167 +54,490 @@ export default function LivePage() {
           fetch(`https://api.openf1.org/v1/pit?session_key=${key}&driver_number=${dn}`).then((r) => r.json()),
           fetch(`https://api.openf1.org/v1/car_data?session_key=${key}&driver_number=${dn}&speed>=100`).then((r) => r.json()),
         ]);
-        setLaps(lapsRes.status === "fulfilled" ? safeArray<LapData>(lapsRes.value) : []);
-        setStints(stintsRes.status === "fulfilled" ? safeArray<Stint>(stintsRes.value) : []);
-        setPits(pitsRes.status === "fulfilled" ? safeArray<PitStop>(pitsRes.value) : []);
+        setLaps(   lapsRes.status    === "fulfilled" ? safeArray<LapData>(lapsRes.value)      : []);
+        setStints( stintsRes.status  === "fulfilled" ? safeArray<Stint>(stintsRes.value)      : []);
+        setPits(   pitsRes.status    === "fulfilled" ? safeArray<PitStop>(pitsRes.value)      : []);
         const carData = carRes.status === "fulfilled" ? safeArray<CarTelemetry>(carRes.value) : [];
         setCar(carData.length > 0 ? carData[carData.length - 1] : null);
-      } catch { }
+      } catch { /* silent */ }
       setLoading(false);
     };
     load();
   }, [session, selectedDriver]);
 
   const selectedDriverObj = drivers.find((d) => d.driver_number === selectedDriver) ?? null;
-  const validLaps = laps.filter((l) => l.lap_duration && l.lap_duration > 0 && !l.is_pit_out_lap);
+  const validLaps  = laps.filter((l) => l.lap_duration && l.lap_duration > 0 && !l.is_pit_out_lap);
   const fastestLap = validLaps.length > 0 ? Math.min(...validLaps.map((l) => l.lap_duration!)) : 0;
 
   const handleSessionSelect = (s: Session) => {
     setSession(s);
-    setDrivers([]);
-    setSelectedDriver(null);
+    setDrivers([]); setSelectedDriver(null);
     setLaps([]); setStints([]); setPits([]); setCar(null);
   };
-
   const handleClearSession = () => {
     setSession(null);
-    setDrivers([]);
-    setSelectedDriver(null);
+    setDrivers([]); setSelectedDriver(null);
     setLaps([]); setStints([]); setPits([]); setCar(null);
   };
 
-  const showData = !loading && selectedDriver && laps.length > 0;
-  const showEmpty = !loading && session && selectedDriver && laps.length === 0;
+  const showData  = !loading && !!selectedDriver && laps.length > 0;
+  const showEmpty = !loading && !!session && !!selectedDriver && laps.length === 0;
 
   return (
-    <main className="min-h-screen bg-[#060606]">
-      <Hero session={session} />
+    <main style={{ minHeight: "100vh", background: "#060606", position: "relative", overflow: "hidden" }}>
+      {/* Scan-line overlay */}
+      <div style={{
+        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 50,
+        backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)",
+        backgroundSize: "100% 4px",
+      }} />
 
-      {/* Responsive container: padding scales from 1rem on mobile to 1.5rem on desktop */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
-        {/* Session search – always on top */}
-        <div className="mb-6 md:mb-8">
+      <LiveHero session={session} />
+
+      <div style={{ maxWidth: "1400px", margin: "0 auto", padding: "3rem clamp(1rem,4vw,1.5rem)", position: "relative", zIndex: 1 }}>
+
+        {/* 01 · Session */}
+        <Section label="01 · Session" delay={0}>
           <SessionSearch onSelect={handleSessionSelect} />
-        </div>
+        </Section>
 
-        {/* Session banner (shows after selection) */}
         {session && <SessionBanner session={session} onClear={handleClearSession} />}
 
-        {/* Driver selector – appears after session loaded */}
+        {/* 02 · Driver */}
         {session && drivers.length > 0 && (
-          <div className="mb-6 md:mb-8">
+          <Section label="02 · Driver" delay={0.05}>
             <DriverSelector drivers={drivers} selected={selectedDriver} onSelect={setSelectedDriver} />
+          </Section>
+        )}
+
+        {loading && (
+          <div style={{ padding: "5rem 0", display: "flex", justifyContent: "center" }}>
+            <Spinner />
           </div>
         )}
 
-        {loading && <Spinner />}
-
-        {/* Main data panels – stacked on mobile, side-by-side on desktop */}
         {showData && (
-          <>
-            <StatsSummary laps={laps} driver={selectedDriverObj} />
-            {/* Grid: 1 column on mobile, 2 columns on medium screens and up */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
-              <TelemetryPanel car={car} />
-              <TyrePanel stints={stints} pits={pits} totalLaps={laps.length} />
-            </div>
-            <LapTimesPanel laps={laps} fastestLap={fastestLap} />
-          </>
+          <Dashboard
+            laps={laps} stints={stints} pits={pits}
+            car={car} fastestLap={fastestLap} driver={selectedDriverObj}
+          />
         )}
 
-        {/* Empty state when no lap data found */}
-        {showEmpty && (
-          <div className="py-12 px-4 text-center border border-white/10 bg-[#0a0a0a]">
-            <div className="font-display text-sm uppercase tracking-[0.2em] text-white/20 mb-2">No Data</div>
-            <p className="text-white/20 text-sm">No lap data for this driver in this session.</p>
-          </div>
-        )}
-
-        {/* Prompt when no session selected */}
-        {!session && <PromptState />}
+        {showEmpty && <EmptyState />}
+        {!session  && <PromptState />}
       </div>
+
+      <Styles />
     </main>
   );
 }
 
-// Hero section with responsive text sizing
-function Hero({ session }: { session: Session | null }) {
-  return (
-    <section className="relative border-b border-white/10 overflow-hidden">
-      {/* Red top accent line */}
-      <div className="h-[2px] bg-f1-red" />
+// ─── Hero ──────────────────────────────────────────────────────────────────────
+function LiveHero({ session }: { session: Session | null }) {
+  const circuitShort = session
+    ? session.circuit_short_name.split(" ")[0].toUpperCase()
+    : "LIVE";
 
-      {/* Giant background watermark – smaller on mobile */}
-      <div className="absolute right-0 top-0 bottom-0 flex items-center pr-4 md:pr-8 pointer-events-none">
-        <span className="font-display text-[clamp(4rem,15vw,12rem)] text-white/5 leading-none">F1</span>
+  return (
+    <section style={{
+      position: "relative", overflow: "hidden",
+      borderBottom: "1px solid rgba(255,255,255,0.07)",
+      background: "#060606",
+      minHeight: "clamp(280px, 35vw, 420px)",
+      display: "flex", alignItems: "center",
+    }}>
+      {/* Dot grid */}
+      <div style={{
+        position: "absolute", inset: 0,
+        backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)",
+        backgroundSize: "28px 28px", pointerEvents: "none",
+      }} />
+
+      {/* Speed lines */}
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
+        {[
+          { top: "20%", width: "40%", delay: "0s",   opacity: 0.08 },
+          { top: "38%", width: "55%", delay: "0.5s", opacity: 0.05 },
+          { top: "55%", width: "30%", delay: "0.9s", opacity: 0.07 },
+          { top: "72%", width: "45%", delay: "0.3s", opacity: 0.04 },
+        ].map((l, i) => (
+          <div key={i} style={{
+            position: "absolute", top: l.top, left: "-5%",
+            width: l.width, height: "1px",
+            background: `linear-gradient(90deg, transparent 0%, rgba(225,6,0,${l.opacity * 3}) 30%, rgba(255,255,255,${l.opacity}) 70%, transparent 100%)`,
+            animation: `speedLine 3s linear ${l.delay} infinite`,
+          }} />
+        ))}
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
-        {/* Back link */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-white/40 text-xs uppercase tracking-[0.15em] mb-6 hover:text-white/70 transition"
-        >
-          ← Home
+      {/* Diagonal red slash */}
+      <div style={{
+        position: "absolute", top: "-20%", right: "-5%", width: "45%", height: "140%",
+        background: "linear-gradient(105deg, transparent 45%, rgba(225,6,0,0.04) 45%, rgba(225,6,0,0.08) 55%, transparent 55%)",
+        pointerEvents: "none",
+      }} />
+
+      {/* Radial glow */}
+      <div style={{
+        position: "absolute", top: "-30%", right: "-10%", width: "70%", height: "130%",
+        background: "radial-gradient(ellipse at top right, rgba(225,6,0,0.1) 0%, rgba(225,6,0,0.03) 40%, transparent 70%)",
+        pointerEvents: "none",
+      }} />
+
+      {/* Ghost circuit watermark */}
+      <div style={{
+        position: "absolute", right: "-2%", bottom: "-15%",
+        fontFamily: "'Russo One', sans-serif",
+        fontSize: "clamp(6rem,16vw,16rem)",
+        color: "transparent",
+        WebkitTextStroke: "1px rgba(255,255,255,0.03)",
+        letterSpacing: "-0.04em", lineHeight: 1,
+        pointerEvents: "none", userSelect: "none", whiteSpace: "nowrap",
+      }}>
+        {circuitShort}
+      </div>
+
+      {/* Bottom red line */}
+      <div style={{
+        position: "absolute", bottom: 0, left: 0, right: 0, height: "2px",
+        background: "linear-gradient(90deg, #E10600 0%, rgba(225,6,0,0.4) 40%, transparent 70%)",
+        zIndex: 3,
+      }} />
+
+      {/* Left corner accent */}
+      <div style={{
+        position: "absolute", top: 0, left: 0, width: "3px", height: "60%",
+        background: "linear-gradient(180deg, #E10600 0%, transparent 100%)",
+        zIndex: 3,
+      }} />
+
+      <div style={{
+        maxWidth: "1400px", margin: "0 auto", width: "100%",
+        padding: "clamp(2.5rem,5vw,4rem) clamp(1rem,4vw,1.5rem)",
+        position: "relative", zIndex: 2,
+      }}>
+        <Link href="/" style={{
+          display: "inline-flex", alignItems: "center", gap: "0.45rem",
+          fontFamily: "'Rajdhani', sans-serif", fontSize: "0.6rem",
+          fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase",
+          color: "rgba(255,255,255,0.25)", textDecoration: "none", marginBottom: "1.5rem",
+          transition: "color 0.15s",
+        }}>
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+            <path d="M11 6H1M6 11L1 6l5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Home
         </Link>
 
-        {/* Status label */}
-        <div className="flex items-center gap-2 mb-2">
-          <span className="live-dot" />
-          <span className="text-f1-red text-[0.7rem] md:text-xs font-semibold tracking-[0.2em] uppercase">
-            {session ? `${session.circuit_short_name} · ${session.session_name}` : "Session Telemetry"}
+        {/* Live pill */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
+          <div style={{ position: "relative", width: "6px", height: "6px" }}>
+            <div style={{
+              position: "absolute", inset: 0, borderRadius: "50%",
+              background: "#E10600", animation: "heroPulse 2s ease-in-out infinite",
+            }} />
+            <div style={{
+              position: "absolute", inset: "-3px", borderRadius: "50%",
+              background: "rgba(225,6,0,0.3)", animation: "heroPulseRing 2s ease-in-out infinite",
+            }} />
+          </div>
+          <span style={{
+            fontFamily: "'Rajdhani', sans-serif", fontSize: "0.62rem",
+            fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase",
+            color: "#E10600",
+          }}>
+            {session
+              ? `${session.circuit_short_name} · ${session.session_name}`
+              : "Live Telemetry"}
           </span>
         </div>
 
-        {/* Main title – scales with screen size */}
-        <h1 className="font-display text-5xl sm:text-7xl md:text-8xl lg:text-9xl text-white leading-[0.92] tracking-[-0.02em] mb-2">
-          RACE<span className="text-f1-red">DATA</span>
+        {/* Title */}
+        <h1 style={{
+          fontFamily: "'Russo One', sans-serif",
+          fontSize: "clamp(2.5rem, 8vw, 6rem)",
+          lineHeight: 0.92, textTransform: "uppercase",
+          color: "white", letterSpacing: "-0.025em",
+          margin: "0 0 0.5rem",
+        }}>
+          Race{" "}
+          <span style={{ color: "#E10600" }}>Data</span>
         </h1>
-        <p className="text-white/40 text-sm md:text-base max-w-md">
-          Browse any F1 session and explore real telemetry, lap times, tyre strategy, and car data.
+
+        <p style={{
+          fontFamily: "'Rajdhani', sans-serif", fontSize: "0.8rem",
+          fontWeight: 500, letterSpacing: "0.08em", textTransform: "uppercase",
+          color: "rgba(255,255,255,0.25)", margin: 0,
+        }}>
+          {session
+            ? `${session.country_name} · ${session.year} · ${session.session_name}`
+            : "Browse sessions · Driver telemetry · Lap analysis"}
         </p>
       </div>
-
-      {/* Bottom fade gradient */}
-      <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-[#060606] to-transparent pointer-events-none" />
     </section>
   );
 }
 
-// Session banner – shows selected session info with change button
+// ─── Section wrapper ───────────────────────────────────────────────────────────
+function Section({ label, delay, children }: { label: string; delay: number; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: "2rem", animation: `slideUp 0.6s ${delay}s cubic-bezier(0.16,1,0.3,1) both` }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
+        <div style={{ width: "16px", height: "2px", background: "#E10600" }} />
+        <span style={{
+          fontFamily: "'Rajdhani', sans-serif", fontSize: "0.6rem",
+          fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase",
+          color: "#E10600",
+        }}>{label}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ─── Session banner ────────────────────────────────────────────────────────────
 function SessionBanner({ session, onClear }: { session: Session; onClear: () => void }) {
   return (
-    <div className="mb-6 p-3 md:p-4 bg-red-600/10 border border-red-600/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+    <div style={{
+      marginBottom: "2rem",
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      flexWrap: "wrap", gap: "0.75rem",
+      padding: "0.85rem 1.25rem",
+      background: "rgba(225,6,0,0.04)",
+      borderTop: "1px solid rgba(255,255,255,0.07)",
+      borderRight: "1px solid rgba(255,255,255,0.07)",
+      borderBottom: "1px solid rgba(255,255,255,0.07)",
+      borderLeft: "3px solid #E10600",
+      animation: "slideUp 0.45s cubic-bezier(0.16,1,0.3,1) both",
+    }}>
       <div>
-        <div className="font-bold text-white text-sm md:text-base uppercase tracking-wide">
+        <div style={{
+          fontFamily: "'Russo One', sans-serif", fontSize: "0.8rem",
+          textTransform: "uppercase", letterSpacing: "0.02em",
+          color: "white", marginBottom: "2px",
+        }}>
           {session.circuit_short_name} — {session.session_name}
         </div>
-        <div className="text-white/40 text-[0.65rem] md:text-xs mt-1">
+        <div style={{
+          fontFamily: "'Rajdhani', sans-serif", fontSize: "0.6rem",
+          fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase",
+          color: "rgba(255,255,255,0.3)",
+        }}>
           {session.country_name} ·{" "}
           {new Date(session.date_start).toLocaleDateString("en-US", {
-            month: "long",
-            day: "numeric",
-            year: "numeric",
+            month: "long", day: "numeric", year: "numeric",
           })}
         </div>
       </div>
-      <button onClick={onClear} className="btn-ghost text-xs py-1.5 px-3">
-        Change Session
+      <button
+        onClick={onClear}
+        style={{
+          fontFamily: "'Rajdhani', sans-serif", fontSize: "0.6rem",
+          fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase",
+          color: "rgba(255,255,255,0.3)", background: "transparent",
+          border: "1px solid rgba(255,255,255,0.1)", padding: "0.4rem 0.9rem",
+          cursor: "pointer", transition: "all 0.15s",
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(225,6,0,0.5)";
+          (e.currentTarget as HTMLButtonElement).style.color = "#E10600";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.1)";
+          (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.3)";
+        }}
+      >
+        ⌫ Change Session
       </button>
     </div>
   );
 }
 
-// Empty prompt when no session is loaded
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+function Dashboard({ laps, stints, pits, car, fastestLap, driver }: {
+  laps: LapData[]; stints: Stint[]; pits: PitStop[];
+  car: CarTelemetry | null; fastestLap: number; driver: Driver | null;
+}) {
+  return (
+    <div style={{ animation: "slideUp 0.5s 0.05s cubic-bezier(0.16,1,0.3,1) both" }}>
+      {/* Stats row */}
+      <div style={{ marginBottom: "2px" }}>
+        <StatsSummary laps={laps} driver={driver} />
+      </div>
+
+      {/* Two-column grid */}
+      <div
+        className="live-dashboard-grid"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0,1fr) minmax(0,1.4fr)",
+          gap: "2px",
+          marginBottom: "2px",
+        }}
+      >
+        {/* Left column */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+          <DataPanel label="Car Telemetry">
+            <TelemetryPanel car={car} />
+          </DataPanel>
+          <DataPanel label="Tyre Strategy">
+            <TyrePanel stints={stints} pits={pits} totalLaps={laps.length} />
+          </DataPanel>
+          <DataPanel label="Sector Deltas vs Personal Best">
+            <SectorDeltaPanel laps={laps} />
+          </DataPanel>
+        </div>
+
+        {/* Right column — tall lap table */}
+        <DataPanel label="Lap Times">
+          <LapTimesPanel laps={laps} fastestLap={fastestLap} />
+        </DataPanel>
+      </div>
+
+      {/* Full-width trend chart */}
+      <DataPanel label="Lap Time Trend">
+        <LapTrendChart laps={laps} fastestLap={fastestLap} />
+      </DataPanel>
+    </div>
+  );
+}
+
+// ─── DataPanel ─────────────────────────────────────────────────────────────────
+function DataPanel({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{
+      background: "#060606",
+      border: "1px solid rgba(255,255,255,0.07)",
+      borderTop: "2px solid #E10600",
+      marginBottom: 0,
+    }}>
+      <div style={{
+        padding: "0.55rem 1.25rem",
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
+        display: "flex", alignItems: "center", gap: "0.5rem",
+        background: "rgba(255,255,255,0.015)",
+      }}>
+        <div style={{
+          width: "5px", height: "5px", borderRadius: "50%",
+          background: "#E10600", flexShrink: 0,
+        }} />
+        <span style={{
+          fontFamily: "'Rajdhani', sans-serif", fontSize: "0.52rem",
+          fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase",
+          color: "rgba(255,255,255,0.25)",
+        }}>{label}</span>
+      </div>
+      <div style={{ padding: "1.25rem" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ─── Prompt state ──────────────────────────────────────────────────────────────
 function PromptState() {
   return (
-    <div className="py-16 px-4 text-center border border-white/5 bg-[#0a0a0a]">
-      <div className="font-display text-sm uppercase tracking-[0.2em] text-white/20 mb-2">
-        Select a Year and Race Above
+    <div style={{
+      padding: "5rem 2rem", textAlign: "center",
+      border: "1px solid rgba(255,255,255,0.06)",
+      background: "rgba(255,255,255,0.01)",
+      animation: "slideUp 0.5s 0.1s cubic-bezier(0.16,1,0.3,1) both",
+    }}>
+      <div style={{ width: "32px", height: "2px", background: "#E10600", margin: "0 auto 1.5rem" }} />
+      <div style={{
+        fontFamily: "'Russo One', sans-serif", fontSize: "1rem",
+        textTransform: "uppercase", letterSpacing: "0.05em",
+        color: "rgba(255,255,255,0.25)", marginBottom: "0.5rem",
+      }}>
+        Select a Session
       </div>
-      <p className="text-white/20 text-sm">
-        Use the dropdowns to find a session, then pick a driver to load their data.
+      <p style={{
+        fontFamily: "'Rajdhani', sans-serif", fontSize: "0.72rem",
+        color: "rgba(255,255,255,0.12)", margin: 0, letterSpacing: "0.04em",
+      }}>
+        Choose a year and race above to begin exploring telemetry data.
       </p>
     </div>
+  );
+}
+
+// ─── Empty state ───────────────────────────────────────────────────────────────
+function EmptyState() {
+  return (
+    <div style={{
+      padding: "4rem 2rem", textAlign: "center",
+      border: "1px solid rgba(255,255,255,0.06)",
+      background: "rgba(255,255,255,0.01)",
+    }}>
+      <div style={{ width: "32px", height: "2px", background: "#E10600", margin: "0 auto 1.5rem" }} />
+      <div style={{
+        fontFamily: "'Russo One', sans-serif", fontSize: "1rem",
+        textTransform: "uppercase", letterSpacing: "0.05em",
+        color: "rgba(255,255,255,0.25)", marginBottom: "0.5rem",
+      }}>
+        No Data Found
+      </div>
+      <p style={{
+        fontFamily: "'Rajdhani', sans-serif", fontSize: "0.72rem",
+        color: "rgba(255,255,255,0.12)", margin: 0,
+      }}>
+        No lap data recorded for this driver in this session.
+      </p>
+    </div>
+  );
+}
+
+// ─── Spinner ───────────────────────────────────────────────────────────────────
+function Spinner() {
+  return (
+    <div style={{ textAlign: "center" }}>
+      <div style={{
+        width: "32px", height: "32px",
+        border: "2px solid rgba(255,255,255,0.06)",
+        borderTopColor: "#E10600",
+        borderRadius: "50%",
+        animation: "spin 0.7s linear infinite",
+        margin: "0 auto 1rem",
+      }} />
+      <div style={{
+        fontFamily: "'Rajdhani', sans-serif", fontSize: "0.55rem",
+        fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase",
+        color: "rgba(255,255,255,0.2)",
+      }}>
+        Loading Data...
+      </div>
+    </div>
+  );
+}
+
+// ─── Styles ────────────────────────────────────────────────────────────────────
+function Styles() {
+  return (
+    <style>{`
+      @keyframes slideUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      @keyframes speedLine {
+        0%   { transform: translateX(-10%); opacity: 0; }
+        10%  { opacity: 1; }
+        90%  { opacity: 1; }
+        100% { transform: translateX(120vw); opacity: 0; }
+      }
+      @keyframes heroPulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50%       { transform: scale(0.85); opacity: 0.7; }
+      }
+      @keyframes heroPulseRing {
+        0%   { transform: scale(0.5); opacity: 0.8; }
+        100% { transform: scale(2.5); opacity: 0; }
+      }
+      @media (max-width: 900px) {
+        .live-dashboard-grid { grid-template-columns: 1fr !important; }
+      }
+    `}</style>
   );
 }

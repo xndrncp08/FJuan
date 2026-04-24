@@ -1,47 +1,52 @@
 import { Driver, LapData, formatLapTime, teamColor } from "./types";
 
-interface Props {
-  laps: LapData[];
-  driver: Driver | null;
-}
+interface Props { laps: LapData[]; driver: Driver | null }
 
 export default function StatsSummary({ laps, driver }: Props) {
-  // Filter valid laps (exclude pit out laps and invalid durations)
-  const validLaps = laps.filter(
-    (l) => l.lap_duration && l.lap_duration > 0 && !l.is_pit_out_lap
-  );
-  const fastest =
-    validLaps.length > 0 ? Math.min(...validLaps.map((l) => l.lap_duration!)) : null;
-  const avg =
-    validLaps.length > 0
-      ? validLaps.reduce((s, l) => s + l.lap_duration!, 0) / validLaps.length
-      : null;
+  const valid   = laps.filter((l) => l.lap_duration && l.lap_duration > 0 && !l.is_pit_out_lap);
+  const fastest = valid.length > 0 ? Math.min(...valid.map((l) => l.lap_duration!)) : null;
+  const avg     = valid.length > 0 ? valid.reduce((s, l) => s + l.lap_duration!, 0) / valid.length : null;
   const topTrap = laps.reduce((max, l) => Math.max(max, l.st_speed || 0), 0);
+  const pitLaps = laps.filter((l) => l.is_pit_out_lap).length;
+  const consistent = fastest ? valid.filter((l) => l.lap_duration! - fastest < 1.0).length : 0;
+  const consistency = valid.length > 0 ? Math.round((consistent / valid.length) * 100) : null;
+
   const color = driver ? teamColor(driver.team_colour) : "#E10600";
 
   const stats = [
-    { label: "Total Laps", value: String(laps.length) },
-    { label: "Fastest Lap", value: formatLapTime(fastest) },
-    { label: "Avg Lap", value: formatLapTime(avg) },
-    { label: "Top Trap Speed", value: topTrap > 0 ? `${topTrap} km/h` : "—" },
+    { label: "Total Laps",   value: String(laps.length),         sub: pitLaps > 0 ? `${pitLaps} pit` : undefined },
+    { label: "Fastest Lap",  value: formatLapTime(fastest),      sub: undefined },
+    { label: "Avg Lap",      value: formatLapTime(avg),          sub: fastest && avg ? `+${(avg - fastest).toFixed(3)}s off PB` : undefined },
+    { label: "Consistency",  value: consistency !== null ? `${consistency}%` : "—", sub: "laps within 1s of PB" },
+    { label: "Top Trap",     value: topTrap > 0 ? String(topTrap) : "—", sub: topTrap > 0 ? "km/h" : undefined },
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-white/5 mb-6 md:mb-8">
-      {stats.map((s: { label: string; value: string }) => (
-        <div
-          key={s.label}
-          className="bg-[#0e0e0e] p-4 md:p-5"
-          style={{ borderTop: `2px solid ${color}` }}
-        >
-          <div className="text-white/30 text-[0.65rem] uppercase tracking-wider mb-1">
-            {s.label}
+    <>
+      <div
+        className="live-stats-grid"
+        style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "2px" }}
+      >
+        {stats.map((s) => (
+          <div key={s.label} style={{ background: "#060606", borderTop: `2px solid ${color}`, padding: "1rem 1.25rem", border: "1px solid rgba(255,255,255,0.07)", borderTopWidth: "2px", borderTopColor: color }}>
+            <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: "0.5rem", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: "0.4rem" }}>
+              {s.label}
+            </div>
+            <div style={{ fontFamily: "'Russo One', sans-serif", fontSize: "clamp(1rem, 2.2vw, 1.4rem)", color: "white", lineHeight: 1, letterSpacing: "-0.02em" }}>
+              {s.value}
+            </div>
+            {s.sub && (
+              <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: "0.48rem", color: "rgba(255,255,255,0.2)", marginTop: "0.3rem", letterSpacing: "0.06em" }}>
+                {s.sub}
+              </div>
+            )}
           </div>
-          <div className="font-display text-xl md:text-2xl text-white leading-tight">
-            {s.value}
-          </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+      <style>{`
+        @media (max-width: 800px) { .live-stats-grid { grid-template-columns: repeat(2, 1fr) !important; } }
+        @media (max-width: 500px) { .live-stats-grid { grid-template-columns: 1fr !important; } }
+      `}</style>
+    </>
   );
 }
