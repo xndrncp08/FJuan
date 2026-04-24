@@ -29,20 +29,20 @@ interface PredictionClientProps {
 // ─── Team colours ─────────────────────────────────────────────────────────────
 
 const TEAM_COLORS: Record<string, string> = {
-  red_bull:     "#3671C6",
-  ferrari:      "#E8002D",
-  mercedes:     "#27F4D2",
-  mclaren:      "#FF8000",
+  red_bull: "#3671C6",
+  ferrari: "#E8002D",
+  mercedes: "#27F4D2",
+  mclaren: "#FF8000",
   aston_martin: "#229971",
-  alpine:       "#FF87BC",
-  williams:     "#64C4FF",
-  rb:           "#6692FF",
-  kick_sauber:  "#52E252",
-  haas:         "#B6BABD",
+  alpine: "#FF87BC",
+  williams: "#64C4FF",
+  rb: "#6692FF",
+  kick_sauber: "#52E252",
+  haas: "#B6BABD",
 };
 
-const RANK_COLORS  = ["#FFD700", "#C0C0C0", "#CD7F32"];
-const RANK_LABELS  = ["WINNER", "2ND PLACE", "3RD PLACE"];
+const RANK_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32"];
+const RANK_LABELS = ["WINNER", "2ND PLACE", "3RD PLACE"];
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
@@ -84,8 +84,17 @@ function SectionHeader({
     >
       <div>
         {/* Red overline with left tick */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem" }}>
-          <div style={{ width: "16px", height: "2px", background: "#E10600" }} />
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            marginBottom: "0.4rem",
+          }}
+        >
+          <div
+            style={{ width: "16px", height: "2px", background: "#E10600" }}
+          />
           <span
             style={{
               fontFamily: "'Rajdhani', sans-serif",
@@ -136,7 +145,13 @@ function SectionHeader({
 // ─── P1 Feature card ──────────────────────────────────────────────────────────
 // Full-width dominant card for the race winner prediction.
 
-function P1FeatureCard({ driver, animDelay = 0 }: { driver: DriverPrediction; animDelay?: number }) {
+function P1FeatureCard({
+  driver,
+  animDelay = 0,
+}: {
+  driver: DriverPrediction;
+  animDelay?: number;
+}) {
   const [hovered, setHovered] = useState(false);
   const teamColor = TEAM_COLORS[driver.constructorId] ?? "#E10600";
   const rankColor = RANK_COLORS[0];
@@ -150,9 +165,7 @@ function P1FeatureCard({ driver, animDelay = 0 }: { driver: DriverPrediction; an
         overflow: "hidden",
         border: `1px solid rgba(255,215,0,0.15)`,
         borderTop: `3px solid ${rankColor}`,
-        background: hovered
-          ? "rgba(255,215,0,0.04)"
-          : "rgba(255,215,0,0.015)",
+        background: hovered ? "rgba(255,215,0,0.04)" : "rgba(255,215,0,0.015)",
         transition: "background 0.25s ease",
         cursor: "default",
         animation: `clientSlideUp 0.7s ${animDelay}s cubic-bezier(0.16,1,0.3,1) both`,
@@ -162,7 +175,9 @@ function P1FeatureCard({ driver, animDelay = 0 }: { driver: DriverPrediction; an
       <div
         style={{
           position: "absolute",
-          top: 0, left: 0, right: 0,
+          top: 0,
+          left: 0,
+          right: 0,
           height: "120px",
           background: `linear-gradient(180deg, ${rankColor}18 0%, transparent 100%)`,
           pointerEvents: "none",
@@ -200,7 +215,14 @@ function P1FeatureCard({ driver, animDelay = 0 }: { driver: DriverPrediction; an
         {/* Left — driver info */}
         <div>
           {/* P1 badge */}
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.75rem",
+              marginBottom: "1rem",
+            }}
+          >
             <span
               style={{
                 fontFamily: "'Russo One', sans-serif",
@@ -280,15 +302,31 @@ function P1FeatureCard({ driver, animDelay = 0 }: { driver: DriverPrediction; an
           </p>
 
           {/* Factor bars */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem 2rem", maxWidth: "480px" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "0.75rem 2rem",
+              maxWidth: "480px",
+            }}
+          >
             {[
-              { label: "Recent Form",    value: driver.factors.currentForm },
-              { label: "Qualifying",     value: driver.factors.qualifyingStrength },
-              { label: "Championship",   value: driver.factors.championshipPosition },
-              { label: "Circuit Hist.",  value: driver.factors.circuitHistory },
+              { label: "Recent Form", value: driver.factors.currentForm },
+              { label: "Qualifying", value: driver.factors.qualifyingStrength },
+              {
+                label: "Championship",
+                value: driver.factors.championshipPosition,
+              },
+              { label: "Circuit Hist.", value: driver.factors.circuitHistory },
             ].map((f) => (
               <div key={f.label}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginBottom: "4px",
+                  }}
+                >
                   <span
                     style={{
                       fontFamily: "'Rajdhani', sans-serif",
@@ -311,7 +349,13 @@ function P1FeatureCard({ driver, animDelay = 0 }: { driver: DriverPrediction; an
                     {f.value}
                   </span>
                 </div>
-                <div style={{ height: "3px", background: "rgba(255,255,255,0.07)", overflow: "hidden" }}>
+                <div
+                  style={{
+                    height: "3px",
+                    background: "rgba(255,255,255,0.07)",
+                    overflow: "hidden",
+                  }}
+                >
                   <div
                     style={{
                       height: "100%",
@@ -413,7 +457,9 @@ function PodiumCard({
         overflow: "hidden",
         border: `1px solid rgba(255,255,255,0.07)`,
         borderTop: `3px solid ${rankColor}`,
-        background: hovered ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.01)",
+        background: hovered
+          ? "rgba(255,255,255,0.03)"
+          : "rgba(255,255,255,0.01)",
         transition: "background 0.2s ease",
         padding: "1.75rem",
         display: "flex",
@@ -426,7 +472,9 @@ function PodiumCard({
       <div
         style={{
           position: "absolute",
-          top: 0, left: 0, right: 0,
+          top: 0,
+          left: 0,
+          right: 0,
           height: "60px",
           background: `linear-gradient(180deg, ${rankColor}14 0%, transparent 100%)`,
           pointerEvents: "none",
@@ -452,7 +500,14 @@ function PodiumCard({
 
       <div style={{ position: "relative" }}>
         {/* Rank + prob row */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            marginBottom: "0.75rem",
+          }}
+        >
           <span
             style={{
               fontFamily: "'Russo One', sans-serif",
@@ -523,7 +578,13 @@ function PodiumCard({
 
         {/* Score bar */}
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              marginBottom: "4px",
+            }}
+          >
             <span
               style={{
                 fontFamily: "'Rajdhani', sans-serif",
@@ -546,7 +607,13 @@ function PodiumCard({
               {driver.score.toFixed(1)}
             </span>
           </div>
-          <div style={{ height: "2px", background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+          <div
+            style={{
+              height: "2px",
+              background: "rgba(255,255,255,0.06)",
+              overflow: "hidden",
+            }}
+          >
             <div
               style={{
                 height: "100%",
@@ -600,7 +667,9 @@ function FinisherRow({
         padding: "0.9rem 1.25rem",
         borderBottom: "1px solid rgba(255,255,255,0.04)",
         background: hovered ? "rgba(255,255,255,0.02)" : "transparent",
-        borderLeft: hovered ? "2px solid rgba(225,6,0,0.5)" : "2px solid transparent",
+        borderLeft: hovered
+          ? "2px solid rgba(225,6,0,0.5)"
+          : "2px solid transparent",
         transition: "all 0.15s ease",
         animation: `clientSlideUp 0.5s ${0.05 * index}s cubic-bezier(0.16,1,0.3,1) both`,
       }}
@@ -662,21 +731,34 @@ function FinisherRow({
       </div>
 
       {/* Mini factor bar */}
-      <div style={{ width: "80px", display: "flex", flexDirection: "column", gap: "3px" }}>
-        {[
-          driver.factors.currentForm,
-          driver.factors.qualifyingStrength,
-        ].map((val, i) => (
-          <div key={i} style={{ height: "2px", background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+      <div
+        style={{
+          width: "80px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "3px",
+        }}
+      >
+        {[driver.factors.currentForm, driver.factors.qualifyingStrength].map(
+          (val, i) => (
             <div
+              key={i}
               style={{
-                height: "100%",
-                width: `${val}%`,
-                background: i === 0 ? "#E10600" : "rgba(255,255,255,0.25)",
+                height: "2px",
+                background: "rgba(255,255,255,0.06)",
+                overflow: "hidden",
               }}
-            />
-          </div>
-        ))}
+            >
+              <div
+                style={{
+                  height: "100%",
+                  width: `${val}%`,
+                  background: i === 0 ? "#E10600" : "rgba(255,255,255,0.25)",
+                }}
+              />
+            </div>
+          ),
+        )}
       </div>
 
       {/* Score */}
@@ -759,7 +841,7 @@ function MethodologySection() {
           subtitle="Factor weights and data sources behind every prediction"
         />
 
-        {/* Weight bars — visual before the text detail */}
+        {/* Segmented weight bar */}
         <div
           style={{
             display: "flex",
@@ -787,12 +869,13 @@ function MethodologySection() {
           {factors.map((f, i) => (
             <div
               key={f.label}
+              className="methodology-row"
               style={{
                 display: "grid",
-                gridTemplateColumns: "80px 160px 1fr",
+                gridTemplateColumns: "72px 1fr",
                 alignItems: "start",
-                gap: "1.5rem 2rem",
-                padding: "1.5rem 1.75rem",
+                gap: "1.25rem 1.5rem",
+                padding: "1.25rem 1.5rem",
                 borderBottom:
                   i < factors.length - 1
                     ? "1px solid rgba(255,255,255,0.05)"
@@ -806,51 +889,71 @@ function MethodologySection() {
                   fontSize: "2rem",
                   color: f.color,
                   lineHeight: 1,
+                  flexShrink: 0,
                 }}
               >
                 {f.weight}%
               </div>
 
-              {/* Label + colour bar */}
+              {/* Right side: label + bar + desc */}
               <div>
+                {/* Label row with inline bar */}
                 <div
                   style={{
-                    fontFamily: "'Rajdhani', sans-serif",
-                    fontWeight: 700,
-                    fontSize: "0.75rem",
-                    letterSpacing: "0.14em",
-                    textTransform: "uppercase",
-                    color: "white",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.75rem",
                     marginBottom: "0.5rem",
+                    flexWrap: "wrap",
                   }}
                 >
-                  {f.label}
-                </div>
-                <div style={{ height: "2px", background: "rgba(255,255,255,0.06)" }}>
                   <div
                     style={{
-                      height: "100%",
-                      width: `${f.weight * 2}%`,
-                      background: f.color,
-                      maxWidth: "100%",
+                      fontFamily: "'Rajdhani', sans-serif",
+                      fontWeight: 700,
+                      fontSize: "0.75rem",
+                      letterSpacing: "0.14em",
+                      textTransform: "uppercase",
+                      color: "white",
+                      whiteSpace: "nowrap",
                     }}
-                  />
+                  >
+                    {f.label}
+                  </div>
+                  {/* Bar — hidden on mobile, shown on sm+ via class */}
+                  <div
+                    className="methodology-bar"
+                    style={{
+                      flex: 1,
+                      minWidth: "60px",
+                      height: "2px",
+                      background: "rgba(255,255,255,0.06)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${f.weight * 2}%`,
+                        background: f.color,
+                        maxWidth: "100%",
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* Description */}
-              <p
-                style={{
-                  fontFamily: "'Rajdhani', sans-serif",
-                  fontSize: "0.78rem",
-                  lineHeight: 1.7,
-                  color: "rgba(255,255,255,0.32)",
-                  margin: 0,
-                  paddingTop: "4px",
-                }}
-              >
-                {f.desc}
-              </p>
+                {/* Description */}
+                <p
+                  style={{
+                    fontFamily: "'Rajdhani', sans-serif",
+                    fontSize: "0.78rem",
+                    lineHeight: 1.7,
+                    color: "rgba(255,255,255,0.32)",
+                    margin: 0,
+                  }}
+                >
+                  {f.desc}
+                </p>
+              </div>
             </div>
           ))}
         </div>
@@ -873,6 +976,20 @@ function MethodologySection() {
           depend on many unpredictable factors.
         </p>
       </div>
+
+      <style>{`
+        /* On mobile: tighten padding and shrink the weight number */
+        @media (max-width: 480px) {
+          .methodology-row {
+            grid-template-columns: 56px 1fr !important;
+            padding: 1rem 1rem !important;
+            gap: 0.75rem 1rem !important;
+          }
+          .methodology-row > div:first-child {
+            font-size: 1.4rem !important;
+          }
+        }
+      `}</style>
     </section>
   );
 }
@@ -893,7 +1010,7 @@ export default function PredictionClient({
   } = usePrediction({ enabled: refreshEnabled });
 
   const prediction = livePrediction ?? initialPrediction;
-  const error      = liveError ?? initialError;
+  const error = liveError ?? initialError;
 
   const handleRefresh = () => {
     if (!refreshEnabled) {
@@ -964,7 +1081,13 @@ export default function PredictionClient({
         }}
       >
         <SkeletonBlock height={320} />
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "2px",
+          }}
+        >
           <SkeletonBlock height={260} />
           <SkeletonBlock height={260} />
         </div>
@@ -977,11 +1100,13 @@ export default function PredictionClient({
 
   if (!prediction) return null;
 
-  const [p1, p2, p3]   = prediction.predictions;
+  const [p1, p2, p3] = prediction.predictions;
   const likelyFinishers = prediction.likelyFinishers;
 
   // Sort finishers by score descending for consistent ordering
-  const sortedFinishers = [...likelyFinishers].sort((a, b) => b.score - a.score);
+  const sortedFinishers = [...likelyFinishers].sort(
+    (a, b) => b.score - a.score,
+  );
 
   // Refresh button (shared)
   const RefreshButton = (
@@ -1011,7 +1136,9 @@ export default function PredictionClient({
         height="10"
         viewBox="0 0 16 16"
         fill="none"
-        style={{ animation: isLoading ? "clientSpin 1s linear infinite" : "none" }}
+        style={{
+          animation: isLoading ? "clientSpin 1s linear infinite" : "none",
+        }}
       >
         <path
           d="M14 8A6 6 0 1 1 8 2M14 2v4h-4"
@@ -1058,7 +1185,8 @@ export default function PredictionClient({
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(min(100%, 300px), 1fr))",
               gap: "2px",
               marginTop: "2px",
             }}
@@ -1120,7 +1248,12 @@ export default function PredictionClient({
             </div>
 
             {/* Rows */}
-            <div style={{ border: "1px solid rgba(255,255,255,0.06)", borderTop: "none" }}>
+            <div
+              style={{
+                border: "1px solid rgba(255,255,255,0.06)",
+                borderTop: "none",
+              }}
+            >
               {sortedFinishers.map((driver, i) => (
                 <FinisherRow key={driver.driverId} driver={driver} index={i} />
               ))}
