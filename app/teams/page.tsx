@@ -1,310 +1,456 @@
 /**
- * TeamsPage — Constructor Standings page.
+ * app/teams/page.tsx — Constructor Standings · "Pit Wall" redesign
  *
- * Data:  fetched from Jolpica API at build-time, enriched with local constructors.json
- *        (which holds team colours, base city, founding year, championships).
+ * Server component — fetches live standings from Jolpica API and merges
+ * with local constructors.json enrichment data (colors, base, founded, championships).
+ * Falls back to constructors.json static data if the API call fails.
  *
- * Layout (responsive):
- *   1. Hero section (title, season overline, key stats strip)
- *   2. Top 3 podium cards (stack vertically on mobile, row on desktop)
- *   3. Full standings table (horizontal scroll on mobile, fixed layout on desktop)
- *   4. Back link
+ * Mobile responsive strategy:
+ *   - Hero stats strip wraps to 2-col grid on mobile
+ *   - Podium bento collapses from 3-col to 1-col on mobile
+ *   - Standings table hides Pts%, Base, Titles columns on mobile
+ *     and uses a simpler 3-column grid (pos / name+bar / points)
  *
- * Mobile adaptations:
- *   - Table becomes horizontally scrollable (overflow-x-auto)
- *   - Podium cards stack in column on mobile, row on md+
- *   - Stats strip wraps properly
- *   - Padding and font sizes scale down
+ * Client interactivity delegated to:
+ *   - ConstructorCharts  (components/teams/ConstructorCharts.tsx)
+ *   - HoverCard          (components/ui/HoverCard.tsx)
+ *   - ClickRow           (components/ui/ClickRow.tsx)
  */
 
 import Link from "next/link";
 import { getConstructorStandings } from "@/lib/api/jolpica";
 import constructorsData from "@/lib/data/constructors.json";
+import ConstructorCharts from "@/components/teams/ConstructorCharts";
+import HoverCard from "@/components/ui/HoverCard";
+import ClickRow from "@/components/ui/ClickRow";
 
-/* IDs of the 10 current F1 constructors — used as a fallback filter */
-const CURRENT_CONSTRUCTOR_IDS = [
-  "ferrari",
-  "mercedes",
-  "red_bull",
-  "mclaren",
-  "alpine",
-  "aston_martin",
-  "williams",
-  "haas",
-  "rb",
-  "sauber",
+const CURRENT_IDS = [
+  "ferrari", "mercedes", "red_bull", "mclaren", "alpine",
+  "aston_martin", "williams", "haas", "rb", "sauber",
 ];
 
-export default async function TeamsPage() {
-  /* Fetch live standings; fall back to empty array on error */
-  let standings: any[] = [];
-  try {
-    standings = await getConstructorStandings("current");
-  } catch {
-    /* standings remains [] */
-  }
+const PODIUM_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32"];
 
-  /* Merge API standings with local enrichment data */
-  const teams =
-    standings.length > 0
-      ? standings.map((s: any) => {
-          /* Find matching local record by id or partial name match */
-          const local = constructorsData.find(
-            (c) =>
-              c.id === s.Constructor.constructorId ||
-              s.Constructor.name.toLowerCase().includes(c.id.replace("_", " ")),
-          );
-          return {
-            constructorId: s.Constructor.constructorId,
-            name: s.Constructor.name,
-            nationality: s.Constructor.nationality,
-            position: parseInt(s.position) || 0,
-            points: parseFloat(s.points) || 0,
-            wins: parseInt(s.wins) || 0,
-            championships: local?.championships ?? 0,
-            color: local?.color ?? "#E10600",
-            base: local?.base ?? "",
-            founded: local?.founded ?? 0,
-          };
-        })
-      : /* Fallback: static data from JSON when API is unavailable */
-        constructorsData.map((c, i) => ({
+export default async function TeamsPage() {
+  // ── Data fetching ──────────────────────────────────────────────────────────
+  let standings: any[] = [];
+  try { standings = await getConstructorStandings("current"); } catch {}
+
+  // ── Data normalisation ─────────────────────────────────────────────────────
+  const teams = standings.length > 0
+    ? standings.map((s: any) => {
+        const local = constructorsData.find(
+          (c) => c.id === s.Constructor.constructorId ||
+            s.Constructor.name.toLowerCase().includes(c.id.replace("_", " "))
+        );
+        return {
+          constructorId: s.Constructor.constructorId,
+          name:          s.Constructor.name,
+          nationality:   s.Constructor.nationality,
+          position:      parseInt(s.position) || 0,
+          points:        parseFloat(s.points) || 0,
+          wins:          parseInt(s.wins) || 0,
+          championships: local?.championships ?? 0,
+          color:         local?.color ?? "#E10600",
+          base:          local?.base ?? "",
+          founded:       local?.founded ?? 0,
+        };
+      })
+    : constructorsData
+        .filter((c) => CURRENT_IDS.includes(c.id))
+        .map((c, i) => ({
           constructorId: c.id,
-          name: c.name,
-          nationality: c.nationality,
-          position: i + 1,
-          points: 0,
-          wins: 0,
+          name: c.name, nationality: c.nationality,
+          position: i + 1, points: 0, wins: 0,
           championships: c.championships,
-          color: c.color,
-          base: c.base,
-          founded: c.founded,
+          color: c.color, base: c.base, founded: c.founded,
         }));
 
-  /* Filter to current-grid constructors only */
-  const currentTeams = teams.filter((t) =>
-    standings.length > 0
-      ? true
-      : CURRENT_CONSTRUCTOR_IDS.includes(t.constructorId),
-  );
+  const currentTeams = standings.length > 0
+    ? teams
+    : teams.filter((t) => CURRENT_IDS.includes(t.constructorId));
 
-  /* Pre-compute total wins for the stats strip */
-  const totalWins =
-    standings.length > 0
-      ? standings.reduce(
-          (sum: number, t: any) => sum + (parseInt(t.wins) || 0),
-          0,
-        )
-      : null;
+  const totalPoints = currentTeams.reduce((s, t) => s + t.points, 0);
+  const totalWins   = currentTeams.reduce((s, t) => s + t.wins, 0);
+  const maxPoints   = currentTeams[0]?.points || 1;
 
   return (
-    <main className="min-h-screen bg-[#060606]">
-      {/* ── Hero Section (responsive) ──────────────────────────────────── */}
-      <section className="relative border-b border-white/10 overflow-hidden">
-        {/* Red top line */}
-        <div className="h-[2px] bg-[#E10600]" />
+    <main style={{ minHeight: "100vh", background: "#060606" }}>
 
-        {/* Giant F1 watermark - hidden on very small screens if needed, but scaled via clamp */}
-        <div className="absolute right-0 top-0 bottom-0 flex items-center pr-4 md:pr-8 pointer-events-none select-none">
-          <span className="font-display text-[clamp(6rem,15vw,18rem)] text-white/5 leading-none tracking-[-0.04em]">
-            F1
-          </span>
+      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      <section style={{
+        position: "relative", overflow: "hidden",
+        borderBottom: "1px solid rgba(255,255,255,0.07)",
+        background: "#060606",
+      }}>
+        <div style={{ height: "2px", background: "#E10600" }} />
+
+        {/* Noise texture */}
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 0,
+          pointerEvents: "none", opacity: 0.3, mixBlendMode: "overlay",
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.1'/%3E%3C/svg%3E")`,
+          backgroundSize: "160px",
+        }} />
+
+        {/* Grid lines */}
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none",
+          backgroundImage: `linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)`,
+          backgroundSize: "40px 40px",
+        }} />
+
+        {/* Red bloom */}
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none",
+          background: "radial-gradient(ellipse 70% 60% at 0% 50%, rgba(225,6,0,0.09) 0%, transparent 60%)",
+        }} />
+
+        {/* Watermark — hidden on very small screens via clamp down to 0 width overflow */}
+        <div style={{
+          position: "absolute", right: 0, top: 0, bottom: 0,
+          display: "flex", alignItems: "center", paddingRight: "2vw",
+          zIndex: 0, pointerEvents: "none", userSelect: "none",
+        }}>
+          <span style={{
+            fontFamily: "'Russo One', sans-serif",
+            fontSize: "clamp(4rem, 18vw, 20rem)",
+            color: "transparent",
+            WebkitTextStroke: "1px rgba(255,255,255,0.025)",
+            lineHeight: 1, letterSpacing: "-0.04em",
+          }}>CTORS</span>
         </div>
 
-        {/* Hero content container */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
-          {/* Back link */}
-          <Link href="/" className="nav-back inline-flex mb-6 md:mb-8">
-            ← Home
-          </Link>
+        <div style={{
+          maxWidth: "1280px", margin: "0 auto",
+          padding: "clamp(1.5rem,5vw,3.5rem) clamp(1rem,4vw,1.5rem)",
+          position: "relative", zIndex: 1,
+        }}>
+          <Link href="/" style={{
+            display: "inline-flex", alignItems: "center", gap: "0.5rem",
+            fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem",
+            letterSpacing: "0.18em", textTransform: "uppercase",
+            color: "rgba(255,255,255,0.28)", textDecoration: "none",
+            marginBottom: "1.5rem",
+          }}>← Home</Link>
 
-          {/* Season label */}
-          <div className="label-overline mb-2">Formula 1 · 2026 Season</div>
+          <div style={{
+            fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem",
+            letterSpacing: "0.22em", textTransform: "uppercase",
+            color: "#E10600", marginBottom: "0.6rem",
+          }}>Formula 1 · 2026 Season</div>
 
-          {/* Page title - responsive clamp */}
-          <h1 className="font-display text-[clamp(2.5rem,8vw,6rem)] text-white leading-[0.92] tracking-[-0.02em] mb-4">
-            CONSTRUCTOR
-            <br />
-            <span className="text-white/15">STANDINGS</span>
+          <h1 style={{
+            fontFamily: "'Russo One', sans-serif",
+            // Tighter minimum so it doesn't overflow on small phones
+            fontSize: "clamp(2rem, 8vw, 7rem)",
+            lineHeight: 0.9, letterSpacing: "-0.02em",
+            textTransform: "uppercase", color: "white", margin: "0 0 1.5rem",
+          }}>
+            Constructor<br />
+            <span style={{ color: "rgba(255,255,255,0.12)" }}>Standings</span>
           </h1>
 
-          <p className="text-white/40 text-sm md:text-base max-w-md mb-8">
-            All ten Formula 1 constructors — points, wins, and championship
-            history.
-          </p>
-
-          {/* Key stats strip - wraps on mobile */}
-          <div className="inline-flex flex-wrap border-t border-white/10">
+          {/*
+            Stats strip — on mobile this wraps into a 2-column grid.
+            We can't use a media query in inline styles so we use a
+            flex-wrap approach with min-width on each item.
+          */}
+          <div style={{
+            display: "flex", flexWrap: "wrap", gap: "0",
+            borderTop: "1px solid rgba(255,255,255,0.06)",
+          }}>
             {[
-              { value: "10", label: "Teams" },
-              {
-                value: totalWins !== null ? String(totalWins) : "—",
-                label: "Wins",
-              },
-              { value: "10", label: "Nations" },
+              { value: "10",                label: "Constructors",  sub: "on the grid"    },
+              { value: String(totalWins),   label: "Race Wins",     sub: "this season"    },
+              { value: String(totalPoints), label: "Points Scored", sub: "combined total" },
             ].map((s, i) => (
-              <div
-                key={i}
-                className="px-6 md:px-8 pt-4 first:pl-0 last:pr-0"
-                style={{
-                  borderRight:
-                    i < 2 ? "1px solid rgba(255,255,255,0.06)" : "none",
-                }}
-              >
-                <div className="stat-value text-2xl md:text-3xl">{s.value}</div>
-                <div className="stat-label text-[0.65rem] md:text-[0.7rem]">
-                  {s.label}
-                </div>
+              <div key={i} style={{
+                // min-width forces wrap into 2-up on narrow screens
+                minWidth: "120px",
+                padding: "1rem 1.75rem 1rem 0",
+                marginRight: "1.75rem",
+                borderRight: i < 2 ? "1px solid rgba(255,255,255,0.06)" : "none",
+              }}>
+                <div style={{
+                  fontFamily: "'Russo One', sans-serif",
+                  fontSize: "clamp(1.3rem, 4vw, 2.4rem)",
+                  color: i === 0 ? "#E10600" : "white",
+                  lineHeight: 1, letterSpacing: "-0.02em",
+                }}>{s.value}</div>
+                <div style={{
+                  fontFamily: "'JetBrains Mono', monospace", fontSize: "0.48rem",
+                  letterSpacing: "0.1em", textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.22)", marginTop: "3px",
+                }}>{s.label}</div>
+                <div style={{
+                  fontFamily: "'JetBrains Mono', monospace", fontSize: "0.42rem",
+                  letterSpacing: "0.08em", textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.12)", marginTop: "1px",
+                }}>{s.sub}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Main content container ────────────────────────────────────── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
-        {/* ── Top 3 Podium Cards ──────────────────────────────────────── */}
+      {/* ── Charts ── */}
+      <ConstructorCharts teams={currentTeams} />
+
+      <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "0 clamp(1rem,4vw,1.5rem)" }}>
+
+        {/* ── Podium bento ──────────────────────────────────────────────────
+            Uses CSS grid with auto-fit so it naturally goes:
+              mobile  → 1 column
+              tablet  → 2 columns
+              desktop → 3 columns
+        ── */}
         {currentTeams.length >= 3 && (
-          <div className="mb-8 md:mb-12">
-            <span className="label-overline block mb-4">Podium</span>
-            {/* Responsive grid: column on mobile, 3 columns on medium screens */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-white/5">
-              {currentTeams.slice(0, 3).map((team) => (
-                <div
-                  key={team.constructorId}
-                  className="bg-[#0a0a0a] p-5 md:p-6 relative overflow-hidden"
-                >
-                  {/* Team-colour top bar */}
-                  <div
-                    className="h-0.5 mb-5"
-                    style={{ background: team.color }}
-                  />
+          <div style={{ marginBottom: "2px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1rem" }}>
+              <div style={{ width: "16px", height: "2px", background: "#E10600" }} />
+              <span style={{
+                fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem",
+                letterSpacing: "0.2em", textTransform: "uppercase", color: "#E10600",
+              }}>Podium</span>
+            </div>
 
-                  {/* Position watermark */}
-                  <div className="absolute right-4 top-4 font-display text-6xl md:text-7xl text-white/5 leading-none">
-                    {team.position > 0 ? `P${team.position}` : "—"}
-                  </div>
+            <div style={{
+              display: "grid",
+              // auto-fit with 240px minimum: wraps to 1-col on mobile, 3-col on desktop
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              gap: "2px",
+              background: "rgba(255,255,255,0.04)",
+            }}>
+              {currentTeams.slice(0, 3).map((team, i) => (
+                <Link key={team.constructorId} href={`/teams/${team.constructorId}`} style={{ textDecoration: "none" }}>
+                  <HoverCard style={{
+                    borderTop: `2px solid ${team.color}`,
+                    padding: "1.5rem",
+                    position: "relative", overflow: "hidden", cursor: "pointer",
+                  }}>
+                    {/* Ghost position watermark */}
+                    <div style={{
+                      position: "absolute", right: "1rem", top: "1rem",
+                      fontFamily: "'Russo One', sans-serif",
+                      fontSize: "clamp(3rem, 8vw, 6rem)",
+                      color: "transparent",
+                      WebkitTextStroke: `1px ${team.color}18`,
+                      lineHeight: 1, userSelect: "none",
+                    }}>P{i + 1}</div>
 
-                  <div className="stat-label mb-1">{team.nationality}</div>
-                  <div className="font-display text-lg md:text-xl text-white leading-tight mb-4">
-                    {team.name}
-                  </div>
+                    {/* Position badge */}
+                    <div style={{
+                      fontFamily: "'Russo One', sans-serif",
+                      fontSize: "1.4rem", color: PODIUM_COLORS[i],
+                      lineHeight: 1, marginBottom: "0.5rem",
+                    }}>P{i + 1}</div>
 
-                  {/* Stats grid inside card */}
-                  <div className="grid grid-cols-3 gap-px bg-white/5">
-                    {[
-                      { label: "PTS", value: team.points, accent: false },
-                      { label: "Wins", value: team.wins, accent: false },
-                      {
-                        label: "Titles",
-                        value: team.championships,
-                        accent: team.championships > 0,
-                      },
-                    ].map((s, i) => (
-                      <div key={i} className="bg-[#0d0d0d] p-3 text-center">
-                        <div
-                          className="font-display text-xl md:text-2xl leading-tight"
-                          style={{ color: s.accent ? "#E10600" : "white" }}
-                        >
-                          {s.value}
-                        </div>
-                        <div className="stat-label text-[0.6rem] md:text-[0.65rem]">
-                          {s.label}
+                    {/* Team name */}
+                    <div style={{
+                      fontFamily: "'Russo One', sans-serif",
+                      fontSize: "clamp(1rem, 2.5vw, 1.35rem)",
+                      textTransform: "uppercase", color: "white",
+                      letterSpacing: "-0.01em", lineHeight: 1.05, marginBottom: "0.3rem",
+                    }}>{team.name}</div>
+
+                    {/* Nationality + year */}
+                    <div style={{
+                      fontFamily: "'JetBrains Mono', monospace", fontSize: "0.48rem",
+                      letterSpacing: "0.1em", textTransform: "uppercase",
+                      color: team.color, marginBottom: "1.25rem",
+                    }}>{team.nationality} · Est. {team.founded}</div>
+
+                    {/* Championship dot-matrix — capped at 20 dots */}
+                    {team.championships > 0 && (
+                      <div style={{ marginBottom: "1.25rem" }}>
+                        <div style={{
+                          fontFamily: "'JetBrains Mono', monospace", fontSize: "0.4rem",
+                          letterSpacing: "0.1em", textTransform: "uppercase",
+                          color: "rgba(255,255,255,0.18)", marginBottom: "5px",
+                        }}>{team.championships} WCC Title{team.championships !== 1 ? "s" : ""}</div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "3px" }}>
+                          {Array.from({ length: Math.min(team.championships, 20) }).map((_, j) => (
+                            <div key={j} style={{
+                              width: "8px", height: "8px", background: team.color,
+                              opacity: 0.7 + (j / Math.max(team.championships, 1)) * 0.3,
+                            }} />
+                          ))}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    )}
+
+                    {/* 3-cell mini stats */}
+                    <div style={{
+                      display: "grid", gridTemplateColumns: "repeat(3,1fr)",
+                      gap: "1px", background: "rgba(255,255,255,0.05)",
+                    }}>
+                      {[
+                        { label: "Points", value: team.points },
+                        { label: "Wins",   value: team.wins   },
+                        { label: "Base",   value: team.base.split(",")[0] },
+                      ].map(({ label, value }) => (
+                        <div key={label} style={{ background: "#080808", padding: "0.6rem 0.75rem" }}>
+                          <div style={{
+                            fontFamily: "'JetBrains Mono', monospace", fontSize: "0.4rem",
+                            letterSpacing: "0.08em", textTransform: "uppercase",
+                            color: "rgba(255,255,255,0.18)", marginBottom: "3px",
+                          }}>{label}</div>
+                          <div style={{
+                            fontFamily: "'Russo One', sans-serif",
+                            fontSize: "0.9rem", color: "white", lineHeight: 1,
+                          }}>{value}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* View profile hint */}
+                    <div style={{
+                      marginTop: "0.85rem",
+                      fontFamily: "'JetBrains Mono', monospace", fontSize: "0.44rem",
+                      letterSpacing: "0.14em", textTransform: "uppercase",
+                      color: team.color, display: "flex", alignItems: "center",
+                      gap: "4px", opacity: 0.7,
+                    }}>
+                      View Profile
+                      <svg width="8" height="8" viewBox="0 0 12 12" fill="none">
+                        <path d="M1 6h10M6 1l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                  </HoverCard>
+                </Link>
               ))}
             </div>
           </div>
         )}
 
-        {/* ── Full Standings Table (Horizontally Scrollable on Mobile) ── */}
-        <span className="label-overline block mb-4">Full Standings</span>
+        {/* ── Full standings table ───────────────────────────────────────────
+            Desktop: 7 columns — Pos / Constructor / Points / Wins / Pts% / Base / Titles
+            Mobile:  3 columns — Pos / Constructor+bar / Points
+            Column visibility is handled by passing mobileStyle to ClickRow and
+            wrapping secondary cells in a <span> with a className we hide via a
+            <style> tag injected below.
+        ── */}
+        <div style={{ marginBottom: "3rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", margin: "2rem 0 1rem" }}>
+            <div style={{ width: "16px", height: "2px", background: "rgba(255,255,255,0.2)" }} />
+            <span style={{
+              fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem",
+              letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)",
+            }}>Full Standings</span>
+          </div>
 
-        {/* Outer container for horizontal scroll on small screens */}
-        <div className="overflow-x-auto border border-white/10">
-          {/* Table header - min-width ensures scroll works */}
-          <div className="min-w-[640px] md:min-w-0">
-            {/* Header row */}
-            <div className="grid grid-cols-[3rem_1fr_5rem_5rem_6rem_5rem] bg-[#0d0d0d] border-b border-white/10 px-4 py-3">
-              {["Pos", "Constructor", "Pts", "Wins", "Base", "Titles"].map(
-                (h) => (
-                  <div
-                    key={h}
-                    className="stat-label text-[0.65rem] md:text-[0.7rem] m-0"
-                  >
-                    {h}
-                  </div>
-                ),
-              )}
+          {/*
+            Inline <style> to hide/show columns based on breakpoint.
+            We can't use Tailwind or CSS modules here since the whole file uses
+            inline styles — this is the cleanest escape hatch for a single rule.
+          */}
+          <style>{`
+            @media (max-width: 640px) {
+              .col-hide-mobile { display: none !important; }
+              .standings-grid  { grid-template-columns: 2.5rem 1fr 5rem !important; }
+            }
+          `}</style>
+
+          <div style={{ border: "1px solid rgba(255,255,255,0.07)", overflow: "hidden" }}>
+
+            {/* Header row — secondary columns get col-hide-mobile */}
+            <div
+              className="standings-grid"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "3rem 1fr 7rem 4rem 4rem 5rem 4rem",
+                padding: "0.65rem 1.25rem",
+                background: "#080808",
+                borderBottom: "1px solid rgba(255,255,255,0.07)",
+              }}
+            >
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.44rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>Pos</div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.44rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>Constructor</div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.44rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>Points</div>
+              <div className="col-hide-mobile" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.44rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>Wins</div>
+              <div className="col-hide-mobile" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.44rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>Pts%</div>
+              <div className="col-hide-mobile" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.44rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>Base</div>
+              <div className="col-hide-mobile" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.44rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>Titles</div>
             </div>
 
-            {/* Data rows */}
-            {currentTeams.map((team) => (
-              <div
-                key={team.constructorId}
-                className="grid grid-cols-[3rem_1fr_5rem_5rem_6rem_5rem] items-center px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors"
-              >
-                {/* Position */}
-                <div className="font-display text-base md:text-lg text-white">
-                  {team.position || "—"}
-                </div>
+            {currentTeams.map((team, i) => {
+              const pct = totalPoints > 0
+                ? ((team.points / totalPoints) * 100).toFixed(1)
+                : "0.0";
+              const isPodium = i < 3;
+              const posColor = isPodium ? PODIUM_COLORS[i] : "rgba(255,255,255,0.25)";
 
-                {/* Constructor name + colour stripe */}
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-0.5 h-5 flex-shrink-0"
-                    style={{ background: team.color }}
-                  />
-                  <div>
-                    <div className="font-display text-sm md:text-base text-white leading-tight">
-                      {team.name}
-                    </div>
-                    <div className="stat-label text-[0.6rem] md:text-[0.65rem] m-0">
-                      {team.nationality}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Points - red accent */}
-                <div className="font-display text-base md:text-lg text-[#E10600]">
-                  {team.points}
-                </div>
-
-                {/* Wins */}
-                <div className="data-readout text-sm md:text-base text-white/60">
-                  {team.wins}
-                </div>
-
-                {/* Base city */}
-                <div className="data-readout text-xs md:text-sm text-white/40">
-                  {team.base || "—"}
-                </div>
-
-                {/* Championships - red if >0 */}
-                <div
-                  className="font-display text-base md:text-lg"
+              return (
+                <ClickRow
+                  key={team.constructorId}
+                  href={`/teams/${team.constructorId}`}
+                  // Base style is the 7-column desktop layout
                   style={{
-                    color:
-                      team.championships > 0
-                        ? "#E10600"
-                        : "rgba(255,255,255,0.3)",
+                    display: "grid",
+                    gridTemplateColumns: "3rem 1fr 7rem 4rem 4rem 5rem 4rem",
+                    alignItems: "center",
+                    padding: "0.85rem 1.25rem",
+                    borderBottom: "1px solid rgba(255,255,255,0.04)",
+                    borderLeft: isPodium ? `2px solid ${posColor}` : "2px solid transparent",
                   }}
                 >
-                  {team.championships}
-                </div>
-              </div>
-            ))}
+                  {/* Position */}
+                  <span style={{
+                    fontFamily: "'Russo One', sans-serif",
+                    fontSize: isPodium ? "1rem" : "0.82rem",
+                    color: posColor, lineHeight: 1,
+                  }}>{team.position || i + 1}</span>
+
+                  {/* Name + points bar */}
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "4px" }}>
+                      <div style={{ width: "3px", height: "14px", background: team.color, flexShrink: 0 }} />
+                      <span style={{
+                        fontFamily: "'Russo One', sans-serif",
+                        fontSize: isPodium ? "0.88rem" : "0.78rem",
+                        textTransform: "uppercase", color: "white", letterSpacing: "-0.01em",
+                      }}>{team.name}</span>
+                    </div>
+                    <div style={{ height: "2px", background: "rgba(255,255,255,0.05)", marginLeft: "9px" }}>
+                      <div style={{
+                        height: "100%", width: `${(team.points / maxPoints) * 100}%`,
+                        background: team.color, opacity: 0.65,
+                        transition: "width 0.8s cubic-bezier(0.16,1,0.3,1)",
+                      }} />
+                    </div>
+                  </div>
+
+                  {/* Points */}
+                  <span style={{
+                    fontFamily: "'Russo One', sans-serif",
+                    fontSize: isPodium ? "1rem" : "0.85rem",
+                    color: isPodium ? "#E10600" : "rgba(255,255,255,0.7)", lineHeight: 1,
+                  }}>{team.points}</span>
+
+                  {/* Hidden on mobile ↓ */}
+                  <span className="col-hide-mobile" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", color: "rgba(255,255,255,0.45)" }}>{team.wins}</span>
+                  <span className="col-hide-mobile" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(255,255,255,0.28)" }}>{pct}%</span>
+                  <span className="col-hide-mobile" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(255,255,255,0.22)" }}>{team.base.split(",")[0]}</span>
+                  <span className="col-hide-mobile" style={{ fontFamily: "'Russo One', sans-serif", fontSize: "0.88rem", color: team.championships > 0 ? "#E10600" : "rgba(255,255,255,0.18)" }}>{team.championships || "—"}</span>
+                </ClickRow>
+              );
+            })}
           </div>
         </div>
 
-        {/* Back link at bottom */}
-        <div className="mt-8 pt-6 border-t border-white/10">
-          <Link href="/" className="nav-back">
-            ← Home
-          </Link>
+        {/* Footer back link */}
+        <div style={{
+          paddingBottom: "3rem",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          paddingTop: "1.5rem",
+        }}>
+          <Link href="/" style={{
+            fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem",
+            letterSpacing: "0.16em", textTransform: "uppercase",
+            color: "rgba(255,255,255,0.28)", textDecoration: "none",
+            display: "inline-flex", alignItems: "center", gap: "0.4rem",
+          }}>← Home</Link>
         </div>
       </div>
     </main>

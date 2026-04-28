@@ -12,7 +12,11 @@
  */
 
 import Link from "next/link";
-import { getRaceResults, getQualifyingResults, getRaceSchedule } from "@/lib/api/jolpica";
+import {
+  getRaceResults,
+  getQualifyingResults,
+  getRaceSchedule,
+} from "@/lib/api/jolpica";
 
 // Team colour mapping for constructor accents
 const TEAM_COLORS: Record<string, string> = {
@@ -44,15 +48,18 @@ export default async function RaceDetailPage({
   const { season, round } = await params;
 
   // Fetch all required data in parallel
-  const [raceResults, qualifyingResults, scheduleResult] = await Promise.allSettled([
-    getRaceResults(season, round),
-    getQualifyingResults(season, round),
-    getRaceSchedule(season),
-  ]);
+  const [raceResults, qualifyingResults, scheduleResult] =
+    await Promise.allSettled([
+      getRaceResults(season, round),
+      getQualifyingResults(season, round),
+      getRaceSchedule(season),
+    ]);
 
   const race = raceResults.status === "fulfilled" ? raceResults.value : null;
-  const qualifying = qualifyingResults.status === "fulfilled" ? qualifyingResults.value : null;
-  const schedule = scheduleResult.status === "fulfilled" ? scheduleResult.value : [];
+  const qualifying =
+    qualifyingResults.status === "fulfilled" ? qualifyingResults.value : null;
+  const schedule =
+    scheduleResult.status === "fulfilled" ? scheduleResult.value : [];
   const scheduleRace = schedule?.find((r: any) => r.round === round);
   const raceInfo = race || scheduleRace;
 
@@ -74,7 +81,8 @@ export default async function RaceDetailPage({
   }
 
   const hasResults = race?.Results && race.Results.length > 0;
-  const hasQualifying = qualifying?.QualifyingResults && qualifying.QualifyingResults.length > 0;
+  const hasQualifying =
+    qualifying?.QualifyingResults && qualifying.QualifyingResults.length > 0;
   const raceDate = raceInfo.date ? new Date(raceInfo.date) : null;
 
   return (
@@ -114,7 +122,8 @@ export default async function RaceDetailPage({
 
           {/* Location and date */}
           <p className="text-white/40 text-sm md:text-base tracking-wide">
-            {raceInfo.Circuit?.Location?.locality}, {raceInfo.Circuit?.Location?.country}
+            {raceInfo.Circuit?.Location?.locality},{" "}
+            {raceInfo.Circuit?.Location?.country}
             {raceDate &&
               ` · ${raceDate.toLocaleDateString("en-US", {
                 month: "long",
@@ -164,7 +173,9 @@ export default async function RaceDetailPage({
                   const pos = parseInt(result.position);
                   const isWin = pos === 1;
                   const isPodium = pos <= 3;
-                  const teamColor = getTeamColor(result.Constructor?.name || "");
+                  const teamColor = getTeamColor(
+                    result.Constructor?.name || "",
+                  );
                   return (
                     <div
                       key={result.position}
@@ -174,7 +185,11 @@ export default async function RaceDetailPage({
                       <div
                         className="font-display text-base"
                         style={{
-                          color: isWin ? "#FFD700" : isPodium ? "#FF8C00" : "white",
+                          color: isWin
+                            ? "#FFD700"
+                            : isPodium
+                              ? "#FF8C00"
+                              : "white",
                         }}
                       >
                         {result.position}
@@ -187,7 +202,8 @@ export default async function RaceDetailPage({
                           className="no-underline hover:opacity-80 transition"
                         >
                           <div className="font-display text-sm text-white leading-tight">
-                            {result.Driver?.givenName} {result.Driver?.familyName}
+                            {result.Driver?.givenName}{" "}
+                            {result.Driver?.familyName}
                           </div>
                           <div className="font-mono text-[0.6rem] text-white/40">
                             {result.status}
@@ -253,7 +269,9 @@ export default async function RaceDetailPage({
 
                 {/* Rows */}
                 {qualifying.QualifyingResults.map((result: any) => {
-                  const teamColor = getTeamColor(result.Constructor?.name || "");
+                  const teamColor = getTeamColor(
+                    result.Constructor?.name || "",
+                  );
                   const isPole = result.position === "1";
                   return (
                     <div
@@ -275,7 +293,8 @@ export default async function RaceDetailPage({
                           className="no-underline hover:opacity-80 transition"
                         >
                           <div className="font-display text-sm text-white">
-                            {result.Driver?.givenName} {result.Driver?.familyName}
+                            {result.Driver?.givenName}{" "}
+                            {result.Driver?.familyName}
                           </div>
                         </Link>
                       </div>
