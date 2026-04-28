@@ -6,15 +6,15 @@
  * Falls back to constructors.json static data if the API call fails.
  *
  * Mobile responsive strategy:
- *   - Hero stats strip wraps to 2-col grid on mobile
- *   - Podium bento collapses from 3-col to 1-col on mobile
- *   - Standings table hides Pts%, Base, Titles columns on mobile
- *     and uses a simpler 3-column grid (pos / name+bar / points)
- *
- * Client interactivity delegated to:
- *   - ConstructorCharts  (components/teams/ConstructorCharts.tsx)
- *   - HoverCard          (components/ui/HoverCard.tsx)
- *   - ClickRow           (components/ui/ClickRow.tsx)
+ *   - A single <style> block at the top of the JSX owns ALL responsive rules.
+ *   - Hero stats strip: flex-wrap into 2-col on mobile (<480px)
+ *   - Podium bento: 3-col → 1-col via auto-fit minmax grid
+ *   - Standings table:
+ *       desktop (>640px): 7 columns  — pos / name+bar / pts / wins / pts% / base / titles
+ *       mobile  (≤640px): 3 columns  — pos / name+bar / pts
+ *       Secondary columns carry class "col-hide-mobile"
+ *   - Typography: clamp() throughout so nothing overflows or feels cramped.
+ *   - Touch targets: all interactive rows ≥ 44px tall on mobile.
  */
 
 import Link from "next/link";
@@ -77,15 +77,87 @@ export default async function TeamsPage() {
   return (
     <main style={{ minHeight: "100vh", background: "#060606" }}>
 
+      {/*
+        ── Global responsive stylesheet ────────────────────────────────────────
+        Kept in one place so all breakpoint rules are easy to audit/change.
+        We use a single <style> tag rather than scattering media queries as
+        inline styles cannot express them.
+      */}
+      <style>{`
+        /* ── Mobile: ≤ 640px ───────────────────────────────────────────────── */
+        @media (max-width: 640px) {
+
+          /* Hide secondary table/header columns */
+          .col-hide-mobile { display: none !important; }
+
+          /* Collapse standings grid to 3 visible columns */
+          .standings-row {
+            grid-template-columns: 2.5rem 1fr 4.5rem !important;
+          }
+
+          /* Tighten row padding for thumb-friendliness (min 44px touch target) */
+          .standings-data-row {
+            padding: 0.75rem 0.875rem !important;
+            min-height: 44px;
+          }
+
+          /* Tighten header row padding to match */
+          .standings-header-row {
+            padding: 0.5rem 0.875rem !important;
+          }
+
+          /* Stats strip: wrap into 2-col grid */
+          .stats-strip {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 0 !important;
+          }
+          .stats-strip > div {
+            margin-right: 0 !important;
+            border-right: none !important;
+            border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+            padding: 0.875rem 0.75rem !important;
+            min-width: 0 !important;
+          }
+          /* Third stat spans full width */
+          .stats-strip > div:last-child {
+            grid-column: 1 / -1;
+            border-bottom: none !important;
+          }
+        }
+
+        /* ── Tablet: 641–1024px ────────────────────────────────────────────── */
+        @media (min-width: 641px) and (max-width: 1024px) {
+          /* Keep most columns but let Base & Titles hide if tight */
+          .standings-row {
+            grid-template-columns: 3rem 1fr 6rem 4rem 4rem 5rem 4rem !important;
+          }
+        }
+
+        /* ── Podium cards: ensure single column on very small screens ──────── */
+        @media (max-width: 480px) {
+          .podium-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
+        /* ── Smooth bar transition for all widths ───────────────────────────── */
+        .pts-bar { transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+
+        /* ── Touch-friendly clickable rows ─────────────────────────────────── */
+        .standings-data-row:active { background: rgba(255,255,255,0.04); }
+      `}</style>
+
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <section style={{
         position: "relative", overflow: "hidden",
         borderBottom: "1px solid rgba(255,255,255,0.07)",
         background: "#060606",
       }}>
+        {/* Red top bar */}
         <div style={{ height: "2px", background: "#E10600" }} />
 
-        {/* Noise texture */}
+        {/* Noise texture overlay */}
         <div style={{
           position: "absolute", inset: 0, zIndex: 0,
           pointerEvents: "none", opacity: 0.3, mixBlendMode: "overlay",
@@ -96,77 +168,92 @@ export default async function TeamsPage() {
         {/* Grid lines */}
         <div style={{
           position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none",
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)`,
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)
+          `,
           backgroundSize: "40px 40px",
         }} />
 
-        {/* Red bloom */}
+        {/* Red radial bloom */}
         <div style={{
           position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none",
           background: "radial-gradient(ellipse 70% 60% at 0% 50%, rgba(225,6,0,0.09) 0%, transparent 60%)",
         }} />
 
-        {/* Watermark — hidden on very small screens via clamp down to 0 width overflow */}
+        {/* Decorative watermark — scales down gracefully */}
         <div style={{
           position: "absolute", right: 0, top: 0, bottom: 0,
           display: "flex", alignItems: "center", paddingRight: "2vw",
           zIndex: 0, pointerEvents: "none", userSelect: "none",
+          overflow: "hidden",
         }}>
           <span style={{
             fontFamily: "'Russo One', sans-serif",
-            fontSize: "clamp(4rem, 18vw, 20rem)",
+            fontSize: "clamp(3rem, 16vw, 20rem)",
             color: "transparent",
             WebkitTextStroke: "1px rgba(255,255,255,0.025)",
             lineHeight: 1, letterSpacing: "-0.04em",
           }}>CTORS</span>
         </div>
 
+        {/* Hero content */}
         <div style={{
           maxWidth: "1280px", margin: "0 auto",
-          padding: "clamp(1.5rem,5vw,3.5rem) clamp(1rem,4vw,1.5rem)",
+          padding: "clamp(1.25rem, 5vw, 3.5rem) clamp(1rem, 4vw, 1.5rem)",
           position: "relative", zIndex: 1,
         }}>
           <Link href="/" style={{
             display: "inline-flex", alignItems: "center", gap: "0.5rem",
-            fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem",
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: "clamp(0.55rem, 1.8vw, 0.65rem)",
             letterSpacing: "0.18em", textTransform: "uppercase",
             color: "rgba(255,255,255,0.28)", textDecoration: "none",
             marginBottom: "1.5rem",
+            /* Ensure tappable on mobile */
+            minHeight: "44px", alignSelf: "flex-start",
+            paddingTop: "0.4rem",
           }}>← Home</Link>
 
           <div style={{
-            fontFamily: "'JetBrains Mono', monospace", fontSize: "0.55rem",
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: "clamp(0.5rem, 1.5vw, 0.55rem)",
             letterSpacing: "0.22em", textTransform: "uppercase",
             color: "#E10600", marginBottom: "0.6rem",
           }}>Formula 1 · 2026 Season</div>
 
           <h1 style={{
             fontFamily: "'Russo One', sans-serif",
-            // Tighter minimum so it doesn't overflow on small phones
             fontSize: "clamp(2rem, 8vw, 7rem)",
             lineHeight: 0.9, letterSpacing: "-0.02em",
-            textTransform: "uppercase", color: "white", margin: "0 0 1.5rem",
+            textTransform: "uppercase", color: "white",
+            margin: "0 0 clamp(1rem, 3vw, 1.5rem)",
           }}>
             Constructor<br />
             <span style={{ color: "rgba(255,255,255,0.12)" }}>Standings</span>
           </h1>
 
           {/*
-            Stats strip — on mobile this wraps into a 2-column grid.
-            We can't use a media query in inline styles so we use a
-            flex-wrap approach with min-width on each item.
+            Stats strip.
+            On desktop: flex row with dividers.
+            On mobile (≤640px): .stats-strip CSS turns it into a 2-column grid.
+            We use a wrapper div with className so the media query can target it.
           */}
-          <div style={{
-            display: "flex", flexWrap: "wrap", gap: "0",
-            borderTop: "1px solid rgba(255,255,255,0.06)",
-          }}>
+          <div
+            className="stats-strip"
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "0",
+              borderTop: "1px solid rgba(255,255,255,0.06)",
+            }}
+          >
             {[
               { value: "10",                label: "Constructors",  sub: "on the grid"    },
               { value: String(totalWins),   label: "Race Wins",     sub: "this season"    },
               { value: String(totalPoints), label: "Points Scored", sub: "combined total" },
             ].map((s, i) => (
               <div key={i} style={{
-                // min-width forces wrap into 2-up on narrow screens
                 minWidth: "120px",
                 padding: "1rem 1.75rem 1rem 0",
                 marginRight: "1.75rem",
@@ -174,17 +261,19 @@ export default async function TeamsPage() {
               }}>
                 <div style={{
                   fontFamily: "'Russo One', sans-serif",
-                  fontSize: "clamp(1.3rem, 4vw, 2.4rem)",
+                  fontSize: "clamp(1.4rem, 5vw, 2.4rem)",
                   color: i === 0 ? "#E10600" : "white",
                   lineHeight: 1, letterSpacing: "-0.02em",
                 }}>{s.value}</div>
                 <div style={{
-                  fontFamily: "'JetBrains Mono', monospace", fontSize: "0.48rem",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: "clamp(0.5rem, 1.5vw, 0.52rem)",
                   letterSpacing: "0.1em", textTransform: "uppercase",
                   color: "rgba(255,255,255,0.22)", marginTop: "3px",
                 }}>{s.label}</div>
                 <div style={{
-                  fontFamily: "'JetBrains Mono', monospace", fontSize: "0.42rem",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: "clamp(0.42rem, 1.3vw, 0.44rem)",
                   letterSpacing: "0.08em", textTransform: "uppercase",
                   color: "rgba(255,255,255,0.12)", marginTop: "1px",
                 }}>{s.sub}</div>
@@ -197,66 +286,86 @@ export default async function TeamsPage() {
       {/* ── Charts ── */}
       <ConstructorCharts teams={currentTeams} />
 
-      <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "0 clamp(1rem,4vw,1.5rem)" }}>
+      <div style={{
+        maxWidth: "1280px", margin: "0 auto",
+        padding: "0 clamp(0.75rem, 4vw, 1.5rem)",
+      }}>
 
         {/* ── Podium bento ──────────────────────────────────────────────────
-            Uses CSS grid with auto-fit so it naturally goes:
-              mobile  → 1 column
-              tablet  → 2 columns
-              desktop → 3 columns
-        ── */}
+            auto-fit minmax(240px, 1fr) naturally gives:
+              <480px  → 1 column  (overridden by .podium-grid CSS above)
+              480–760 → 2 columns
+              >760px  → 3 columns
+        */}
         {currentTeams.length >= 3 && (
           <div style={{ marginBottom: "2px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1rem" }}>
+            {/* Section label */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: "0.6rem",
+              marginBottom: "1rem", marginTop: "clamp(1rem, 3vw, 2rem)",
+            }}>
               <div style={{ width: "16px", height: "2px", background: "#E10600" }} />
               <span style={{
-                fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem",
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "clamp(0.5rem, 1.5vw, 0.52rem)",
                 letterSpacing: "0.2em", textTransform: "uppercase", color: "#E10600",
               }}>Podium</span>
             </div>
 
-            <div style={{
-              display: "grid",
-              // auto-fit with 240px minimum: wraps to 1-col on mobile, 3-col on desktop
-              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-              gap: "2px",
-              background: "rgba(255,255,255,0.04)",
-            }}>
+            <div
+              className="podium-grid"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                gap: "2px",
+                background: "rgba(255,255,255,0.04)",
+              }}
+            >
               {currentTeams.slice(0, 3).map((team, i) => (
-                <Link key={team.constructorId} href={`/teams/${team.constructorId}`} style={{ textDecoration: "none" }}>
+                <Link
+                  key={team.constructorId}
+                  href={`/teams/${team.constructorId}`}
+                  style={{ textDecoration: "none" }}
+                >
                   <HoverCard style={{
                     borderTop: `2px solid ${team.color}`,
-                    padding: "1.5rem",
+                    padding: "clamp(1rem, 3vw, 1.5rem)",
                     position: "relative", overflow: "hidden", cursor: "pointer",
+                    /* Full-height card so grid rows align */
+                    height: "100%", boxSizing: "border-box",
                   }}>
                     {/* Ghost position watermark */}
                     <div style={{
                       position: "absolute", right: "1rem", top: "1rem",
                       fontFamily: "'Russo One', sans-serif",
-                      fontSize: "clamp(3rem, 8vw, 6rem)",
+                      fontSize: "clamp(3rem, 10vw, 6rem)",
                       color: "transparent",
                       WebkitTextStroke: `1px ${team.color}18`,
                       lineHeight: 1, userSelect: "none",
+                      pointerEvents: "none",
                     }}>P{i + 1}</div>
 
                     {/* Position badge */}
                     <div style={{
                       fontFamily: "'Russo One', sans-serif",
-                      fontSize: "1.4rem", color: PODIUM_COLORS[i],
+                      fontSize: "clamp(1.1rem, 3vw, 1.4rem)",
+                      color: PODIUM_COLORS[i],
                       lineHeight: 1, marginBottom: "0.5rem",
                     }}>P{i + 1}</div>
 
                     {/* Team name */}
                     <div style={{
                       fontFamily: "'Russo One', sans-serif",
-                      fontSize: "clamp(1rem, 2.5vw, 1.35rem)",
+                      fontSize: "clamp(0.95rem, 2.5vw, 1.35rem)",
                       textTransform: "uppercase", color: "white",
-                      letterSpacing: "-0.01em", lineHeight: 1.05, marginBottom: "0.3rem",
+                      letterSpacing: "-0.01em", lineHeight: 1.05,
+                      marginBottom: "0.3rem",
                     }}>{team.name}</div>
 
-                    {/* Nationality + year */}
+                    {/* Nationality + founded */}
                     <div style={{
-                      fontFamily: "'JetBrains Mono', monospace", fontSize: "0.48rem",
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: "clamp(0.48rem, 1.4vw, 0.52rem)",
                       letterSpacing: "0.1em", textTransform: "uppercase",
                       color: team.color, marginBottom: "1.25rem",
                     }}>{team.nationality} · Est. {team.founded}</div>
@@ -265,10 +374,13 @@ export default async function TeamsPage() {
                     {team.championships > 0 && (
                       <div style={{ marginBottom: "1.25rem" }}>
                         <div style={{
-                          fontFamily: "'JetBrains Mono', monospace", fontSize: "0.4rem",
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: "clamp(0.38rem, 1.2vw, 0.42rem)",
                           letterSpacing: "0.1em", textTransform: "uppercase",
                           color: "rgba(255,255,255,0.18)", marginBottom: "5px",
-                        }}>{team.championships} WCC Title{team.championships !== 1 ? "s" : ""}</div>
+                        }}>
+                          {team.championships} WCC Title{team.championships !== 1 ? "s" : ""}
+                        </div>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: "3px" }}>
                           {Array.from({ length: Math.min(team.championships, 20) }).map((_, j) => (
                             <div key={j} style={{
@@ -292,13 +404,15 @@ export default async function TeamsPage() {
                       ].map(({ label, value }) => (
                         <div key={label} style={{ background: "#080808", padding: "0.6rem 0.75rem" }}>
                           <div style={{
-                            fontFamily: "'JetBrains Mono', monospace", fontSize: "0.4rem",
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: "clamp(0.38rem, 1.2vw, 0.42rem)",
                             letterSpacing: "0.08em", textTransform: "uppercase",
                             color: "rgba(255,255,255,0.18)", marginBottom: "3px",
                           }}>{label}</div>
                           <div style={{
                             fontFamily: "'Russo One', sans-serif",
-                            fontSize: "0.9rem", color: "white", lineHeight: 1,
+                            fontSize: "clamp(0.8rem, 2vw, 0.9rem)",
+                            color: "white", lineHeight: 1,
                           }}>{value}</div>
                         </div>
                       ))}
@@ -307,7 +421,8 @@ export default async function TeamsPage() {
                     {/* View profile hint */}
                     <div style={{
                       marginTop: "0.85rem",
-                      fontFamily: "'JetBrains Mono', monospace", fontSize: "0.44rem",
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: "clamp(0.42rem, 1.3vw, 0.48rem)",
                       letterSpacing: "0.14em", textTransform: "uppercase",
                       color: team.color, display: "flex", alignItems: "center",
                       gap: "4px", opacity: 0.7,
@@ -324,39 +439,32 @@ export default async function TeamsPage() {
           </div>
         )}
 
-        {/* ── Full standings table ───────────────────────────────────────────
-            Desktop: 7 columns — Pos / Constructor / Points / Wins / Pts% / Base / Titles
-            Mobile:  3 columns — Pos / Constructor+bar / Points
-            Column visibility is handled by passing mobileStyle to ClickRow and
-            wrapping secondary cells in a <span> with a className we hide via a
-            <style> tag injected below.
-        ── */}
+        {/* ── Full standings table ────────────────────────────────────────────
+            Desktop (>640px): 7 columns — Pos / Constructor / Points / Wins / Pts% / Base / Titles
+            Mobile  (≤640px): 3 columns — Pos / Constructor+bar / Points
+            Secondary columns carry className="col-hide-mobile col-hide-tablet"
+            The grid reflow is handled by the <style> block at the top of the JSX.
+        */}
         <div style={{ marginBottom: "3rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", margin: "2rem 0 1rem" }}>
+          {/* Section label */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: "0.6rem",
+            margin: "clamp(1.5rem, 4vw, 2rem) 0 1rem",
+          }}>
             <div style={{ width: "16px", height: "2px", background: "rgba(255,255,255,0.2)" }} />
             <span style={{
-              fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem",
-              letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)",
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "clamp(0.5rem, 1.5vw, 0.52rem)",
+              letterSpacing: "0.2em", textTransform: "uppercase",
+              color: "rgba(255,255,255,0.25)",
             }}>Full Standings</span>
           </div>
 
-          {/*
-            Inline <style> to hide/show columns based on breakpoint.
-            We can't use Tailwind or CSS modules here since the whole file uses
-            inline styles — this is the cleanest escape hatch for a single rule.
-          */}
-          <style>{`
-            @media (max-width: 640px) {
-              .col-hide-mobile { display: none !important; }
-              .standings-grid  { grid-template-columns: 2.5rem 1fr 5rem !important; }
-            }
-          `}</style>
-
           <div style={{ border: "1px solid rgba(255,255,255,0.07)", overflow: "hidden" }}>
 
-            {/* Header row — secondary columns get col-hide-mobile */}
+            {/* ── Header row ── */}
             <div
-              className="standings-grid"
+              className="standings-row standings-header-row"
               style={{
                 display: "grid",
                 gridTemplateColumns: "3rem 1fr 7rem 4rem 4rem 5rem 4rem",
@@ -365,15 +473,29 @@ export default async function TeamsPage() {
                 borderBottom: "1px solid rgba(255,255,255,0.07)",
               }}
             >
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.44rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>Pos</div>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.44rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>Constructor</div>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.44rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>Points</div>
-              <div className="col-hide-mobile" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.44rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>Wins</div>
-              <div className="col-hide-mobile" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.44rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>Pts%</div>
-              <div className="col-hide-mobile" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.44rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>Base</div>
-              <div className="col-hide-mobile" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.44rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>Titles</div>
+              {[
+                { label: "Pos",   hide: false },
+                { label: "Constructor", hide: false },
+                { label: "Points", hide: false },
+                { label: "Wins",  hide: true  },
+                { label: "Pts%",  hide: true  },
+                { label: "Base",  hide: true  },
+                { label: "Titles", hide: true },
+              ].map(({ label, hide }) => (
+                <div
+                  key={label}
+                  className={hide ? "col-hide-mobile" : undefined}
+                  style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: "clamp(0.42rem, 1.3vw, 0.48rem)",
+                    letterSpacing: "0.12em", textTransform: "uppercase",
+                    color: "rgba(255,255,255,0.2)",
+                  }}
+                >{label}</div>
+              ))}
             </div>
 
+            {/* ── Data rows ── */}
             {currentTeams.map((team, i) => {
               const pct = totalPoints > 0
                 ? ((team.points / totalPoints) * 100).toFixed(1)
@@ -382,58 +504,114 @@ export default async function TeamsPage() {
               const posColor = isPodium ? PODIUM_COLORS[i] : "rgba(255,255,255,0.25)";
 
               return (
-                <ClickRow
+                <div
                   key={team.constructorId}
-                  href={`/teams/${team.constructorId}`}
-                  // Base style is the 7-column desktop layout
+                  className="standings-row standings-data-row"
                   style={{
                     display: "grid",
                     gridTemplateColumns: "3rem 1fr 7rem 4rem 4rem 5rem 4rem",
                     alignItems: "center",
                     padding: "0.85rem 1.25rem",
+                    minHeight: "44px",
                     borderBottom: "1px solid rgba(255,255,255,0.04)",
                     borderLeft: isPodium ? `2px solid ${posColor}` : "2px solid transparent",
                   }}
                 >
-                  {/* Position */}
+                <ClickRow
+                  href={`/teams/${team.constructorId}`}
+                  style={{
+                    display: "contents",
+                  }}
+                >
+                  {/* Pos */}
                   <span style={{
                     fontFamily: "'Russo One', sans-serif",
-                    fontSize: isPodium ? "1rem" : "0.82rem",
+                    fontSize: isPodium
+                      ? "clamp(0.85rem, 2.5vw, 1rem)"
+                      : "clamp(0.72rem, 2vw, 0.82rem)",
                     color: posColor, lineHeight: 1,
                   }}>{team.position || i + 1}</span>
 
-                  {/* Name + points bar */}
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "4px" }}>
-                      <div style={{ width: "3px", height: "14px", background: team.color, flexShrink: 0 }} />
+                  {/* Name + relative points bar */}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{
+                      display: "flex", alignItems: "center",
+                      gap: "0.6rem", marginBottom: "4px",
+                      overflow: "hidden",
+                    }}>
+                      <div style={{
+                        width: "3px", height: "14px",
+                        background: team.color, flexShrink: 0,
+                      }} />
                       <span style={{
                         fontFamily: "'Russo One', sans-serif",
-                        fontSize: isPodium ? "0.88rem" : "0.78rem",
-                        textTransform: "uppercase", color: "white", letterSpacing: "-0.01em",
+                        fontSize: isPodium
+                          ? "clamp(0.72rem, 2.2vw, 0.88rem)"
+                          : "clamp(0.65rem, 2vw, 0.78rem)",
+                        textTransform: "uppercase", color: "white",
+                        letterSpacing: "-0.01em",
+                        /* Prevent overflow on very narrow screens */
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
                       }}>{team.name}</span>
                     </div>
-                    <div style={{ height: "2px", background: "rgba(255,255,255,0.05)", marginLeft: "9px" }}>
-                      <div style={{
-                        height: "100%", width: `${(team.points / maxPoints) * 100}%`,
-                        background: team.color, opacity: 0.65,
-                        transition: "width 0.8s cubic-bezier(0.16,1,0.3,1)",
-                      }} />
+                    {/* Relative points bar */}
+                    <div style={{
+                      height: "2px",
+                      background: "rgba(255,255,255,0.05)",
+                      marginLeft: "9px",
+                    }}>
+                      <div
+                        className="pts-bar"
+                        style={{
+                          height: "100%",
+                          width: `${(team.points / maxPoints) * 100}%`,
+                          background: team.color, opacity: 0.65,
+                        }}
+                      />
                     </div>
                   </div>
 
                   {/* Points */}
                   <span style={{
                     fontFamily: "'Russo One', sans-serif",
-                    fontSize: isPodium ? "1rem" : "0.85rem",
-                    color: isPodium ? "#E10600" : "rgba(255,255,255,0.7)", lineHeight: 1,
+                    fontSize: isPodium
+                      ? "clamp(0.88rem, 2.5vw, 1rem)"
+                      : "clamp(0.75rem, 2.2vw, 0.85rem)",
+                    color: isPodium ? "#E10600" : "rgba(255,255,255,0.7)",
+                    lineHeight: 1,
                   }}>{team.points}</span>
 
-                  {/* Hidden on mobile ↓ */}
-                  <span className="col-hide-mobile" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", color: "rgba(255,255,255,0.45)" }}>{team.wins}</span>
-                  <span className="col-hide-mobile" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.65rem", color: "rgba(255,255,255,0.28)" }}>{pct}%</span>
-                  <span className="col-hide-mobile" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.6rem", color: "rgba(255,255,255,0.22)" }}>{team.base.split(",")[0]}</span>
-                  <span className="col-hide-mobile" style={{ fontFamily: "'Russo One', sans-serif", fontSize: "0.88rem", color: team.championships > 0 ? "#E10600" : "rgba(255,255,255,0.18)" }}>{team.championships || "—"}</span>
+                  {/* ── Desktop-only columns ── */}
+                  <span className="col-hide-mobile" style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: "clamp(0.6rem, 1.8vw, 0.72rem)",
+                    color: "rgba(255,255,255,0.45)",
+                  }}>{team.wins}</span>
+
+                  <span className="col-hide-mobile" style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: "clamp(0.55rem, 1.6vw, 0.65rem)",
+                    color: "rgba(255,255,255,0.28)",
+                  }}>{pct}%</span>
+
+                  <span className="col-hide-mobile" style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: "clamp(0.5rem, 1.5vw, 0.6rem)",
+                    color: "rgba(255,255,255,0.22)",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}>{team.base.split(",")[0]}</span>
+
+                  <span className="col-hide-mobile" style={{
+                    fontFamily: "'Russo One', sans-serif",
+                    fontSize: "clamp(0.75rem, 2vw, 0.88rem)",
+                    color: team.championships > 0 ? "#E10600" : "rgba(255,255,255,0.18)",
+                  }}>{team.championships || "—"}</span>
                 </ClickRow>
+                </div>
               );
             })}
           </div>
@@ -446,10 +624,12 @@ export default async function TeamsPage() {
           paddingTop: "1.5rem",
         }}>
           <Link href="/" style={{
-            fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem",
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: "clamp(0.5rem, 1.5vw, 0.52rem)",
             letterSpacing: "0.16em", textTransform: "uppercase",
             color: "rgba(255,255,255,0.28)", textDecoration: "none",
             display: "inline-flex", alignItems: "center", gap: "0.4rem",
+            minHeight: "44px",
           }}>← Home</Link>
         </div>
       </div>

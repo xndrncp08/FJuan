@@ -1,23 +1,20 @@
 /**
  * components/home/DashboardSection.tsx
  *
- * THE centrepiece. A full-width bento command-center grid that replaces
- * three separate sections (NextRace, Standings, PredictionPreview) with
- * one cohesive "pit wall" dashboard.
+ * Mobile-responsive "Pit Wall" dashboard.
  *
- * Layout (desktop):
- * ┌──────────────────────┬─────────────────┐
- * │                      │  NEXT RACE      │
- * │  DRIVER STANDINGS    │  countdown      │
- * │  (scrollable list)   ├─────────────────┤
- * │                      │  PREDICTION     │
- * │                      │  P1 / P2 / P3   │
- * └──────────────────────┴─────────────────┘
+ * Responsive strategy (all rules in the single <style> block at render root):
  *
- * Shared background: animated Recharts AreaChart of championship points
- * fading ghost behind the entire panel.
+ *   > 768px  (desktop)  : 2-col bento — standings left (span 2 rows) · race/prediction right
+ *   641–768px (tablet)  : same 2-col but right column narrows to minmax(240px,28%)
+ *   ≤ 640px  (mobile)   : single column stack — standings · race · prediction
  *
- * NOTE: Uses Recharts AreaChart for the ghost standings sparkline.
+ * Sub-component responsive notes:
+ *   - StandingsPanel  : driver rows use clamp() fonts; bar always visible
+ *   - NextRacePanel   : countdown digits use clamp(); circuit chips stack on xs
+ *   - PredictionPanel : recharts bar collapses to 60px on mobile; rows tighten
+ *   - PanelLabel      : font clamp so it never overflows
+ *   - Touch targets   : all interactive/link rows ≥ 44px
  */
 "use client";
 
@@ -94,12 +91,19 @@ function PanelLabel({ children, accent }: { children: React.ReactNode; accent?: 
       padding: "0.65rem 1.25rem",
       borderBottom: "1px solid rgba(255,255,255,0.055)",
       background: "rgba(0,0,0,0.35)",
+      /* Prevent label text overflowing on xs screens */
+      overflow: "hidden",
     }}>
-      {accent && <div style={{ width: "6px", height: "6px", background: "#E10600", flexShrink: 0 }} />}
+      {accent && (
+        <div style={{ width: "6px", height: "6px", background: "#E10600", flexShrink: 0 }} />
+      )}
       <span style={{
-        fontFamily: "'JetBrains Mono', monospace", fontSize: "0.48rem",
+        fontFamily: "'JetBrains Mono', monospace",
+        /* clamp so it never overflows a narrow panel */
+        fontSize: "clamp(0.42rem, 1.4vw, 0.52rem)",
         fontWeight: 600, letterSpacing: "0.2em", textTransform: "uppercase",
         color: "rgba(255,255,255,0.28)",
+        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
       }}>
         {children}
       </span>
@@ -123,7 +127,11 @@ function StandingsSparkline({ standings }: { standings: any[] }) {
               <stop offset="100%" stopColor="#E10600" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <Area type="monotone" dataKey="pts" stroke="#E10600" strokeWidth={2} fill="url(#ghostGrad)" dot={false} />
+          <Area
+            type="monotone" dataKey="pts"
+            stroke="#E10600" strokeWidth={2}
+            fill="url(#ghostGrad)" dot={false}
+          />
         </AreaChart>
       </ResponsiveContainer>
     </div>
@@ -135,20 +143,16 @@ function StandingsPanel({ standings }: { standings: any[] }) {
   const top10 = standings.slice(0, 10);
   const max   = parseInt(top10[0]?.points) || 1;
 
-  // Bar chart data for points visualisation
-  const barData = top10.map((s: any) => ({
-    pts:   parseInt(s.points) || 0,
-    color: TEAM_COLORS[s.Constructors?.[0]?.name] ?? "#E10600",
-  }));
-
   return (
     <div style={{ position: "relative", display: "flex", flexDirection: "column", height: "100%" }}>
       <PanelLabel accent>Driver Standings · 2026</PanelLabel>
 
-      {/* Ghost recharts bar behind the list */}
       <StandingsSparkline standings={standings} />
 
-      <div style={{ position: "relative", zIndex: 1, flex: 1, overflowY: "auto", scrollbarWidth: "none" }}>
+      <div style={{
+        position: "relative", zIndex: 1, flex: 1,
+        overflowY: "auto", scrollbarWidth: "none",
+      }}>
         {top10.map((s: any, i: number) => {
           const pts       = parseInt(s.points) || 0;
           const pct       = (pts / max) * 100;
@@ -164,38 +168,62 @@ function StandingsPanel({ standings }: { standings: any[] }) {
                 gridTemplateColumns: "2.2rem 1fr auto",
                 alignItems: "center",
                 gap: "0.75rem",
-                padding: "0.7rem 1.25rem",
+                /* clamp padding so rows feel comfortable but don't waste space */
+                padding: "clamp(0.55rem, 2vw, 0.7rem) clamp(0.75rem, 3vw, 1.25rem)",
                 borderBottom: "1px solid rgba(255,255,255,0.04)",
                 borderLeft: isPodium ? `2px solid ${posColor}` : "2px solid transparent",
-                background: isPodium ? `rgba(${isPodium ? "255,215,0" : "255,255,255"},0.015)` : "transparent",
+                background: isPodium ? "rgba(255,255,255,0.015)" : "transparent",
                 transition: "background 0.15s ease",
                 cursor: "default",
+                /* Touch target */
+                minHeight: "44px",
               }}
-              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.025)"}
-              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = isPodium ? "rgba(255,255,255,0.015)" : "transparent"}
+              onMouseEnter={e =>
+                (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.025)"
+              }
+              onMouseLeave={e =>
+                (e.currentTarget as HTMLElement).style.background =
+                  isPodium ? "rgba(255,255,255,0.015)" : "transparent"
+              }
             >
               {/* Position */}
               <span style={{
                 fontFamily: "'Russo One', sans-serif",
-                fontSize: isPodium ? "1rem" : "0.8rem",
+                fontSize: isPodium
+                  ? "clamp(0.8rem, 2.5vw, 1rem)"
+                  : "clamp(0.65rem, 2vw, 0.8rem)",
                 color: posColor, lineHeight: 1, textAlign: "center",
               }}>
                 P{i + 1}
               </span>
 
               {/* Name + team + bar */}
-              <div>
-                <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", marginBottom: "3px" }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{
+                  display: "flex", alignItems: "baseline",
+                  gap: "0.4rem", marginBottom: "3px",
+                  overflow: "hidden",
+                }}>
                   <span style={{
                     fontFamily: "'Russo One', sans-serif",
-                    fontSize: isPodium ? "0.88rem" : "0.78rem",
-                    textTransform: "uppercase", color: "white", letterSpacing: "-0.01em",
+                    fontSize: isPodium
+                      ? "clamp(0.7rem, 2.2vw, 0.88rem)"
+                      : "clamp(0.62rem, 1.9vw, 0.78rem)",
+                    textTransform: "uppercase", color: "white",
+                    letterSpacing: "-0.01em",
+                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                   }}>
-                    {s.Driver?.givenName?.charAt(0)}. <span style={{ color: isPodium ? posColor : "rgba(255,255,255,0.8)" }}>{s.Driver?.familyName}</span>
+                    {s.Driver?.givenName?.charAt(0)}.{" "}
+                    <span style={{ color: isPodium ? posColor : "rgba(255,255,255,0.8)" }}>
+                      {s.Driver?.familyName}
+                    </span>
                   </span>
-                  <span style={{
-                    fontFamily: "'JetBrains Mono', monospace", fontSize: "0.42rem",
-                    color: teamColor, letterSpacing: "0.06em", textTransform: "uppercase",
+                  {/* Hide constructor name on very small screens via class */}
+                  <span className="standings-constructor-name" style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: "clamp(0.38rem, 1.2vw, 0.44rem)",
+                    color: teamColor, letterSpacing: "0.06em",
+                    textTransform: "uppercase", flexShrink: 0,
                   }}>
                     {s.Constructors?.[0]?.name}
                   </span>
@@ -214,10 +242,12 @@ function StandingsPanel({ standings }: { standings: any[] }) {
               {/* Points */}
               <span style={{
                 fontFamily: "'Russo One', sans-serif",
-                fontSize: isPodium ? "1rem" : "0.82rem",
+                fontSize: isPodium
+                  ? "clamp(0.8rem, 2.5vw, 1rem)"
+                  : "clamp(0.65rem, 2vw, 0.82rem)",
                 color: isPodium ? posColor : "rgba(255,255,255,0.5)",
-                lineHeight: 1, letterSpacing: "-0.01em",
-                textAlign: "right",
+                lineHeight: 1, letterSpacing: "-0.01em", textAlign: "right",
+                flexShrink: 0,
               }}>
                 {pts}
               </span>
@@ -233,17 +263,21 @@ function StandingsPanel({ standings }: { standings: any[] }) {
         background: "rgba(0,0,0,0.25)",
       }}>
         <Link href="/drivers" style={{
-          fontFamily: "'JetBrains Mono', monospace", fontSize: "0.48rem",
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: "clamp(0.44rem, 1.4vw, 0.52rem)",
           letterSpacing: "0.16em", textTransform: "uppercase",
           color: "rgba(255,255,255,0.28)", textDecoration: "none",
-          display: "flex", alignItems: "center", gap: "0.5rem",
+          display: "inline-flex", alignItems: "center", gap: "0.5rem",
           transition: "color 0.15s",
+          minHeight: "44px",
         }}
         onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "#E10600"}
         onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.28)"}
         >
           Full Standings
-          <svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M1 6h10M6 1l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+            <path d="M1 6h10M6 1l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </Link>
       </div>
     </div>
@@ -262,11 +296,11 @@ function NextRacePanel({ nextRace }: { nextRace: any }) {
         Next Event · Round {nextRace?.round ?? "—"}
       </PanelLabel>
 
-      <div style={{ padding: "1.25rem", flex: 1 }}>
+      <div style={{ padding: "clamp(0.85rem, 3vw, 1.25rem)", flex: 1 }}>
         {/* Race name */}
         <h2 style={{
           fontFamily: "'Russo One', sans-serif",
-          fontSize: "clamp(1.3rem, 3vw, 1.9rem)",
+          fontSize: "clamp(1.1rem, 3.5vw, 1.9rem)",
           lineHeight: 0.92, letterSpacing: "-0.02em",
           textTransform: "uppercase", color: "white",
           margin: "0 0 0.3rem",
@@ -275,21 +309,47 @@ function NextRacePanel({ nextRace }: { nextRace: any }) {
         </h2>
         <p style={{
           fontFamily: "'Rajdhani', sans-serif", fontWeight: 500,
-          fontSize: "0.78rem", color: "rgba(255,255,255,0.28)",
-          letterSpacing: "0.06em", margin: "0 0 1.25rem",
+          fontSize: "clamp(0.65rem, 2vw, 0.78rem)",
+          color: "rgba(255,255,255,0.28)",
+          letterSpacing: "0.06em", margin: "0 0 1rem",
         }}>
-          {nextRace?.Circuit?.Location?.locality}, {nextRace?.Circuit?.Location?.country}
+          {nextRace?.Circuit?.Location?.locality},{" "}
+          {nextRace?.Circuit?.Location?.country}
         </p>
 
-        {/* Circuit + date chips */}
-        <div style={{ display: "flex", gap: "1px", marginBottom: "1.25rem", background: "rgba(255,255,255,0.04)" }}>
+        {/* Circuit + date chips — stack on xs via .race-chips class */}
+        <div
+          className="race-chips"
+          style={{
+            display: "flex", gap: "1px",
+            marginBottom: "1rem",
+            background: "rgba(255,255,255,0.04)",
+          }}
+        >
           {[
             { l: "Circuit",   v: nextRace?.Circuit?.circuitName ?? "TBD" },
-            { l: "Race Date", v: raceDate ? raceDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "TBD" },
+            {
+              l: "Race Date",
+              v: raceDate
+                ? raceDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                : "TBD",
+            },
           ].map(({ l, v }) => (
-            <div key={l} style={{ flex: 1, background: "#0a0a0a", padding: "0.6rem 0.85rem" }}>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.4rem", color: "rgba(255,255,255,0.2)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "2px" }}>{l}</div>
-              <div style={{ fontFamily: "'Russo One', sans-serif", fontSize: "0.75rem", color: "rgba(255,255,255,0.7)", textTransform: "uppercase", letterSpacing: "0.03em" }}>{v}</div>
+            <div key={l} style={{ flex: 1, background: "#0a0a0a", padding: "0.6rem 0.85rem", minWidth: 0 }}>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "clamp(0.38rem, 1.2vw, 0.42rem)",
+                color: "rgba(255,255,255,0.2)",
+                letterSpacing: "0.08em", textTransform: "uppercase",
+                marginBottom: "2px",
+              }}>{l}</div>
+              <div style={{
+                fontFamily: "'Russo One', sans-serif",
+                fontSize: "clamp(0.62rem, 2vw, 0.75rem)",
+                color: "rgba(255,255,255,0.7)",
+                textTransform: "uppercase", letterSpacing: "0.03em",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>{v}</div>
             </div>
           ))}
         </div>
@@ -298,13 +358,19 @@ function NextRacePanel({ nextRace }: { nextRace: any }) {
         {nextRace && (
           <>
             <div style={{
-              fontFamily: "'JetBrains Mono', monospace", fontSize: "0.44rem",
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "clamp(0.4rem, 1.3vw, 0.46rem)",
               letterSpacing: "0.18em", textTransform: "uppercase",
               color: "rgba(255,255,255,0.2)", marginBottom: "0.6rem",
             }}>
               Race Countdown
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "1px", background: "rgba(255,255,255,0.05)" }}>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4,1fr)",
+              gap: "1px",
+              background: "rgba(255,255,255,0.05)",
+            }}>
               {[
                 { v: cd.d, l: "Days" },
                 { v: cd.h, l: "Hrs"  },
@@ -312,19 +378,31 @@ function NextRacePanel({ nextRace }: { nextRace: any }) {
                 { v: cd.s, l: "Sec"  },
               ].map(({ v, l }, i) => (
                 <div key={l} style={{
-                  background: "#0a0a0a", padding: "0.7rem 0.25rem",
+                  background: "#0a0a0a",
+                  padding: "clamp(0.5rem, 2vw, 0.7rem) 0.25rem",
                   textAlign: "center", position: "relative",
                 }}>
-                  {i === 0 && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "#E10600" }} />}
+                  {i === 0 && (
+                    <div style={{
+                      position: "absolute", top: 0, left: 0, right: 0,
+                      height: "2px", background: "#E10600",
+                    }} />
+                  )}
                   <div style={{
                     fontFamily: "'Russo One', sans-serif",
-                    fontSize: "clamp(1rem, 2.5vw, 1.5rem)",
-                    color: "white", lineHeight: 1, letterSpacing: "-0.02em",
+                    fontSize: "clamp(0.9rem, 3vw, 1.5rem)",
+                    color: "white", lineHeight: 1,
+                    letterSpacing: "-0.02em",
                     fontVariantNumeric: "tabular-nums",
                   }}>
                     {String(v).padStart(2, "0")}
                   </div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.42rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)", marginTop: "3px" }}>{l}</div>
+                  <div style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: "clamp(0.36rem, 1.1vw, 0.44rem)",
+                    letterSpacing: "0.12em", textTransform: "uppercase",
+                    color: "rgba(255,255,255,0.22)", marginTop: "3px",
+                  }}>{l}</div>
                 </div>
               ))}
             </div>
@@ -332,18 +410,27 @@ function NextRacePanel({ nextRace }: { nextRace: any }) {
         )}
       </div>
 
-      <div style={{ padding: "0.6rem 1.25rem", borderTop: "1px solid rgba(255,255,255,0.055)", background: "rgba(0,0,0,0.25)" }}>
+      <div style={{
+        padding: "0.6rem 1.25rem",
+        borderTop: "1px solid rgba(255,255,255,0.055)",
+        background: "rgba(0,0,0,0.25)",
+      }}>
         <Link href="/calendar" style={{
-          fontFamily: "'JetBrains Mono', monospace", fontSize: "0.48rem",
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: "clamp(0.44rem, 1.4vw, 0.52rem)",
           letterSpacing: "0.16em", textTransform: "uppercase",
           color: "rgba(255,255,255,0.28)", textDecoration: "none",
-          display: "flex", alignItems: "center", gap: "0.5rem", transition: "color 0.15s",
+          display: "inline-flex", alignItems: "center", gap: "0.5rem",
+          transition: "color 0.15s",
+          minHeight: "44px",
         }}
         onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "#E10600"}
         onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.28)"}
         >
           Full Calendar
-          <svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M1 6h10M6 1l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+            <path d="M1 6h10M6 1l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </Link>
       </div>
     </div>
@@ -357,8 +444,15 @@ function PredictionPanel({ prediction, nextRace }: { prediction: any; nextRace: 
       <PanelLabel>
         <span style={{ color: "#E10600" }}>◆</span> Prediction Model
       </PanelLabel>
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
-        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", color: "rgba(255,255,255,0.15)", letterSpacing: "0.12em" }}>
+      <div style={{
+        flex: 1, display: "flex", alignItems: "center",
+        justifyContent: "center", padding: "2rem",
+      }}>
+        <span style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: "clamp(0.44rem, 1.4vw, 0.52rem)",
+          color: "rgba(255,255,255,0.15)", letterSpacing: "0.12em",
+        }}>
           NO PREDICTION AVAILABLE
         </span>
       </div>
@@ -367,7 +461,6 @@ function PredictionPanel({ prediction, nextRace }: { prediction: any; nextRace: 
 
   const top3 = prediction.predictions.slice(0, 3);
 
-  // Recharts bar for probability comparison
   const barData = top3.map((d: any, i: number) => ({
     name: d.familyName,
     prob: d.podiumProbability,
@@ -381,11 +474,15 @@ function PredictionPanel({ prediction, nextRace }: { prediction: any; nextRace: 
         Prediction · {prediction.raceName ?? nextRace?.raceName ?? "Next Race"}
       </PanelLabel>
 
-      <div style={{ padding: "1.25rem", flex: 1 }}>
-        {/* Podium probability bar chart */}
-        <div style={{ height: "80px", marginBottom: "1rem" }}>
+      <div style={{ padding: "clamp(0.85rem, 3vw, 1.25rem)", flex: 1 }}>
+        {/* Probability bar chart — shorter on mobile */}
+        <div className="prediction-chart" style={{ height: "80px", marginBottom: "1rem" }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={barData} barCategoryGap="30%" margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+            <BarChart
+              data={barData}
+              barCategoryGap="30%"
+              margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+            >
               <Bar dataKey="prob" radius={0}>
                 {barData.map((entry: any, i: number) => (
                   <Cell key={i} fill={entry.color} fillOpacity={0.8} />
@@ -402,38 +499,59 @@ function PredictionPanel({ prediction, nextRace }: { prediction: any; nextRace: 
             const teamColor = CONSTRUCTOR_COLORS[d.constructorId] ?? "#E10600";
             return (
               <div key={d.driverId} style={{
-                display: "flex", alignItems: "center", gap: "0.85rem",
-                padding: "0.65rem 0.85rem",
+                display: "flex", alignItems: "center",
+                gap: "clamp(0.5rem, 2vw, 0.85rem)",
+                padding: "clamp(0.5rem, 2vw, 0.65rem) clamp(0.6rem, 2.5vw, 0.85rem)",
                 background: i === 0 ? "rgba(255,215,0,0.04)" : "rgba(255,255,255,0.015)",
                 borderLeft: `2px solid ${rankColor}`,
+                minHeight: "44px",
               }}>
                 <span style={{
                   fontFamily: "'Russo One', sans-serif",
-                  fontSize: i === 0 ? "1.2rem" : "0.9rem",
-                  color: rankColor, lineHeight: 1, minWidth: "1.8rem",
+                  fontSize: i === 0
+                    ? "clamp(0.9rem, 3vw, 1.2rem)"
+                    : "clamp(0.72rem, 2.2vw, 0.9rem)",
+                  color: rankColor, lineHeight: 1,
+                  minWidth: "1.8rem", flexShrink: 0,
                 }}>
                   P{i + 1}
                 </span>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
                     fontFamily: "'Russo One', sans-serif",
-                    fontSize: i === 0 ? "0.88rem" : "0.78rem",
-                    textTransform: "uppercase", color: "white", letterSpacing: "-0.01em",
+                    fontSize: i === 0
+                      ? "clamp(0.7rem, 2.2vw, 0.88rem)"
+                      : "clamp(0.62rem, 1.9vw, 0.78rem)",
+                    textTransform: "uppercase", color: "white",
+                    letterSpacing: "-0.01em",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                   }}>
-                    {d.givenName?.charAt(0)}. <span style={{ color: rankColor }}>{d.familyName}</span>
+                    {d.givenName?.charAt(0)}.{" "}
+                    <span style={{ color: rankColor }}>{d.familyName}</span>
                   </div>
                   <div style={{
-                    fontFamily: "'JetBrains Mono', monospace", fontSize: "0.42rem",
-                    color: teamColor, letterSpacing: "0.06em", textTransform: "uppercase", marginTop: "1px",
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: "clamp(0.36rem, 1.2vw, 0.44rem)",
+                    color: teamColor, letterSpacing: "0.06em",
+                    textTransform: "uppercase", marginTop: "1px",
                   }}>
                     {d.constructorName}
                   </div>
                 </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontFamily: "'Russo One', sans-serif", fontSize: "0.95rem", color: rankColor, lineHeight: 1 }}>
+                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                  <div style={{
+                    fontFamily: "'Russo One', sans-serif",
+                    fontSize: "clamp(0.75rem, 2.5vw, 0.95rem)",
+                    color: rankColor, lineHeight: 1,
+                  }}>
                     {d.podiumProbability}%
                   </div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.38rem", color: "rgba(255,255,255,0.2)", letterSpacing: "0.08em", marginTop: "1px" }}>
+                  <div style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: "clamp(0.34rem, 1vw, 0.4rem)",
+                    color: "rgba(255,255,255,0.2)",
+                    letterSpacing: "0.08em", marginTop: "1px",
+                  }}>
                     prob.
                   </div>
                 </div>
@@ -443,18 +561,27 @@ function PredictionPanel({ prediction, nextRace }: { prediction: any; nextRace: 
         </div>
       </div>
 
-      <div style={{ padding: "0.6rem 1.25rem", borderTop: "1px solid rgba(255,255,255,0.055)", background: "rgba(0,0,0,0.25)" }}>
+      <div style={{
+        padding: "0.6rem 1.25rem",
+        borderTop: "1px solid rgba(255,255,255,0.055)",
+        background: "rgba(0,0,0,0.25)",
+      }}>
         <Link href="/predict" style={{
           display: "inline-flex", alignItems: "center", gap: "0.5rem",
-          fontFamily: "'JetBrains Mono', monospace", fontSize: "0.48rem",
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: "clamp(0.44rem, 1.4vw, 0.52rem)",
           letterSpacing: "0.16em", textTransform: "uppercase",
-          color: "rgba(255,255,255,0.28)", textDecoration: "none", transition: "color 0.15s",
+          color: "rgba(255,255,255,0.28)", textDecoration: "none",
+          transition: "color 0.15s",
+          minHeight: "44px",
         }}
         onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "#E10600"}
         onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.28)"}
         >
           Full Prediction
-          <svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M1 6h10M6 1l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+            <path d="M1 6h10M6 1l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </Link>
       </div>
     </div>
@@ -466,11 +593,67 @@ export default function DashboardSection({ standings, nextRace, prediction }: Da
   return (
     <section style={{ position: "relative", background: "#060606" }}>
 
-      {/* ── Shared background atmosphere ─────────────────────────── */}
-      {/* Horizontal rule top */}
-      <div style={{ height: "1px", background: "linear-gradient(90deg, transparent 0%, rgba(225,6,0,0.4) 30%, rgba(225,6,0,0.4) 70%, transparent 100%)" }} />
+      {/*
+        ── All responsive rules live here ────────────────────────────────────
+        Using a single <style> block keeps every breakpoint easy to audit.
+      */}
+      <style>{`
+        /* ── Mobile: ≤ 640px ───────────────────────────────────────────── */
+        @media (max-width: 640px) {
 
-      {/* Noise grain overlay */}
+          /* Stack bento into single column */
+          .dashboard-bento {
+            grid-template-columns: 1fr !important;
+            grid-template-rows: auto !important;
+          }
+
+          /* Each cell takes up a single column */
+          .bento-standings {
+            grid-column: 1 !important;
+            grid-row: auto !important;
+            /* Cap height so standings scrolls rather than dominates */
+            min-height: 0 !important;
+            max-height: 420px;
+          }
+          .bento-race,
+          .bento-prediction {
+            grid-column: 1 !important;
+            grid-row: auto !important;
+          }
+
+          /* Shrink the prediction chart height on mobile */
+          .prediction-chart { height: 56px !important; }
+
+          /* Hide constructor team name in standings rows (saves space) */
+          .standings-constructor-name { display: none !important; }
+
+          /* Race chips: stack vertically */
+          .race-chips {
+            flex-direction: column !important;
+            background: transparent !important;
+            gap: 1px !important;
+          }
+        }
+
+        /* ── Tablet: 641–768px ─────────────────────────────────────────── */
+        @media (min-width: 641px) and (max-width: 768px) {
+          .dashboard-bento {
+            grid-template-columns: 1fr minmax(220px, 28%) !important;
+          }
+          .prediction-chart { height: 64px !important; }
+        }
+
+        /* ── Scrollbar hide (Webkit) ───────────────────────────────────── */
+        .standings-scroll::-webkit-scrollbar { display: none; }
+      `}</style>
+
+      {/* ── Shared background atmosphere ─────────────────────────────── */}
+      <div style={{
+        height: "1px",
+        background: "linear-gradient(90deg, transparent 0%, rgba(225,6,0,0.4) 30%, rgba(225,6,0,0.4) 70%, transparent 100%)",
+      }} />
+
+      {/* Noise grain */}
       <div style={{
         position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none",
         opacity: 0.25, mixBlendMode: "overlay",
@@ -481,11 +664,14 @@ export default function DashboardSection({ standings, nextRace, prediction }: Da
       {/* Subtle grid */}
       <div style={{
         position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none",
-        backgroundImage: `linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px)`,
+        backgroundImage: `
+          linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px)
+        `,
         backgroundSize: "40px 40px",
       }} />
 
-      {/* Corner red blooms */}
+      {/* Corner blooms */}
       <div style={{
         position: "absolute", top: 0, left: 0, right: 0, height: "50%",
         background: "radial-gradient(ellipse 60% 50% at 0% 0%, rgba(225,6,0,0.06) 0%, transparent 60%)",
@@ -497,22 +683,25 @@ export default function DashboardSection({ standings, nextRace, prediction }: Da
         pointerEvents: "none", zIndex: 0,
       }} />
 
-      {/* ── Dashboard grid ───────────────────────────────────────── */}
+      {/* ── Dashboard grid ───────────────────────────────────────────── */}
       <div style={{
         position: "relative", zIndex: 1,
         maxWidth: "1280px", margin: "0 auto",
-        padding: "clamp(1.5rem, 4vw, 2.5rem) clamp(1.25rem, 4vw, 1.5rem)",
+        padding: "clamp(1.25rem, 4vw, 2.5rem) clamp(0.75rem, 4vw, 1.5rem)",
       }}>
 
         {/* Section title */}
         <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          marginBottom: "1.5rem",
+          display: "flex", alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "clamp(1rem, 3vw, 1.5rem)",
+          flexWrap: "wrap", gap: "0.5rem",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <div style={{ width: "20px", height: "2px", background: "#E10600" }} />
             <span style={{
-              fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem",
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "clamp(0.48rem, 1.5vw, 0.56rem)",
               fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase",
               color: "#E10600",
             }}>
@@ -521,7 +710,8 @@ export default function DashboardSection({ standings, nextRace, prediction }: Da
             <div style={{ width: "20px", height: "2px", background: "rgba(225,6,0,0.3)" }} />
           </div>
           <span style={{
-            fontFamily: "'JetBrains Mono', monospace", fontSize: "0.46rem",
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: "clamp(0.4rem, 1.3vw, 0.48rem)",
             letterSpacing: "0.14em", textTransform: "uppercase",
             color: "rgba(255,255,255,0.15)",
           }}>
@@ -529,62 +719,91 @@ export default function DashboardSection({ standings, nextRace, prediction }: Da
           </span>
         </div>
 
-        {/* Bento grid */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "1fr clamp(280px, 30%, 380px)",
-          gridTemplateRows: "auto auto",
-          gap: "2px",
-          background: "rgba(255,255,255,0.04)",
-        }}>
+        {/*
+          Bento grid.
+          Desktop:  2 columns, standings spans 2 rows on the left.
+          Tablet:   same, narrower right column.
+          Mobile:   single column via .dashboard-bento media query override.
 
-          {/* ── Cell 1: Standings (spans 2 rows left) ── */}
-          <div style={{
-            gridColumn: "1",
-            gridRow: "1 / 3",
-            background: "#0a0a0a",
-            border: "1px solid rgba(255,255,255,0.07)",
-            borderTop: "2px solid #E10600",
-            position: "relative", overflow: "hidden",
-            minHeight: "520px",
-          }}>
-            {standings?.length
-              ? <StandingsPanel standings={standings} />
-              : (
-                <div style={{ padding: "2rem", display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", color: "rgba(255,255,255,0.15)", letterSpacing: "0.12em" }}>
-                    STANDINGS UNAVAILABLE
-                  </span>
-                </div>
-              )
-            }
+          We set the grid-template via inline style (desktop default) and let
+          the CSS class override it on smaller screens.
+        */}
+        <div
+          className="dashboard-bento"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr clamp(260px, 30%, 380px)",
+            gridTemplateRows: "auto auto",
+            gap: "2px",
+            background: "rgba(255,255,255,0.04)",
+          }}
+        >
+
+          {/* ── Cell 1: Standings — left, spans 2 rows ── */}
+          <div
+            className="bento-standings"
+            style={{
+              gridColumn: "1",
+              gridRow: "1 / 3",
+              background: "#0a0a0a",
+              border: "1px solid rgba(255,255,255,0.07)",
+              borderTop: "2px solid #E10600",
+              position: "relative", overflow: "hidden",
+              minHeight: "520px",
+            }}
+          >
+            {standings?.length ? (
+              <StandingsPanel standings={standings} />
+            ) : (
+              <div style={{
+                padding: "2rem", display: "flex",
+                alignItems: "center", justifyContent: "center", height: "100%",
+              }}>
+                <span style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: "clamp(0.44rem, 1.4vw, 0.52rem)",
+                  color: "rgba(255,255,255,0.15)", letterSpacing: "0.12em",
+                }}>
+                  STANDINGS UNAVAILABLE
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* ── Cell 2: Next Race (top right) ── */}
-          <div style={{
-            gridColumn: "2", gridRow: "1",
-            background: "#0a0a0a",
-            border: "1px solid rgba(255,255,255,0.07)",
-            borderTop: "2px solid rgba(39,244,210,0.6)",
-            overflow: "hidden",
-          }}>
+          {/* ── Cell 2: Next Race — top right ── */}
+          <div
+            className="bento-race"
+            style={{
+              gridColumn: "2", gridRow: "1",
+              background: "#0a0a0a",
+              border: "1px solid rgba(255,255,255,0.07)",
+              borderTop: "2px solid rgba(39,244,210,0.6)",
+              overflow: "hidden",
+            }}
+          >
             <NextRacePanel nextRace={nextRace} />
           </div>
 
-          {/* ── Cell 3: Prediction (bottom right) ── */}
-          <div style={{
-            gridColumn: "2", gridRow: "2",
-            background: "#0a0a0a",
-            border: "1px solid rgba(255,255,255,0.07)",
-            borderTop: "2px solid rgba(255,215,0,0.5)",
-            overflow: "hidden",
-          }}>
+          {/* ── Cell 3: Prediction — bottom right ── */}
+          <div
+            className="bento-prediction"
+            style={{
+              gridColumn: "2", gridRow: "2",
+              background: "#0a0a0a",
+              border: "1px solid rgba(255,255,255,0.07)",
+              borderTop: "2px solid rgba(255,215,0,0.5)",
+              overflow: "hidden",
+            }}
+          >
             <PredictionPanel prediction={prediction} nextRace={nextRace} />
           </div>
         </div>
 
         {/* Bottom rule */}
-        <div style={{ height: "1px", marginTop: "2px", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)" }} />
+        <div style={{
+          height: "1px", marginTop: "2px",
+          background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)",
+        }} />
       </div>
     </section>
   );
