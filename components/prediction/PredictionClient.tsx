@@ -1,32 +1,39 @@
 /**
  * components/prediction/PredictionClient.tsx
  *
- * Cinematic F1 broadcast redesign — full page below the hero.
- *
- * Design direction: Sky Sports F1 data overlay meets a war room tactical
- * display. Dark carbon-fibre feel, sharp red accents, angular geometry,
- * staggered entrance animations, and dense data presentation that still
- * breathes.
+ * F1 prediction page — nerd edition.
  *
  * Sections:
- *   PredictionHero      ← unchanged (race name, circuit, countdown)
- *   Podium              ← P1 full-width feature + P2/P3 side-by-side
- *   Likely Finishers    ← dense data table with bar visualisations
- *   Methodology         ← factor breakdown with animated weight bars
+ *   PredictionHero       ← unchanged
+ *   Podium Analysis      ← P1 feature card + radar chart + vs-field chart
+ *   P2/P3 cards          ← with their own radars
+ *   Probability Landscape ← full distribution chart + donut
+ *   Likely Finishers     ← dense table (unchanged)
+ *   Methodology          ← factor breakdown with donut
+ *
+ * New components consumed:
+ *   ScoreRadarChart
+ *   ProbabilityDistributionChart
+ *   FactorWeightDonut
+ *   DriverVsFieldChart
  */
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { RacePrediction, DriverPrediction } from "@/lib/types/prediction";
 import { usePrediction } from "@/lib/hooks/usePrediction";
 import PredictionHero from "./PredictionHero";
+import ScoreRadarChart from "./ScoreRadarChart";
+import ProbabilityDistributionChart from "./ProbabilityDistributionChart";
+import FactorWeightDonut from "./FactorWeightDonut";
+import DriverVsFieldChart from "./DriverVsFieldChart";
 
 interface PredictionClientProps {
   initialPrediction: RacePrediction | null;
   initialError: string | null;
 }
 
-// ─── Team colours ─────────────────────────────────────────────────────────────
+// ─── Constants ─────────────────────────────────────────────────────────────────
 
 const TEAM_COLORS: Record<string, string> = {
   red_bull: "#3671C6",
@@ -42,9 +49,14 @@ const TEAM_COLORS: Record<string, string> = {
 };
 
 const RANK_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32"];
-const RANK_LABELS = ["WINNER", "2ND PLACE", "3RD PLACE"];
+const RANK_LABELS = ["RACE WINNER", "2ND PLACE", "3RD PLACE"];
 
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
+// ─── Page background ───────────────────────────────────────────────────────────
+// Carbon-texture dark bg with a very faint grid, so content pops.
+
+const PAGE_BG = "#080808";
+
+// ─── Reusable primitives ───────────────────────────────────────────────────────
 
 function SkeletonBlock({ height = 200 }: { height?: number }) {
   return (
@@ -58,8 +70,6 @@ function SkeletonBlock({ height = 200 }: { height?: number }) {
     />
   );
 }
-
-// ─── Section header ───────────────────────────────────────────────────────────
 
 function SectionHeader({
   overline,
@@ -80,10 +90,10 @@ function SectionHeader({
         justifyContent: "space-between",
         marginBottom: "2rem",
         gap: "1rem",
+        flexWrap: "wrap",
       }}
     >
       <div>
-        {/* Red overline with left tick */}
         <div
           style={{
             display: "flex",
@@ -112,7 +122,7 @@ function SectionHeader({
           <h2
             style={{
               fontFamily: "'Russo One', sans-serif",
-              fontSize: "clamp(1.2rem, 2.5vw, 1.6rem)",
+              fontSize: "clamp(1.1rem, 2.5vw, 1.6rem)",
               textTransform: "uppercase",
               color: "white",
               letterSpacing: "-0.01em",
@@ -142,33 +152,111 @@ function SectionHeader({
   );
 }
 
-// ─── P1 Feature card ──────────────────────────────────────────────────────────
-// Full-width dominant card for the race winner prediction.
+// ─── Panel wrapper — shared backdrop card ─────────────────────────────────────
+
+function Panel({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <div
+      style={{
+        background: "rgba(255,255,255,0.025)",
+        border: "1px solid rgba(255,255,255,0.07)",
+        backdropFilter: "blur(8px)",
+        padding: "1.5rem",
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ─── Stat tile ────────────────────────────────────────────────────────────────
+
+function StatTile({
+  label,
+  value,
+  color = "white",
+  sub,
+}: {
+  label: string;
+  value: string | number;
+  color?: string;
+  sub?: string;
+}) {
+  return (
+    <div
+      style={{
+        background: "rgba(255,255,255,0.02)",
+        border: "1px solid rgba(255,255,255,0.06)",
+        padding: "0.85rem 1rem",
+        display: "flex",
+        flexDirection: "column",
+        gap: "3px",
+      }}
+    >
+      <span
+        style={{
+          fontFamily: "'Rajdhani', sans-serif",
+          fontSize: "0.52rem",
+          fontWeight: 700,
+          letterSpacing: "0.16em",
+          textTransform: "uppercase",
+          color: "rgba(255,255,255,0.2)",
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          fontFamily: "'Russo One', sans-serif",
+          fontSize: "1.4rem",
+          color,
+          lineHeight: 1,
+          letterSpacing: "-0.02em",
+        }}
+      >
+        {value}
+      </span>
+      {sub && (
+        <span
+          style={{
+            fontFamily: "'Rajdhani', sans-serif",
+            fontSize: "0.55rem",
+            color: "rgba(255,255,255,0.18)",
+            letterSpacing: "0.06em",
+          }}
+        >
+          {sub}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ─── P1 feature ───────────────────────────────────────────────────────────────
 
 function P1FeatureCard({
   driver,
-  animDelay = 0,
+  allDrivers,
 }: {
   driver: DriverPrediction;
-  animDelay?: number;
+  allDrivers: DriverPrediction[];
 }) {
-  const [hovered, setHovered] = useState(false);
   const teamColor = TEAM_COLORS[driver.constructorId] ?? "#E10600";
   const rankColor = RANK_COLORS[0];
 
   return (
-    <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+    <Panel
       style={{
+        borderTop: `3px solid ${rankColor}`,
         position: "relative",
         overflow: "hidden",
-        border: `1px solid rgba(255,215,0,0.15)`,
-        borderTop: `3px solid ${rankColor}`,
-        background: hovered ? "rgba(255,215,0,0.04)" : "rgba(255,215,0,0.015)",
-        transition: "background 0.25s ease",
-        cursor: "default",
-        animation: `clientSlideUp 0.7s ${animDelay}s cubic-bezier(0.16,1,0.3,1) both`,
       }}
     >
       {/* Top glow */}
@@ -178,12 +266,13 @@ function P1FeatureCard({
           top: 0,
           left: 0,
           right: 0,
-          height: "120px",
+          height: "100px",
           background: `linear-gradient(180deg, ${rankColor}18 0%, transparent 100%)`,
           pointerEvents: "none",
         }}
       />
-      {/* Background rank number */}
+
+      {/* Ghost number */}
       <div
         style={{
           position: "absolute",
@@ -191,9 +280,9 @@ function P1FeatureCard({
           top: "50%",
           transform: "translateY(-50%)",
           fontFamily: "'Russo One', sans-serif",
-          fontSize: "clamp(8rem, 15vw, 14rem)",
+          fontSize: "clamp(6rem, 14vw, 13rem)",
           color: "transparent",
-          WebkitTextStroke: `1px rgba(255,215,0,0.06)`,
+          WebkitTextStroke: `1px rgba(255,215,0,0.05)`,
           lineHeight: 1,
           pointerEvents: "none",
           userSelect: "none",
@@ -202,31 +291,31 @@ function P1FeatureCard({
         1
       </div>
 
+      {/* Top: rank badge + name + probability */}
       <div
         style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "1rem",
+          marginBottom: "1.5rem",
           position: "relative",
-          padding: "2rem 2.5rem",
-          display: "grid",
-          gridTemplateColumns: "1fr auto",
-          gap: "2rem",
-          alignItems: "center",
         }}
       >
-        {/* Left — driver info */}
         <div>
-          {/* P1 badge */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
               gap: "0.75rem",
-              marginBottom: "1rem",
+              marginBottom: "0.75rem",
             }}
           >
             <span
               style={{
                 fontFamily: "'Russo One', sans-serif",
-                fontSize: "3rem",
+                fontSize: "2.8rem",
                 color: rankColor,
                 lineHeight: 1,
               }}
@@ -235,7 +324,7 @@ function P1FeatureCard({
             </span>
             <div
               style={{
-                padding: "0.2rem 0.6rem",
+                padding: "0.18rem 0.55rem",
                 border: `1px solid ${rankColor}44`,
                 background: `${rankColor}0f`,
               }}
@@ -243,7 +332,7 @@ function P1FeatureCard({
               <span
                 style={{
                   fontFamily: "'Rajdhani', sans-serif",
-                  fontSize: "0.55rem",
+                  fontSize: "0.52rem",
                   fontWeight: 700,
                   letterSpacing: "0.2em",
                   color: rankColor,
@@ -255,127 +344,41 @@ function P1FeatureCard({
             </div>
           </div>
 
-          {/* Driver name */}
           <div
             style={{
               fontFamily: "'Russo One', sans-serif",
-              fontSize: "clamp(1.8rem, 4vw, 3rem)",
+              fontSize: "clamp(1.6rem, 4vw, 2.8rem)",
               textTransform: "uppercase",
               color: "white",
               letterSpacing: "-0.02em",
               lineHeight: 0.95,
-              marginBottom: "0.5rem",
+              marginBottom: "0.4rem",
             }}
           >
             {driver.givenName}{" "}
             <span style={{ color: rankColor }}>{driver.familyName}</span>
           </div>
 
-          {/* Team */}
           <div
             style={{
               fontFamily: "'Rajdhani', sans-serif",
-              fontSize: "0.75rem",
+              fontSize: "0.72rem",
               fontWeight: 700,
               letterSpacing: "0.14em",
               textTransform: "uppercase",
               color: teamColor,
-              marginBottom: "1.25rem",
             }}
           >
             {driver.constructorName}
           </div>
-
-          {/* Insight */}
-          <p
-            style={{
-              fontFamily: "'Rajdhani', sans-serif",
-              fontSize: "0.85rem",
-              color: "rgba(255,255,255,0.35)",
-              margin: "0 0 1.5rem",
-              lineHeight: 1.6,
-              fontStyle: "italic",
-              maxWidth: "520px",
-            }}
-          >
-            {driver.insight}
-          </p>
-
-          {/* Factor bars */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "0.75rem 2rem",
-              maxWidth: "480px",
-            }}
-          >
-            {[
-              { label: "Recent Form", value: driver.factors.currentForm },
-              { label: "Qualifying", value: driver.factors.qualifyingStrength },
-              {
-                label: "Championship",
-                value: driver.factors.championshipPosition,
-              },
-              { label: "Circuit Hist.", value: driver.factors.circuitHistory },
-            ].map((f) => (
-              <div key={f.label}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginBottom: "4px",
-                  }}
-                >
-                  <span
-                    style={{
-                      fontFamily: "'Rajdhani', sans-serif",
-                      fontSize: "0.58rem",
-                      fontWeight: 600,
-                      letterSpacing: "0.1em",
-                      textTransform: "uppercase",
-                      color: "rgba(255,255,255,0.25)",
-                    }}
-                  >
-                    {f.label}
-                  </span>
-                  <span
-                    style={{
-                      fontFamily: "'Russo One', sans-serif",
-                      fontSize: "0.58rem",
-                      color: "rgba(255,255,255,0.4)",
-                    }}
-                  >
-                    {f.value}
-                  </span>
-                </div>
-                <div
-                  style={{
-                    height: "3px",
-                    background: "rgba(255,255,255,0.07)",
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      height: "100%",
-                      width: `${f.value}%`,
-                      background: `linear-gradient(90deg, ${rankColor} 0%, ${rankColor}99 100%)`,
-                      transition: "width 1s cubic-bezier(0.16,1,0.3,1)",
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
 
-        {/* Right — score + probability */}
-        <div style={{ textAlign: "right", flexShrink: 0 }}>
+        {/* Probability */}
+        <div style={{ textAlign: "right" }}>
           <div
             style={{
               fontFamily: "'Russo One', sans-serif",
-              fontSize: "clamp(3rem, 6vw, 5rem)",
+              fontSize: "clamp(2.5rem, 5vw, 4rem)",
               color: rankColor,
               lineHeight: 1,
               letterSpacing: "-0.03em",
@@ -386,7 +389,7 @@ function P1FeatureCard({
           <div
             style={{
               fontFamily: "'Rajdhani', sans-serif",
-              fontSize: "0.6rem",
+              fontSize: "0.55rem",
               fontWeight: 600,
               letterSpacing: "0.16em",
               textTransform: "uppercase",
@@ -396,40 +399,121 @@ function P1FeatureCard({
           >
             Win Probability
           </div>
-          <div
-            style={{
-              marginTop: "1.5rem",
-              padding: "0.75rem 1.25rem",
-              border: "1px solid rgba(255,255,255,0.07)",
-              background: "rgba(255,255,255,0.02)",
-            }}
-          >
-            <div
-              style={{
-                fontFamily: "'Rajdhani', sans-serif",
-                fontSize: "0.55rem",
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                color: "rgba(255,255,255,0.2)",
-                marginBottom: "4px",
-              }}
-            >
-              Model Score
-            </div>
-            <div
-              style={{
-                fontFamily: "'Russo One', sans-serif",
-                fontSize: "1.8rem",
-                color: "white",
-                lineHeight: 1,
-              }}
-            >
-              {driver.score.toFixed(1)}
-            </div>
-          </div>
         </div>
       </div>
-    </div>
+
+      {/* Insight */}
+      <p
+        style={{
+          fontFamily: "'Rajdhani', sans-serif",
+          fontSize: "0.85rem",
+          color: "rgba(255,255,255,0.38)",
+          margin: "0 0 1.5rem",
+          lineHeight: 1.6,
+          fontStyle: "italic",
+          position: "relative",
+          maxWidth: "560px",
+        }}
+      >
+        {driver.insight}
+      </p>
+
+      {/* Stats row */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))",
+          gap: "2px",
+          marginBottom: "1.5rem",
+          position: "relative",
+        }}
+      >
+        <StatTile
+          label="Model Score"
+          value={driver.score.toFixed(1)}
+          color={rankColor}
+          sub="out of 100"
+        />
+        <StatTile
+          label="Recent Form"
+          value={driver.factors.currentForm}
+          color={teamColor}
+          sub="0–100 normalised"
+        />
+        <StatTile
+          label="Qualifying"
+          value={driver.factors.qualifyingStrength}
+          color={teamColor}
+          sub="0–100 normalised"
+        />
+        <StatTile
+          label="Circuit Hist."
+          value={driver.factors.circuitHistory}
+          color={teamColor}
+          sub="last 10 seasons"
+        />
+      </div>
+
+      {/* Charts row — radar + vs field */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          gap: "1.5rem",
+          position: "relative",
+          borderTop: "1px solid rgba(255,255,255,0.05)",
+          paddingTop: "1.5rem",
+        }}
+      >
+        {/* Radar */}
+        <div>
+          <div
+            style={{
+              fontFamily: "'Rajdhani', sans-serif",
+              fontSize: "0.52rem",
+              fontWeight: 700,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              color: "rgba(255,255,255,0.18)",
+              marginBottom: "0.75rem",
+            }}
+          >
+            Factor Profile
+          </div>
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <ScoreRadarChart driver={driver} accentColor={rankColor} />
+          </div>
+        </div>
+
+        {/* Vs field */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "'Rajdhani', sans-serif",
+              fontSize: "0.52rem",
+              fontWeight: 700,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              color: "rgba(255,255,255,0.18)",
+              marginBottom: "0.75rem",
+            }}
+          >
+            Performance vs Field
+          </div>
+          <DriverVsFieldChart
+            driver={driver}
+            allDrivers={allDrivers}
+            accentColor={rankColor}
+          />
+        </div>
+      </div>
+    </Panel>
   );
 }
 
@@ -438,58 +522,34 @@ function P1FeatureCard({
 function PodiumCard({
   driver,
   rank,
-  animDelay = 0,
+  allDrivers,
 }: {
   driver: DriverPrediction;
   rank: number;
-  animDelay?: number;
+  allDrivers: DriverPrediction[];
 }) {
-  const [hovered, setHovered] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const teamColor = TEAM_COLORS[driver.constructorId] ?? "#E10600";
   const rankColor = RANK_COLORS[rank - 1];
 
   return (
-    <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+    <Panel
       style={{
+        borderTop: `3px solid ${rankColor}`,
         position: "relative",
         overflow: "hidden",
-        border: `1px solid rgba(255,255,255,0.07)`,
-        borderTop: `3px solid ${rankColor}`,
-        background: hovered
-          ? "rgba(255,255,255,0.03)"
-          : "rgba(255,255,255,0.01)",
-        transition: "background 0.2s ease",
-        padding: "1.75rem",
-        display: "flex",
-        flexDirection: "column",
-        gap: "0.75rem",
-        animation: `clientSlideUp 0.7s ${animDelay}s cubic-bezier(0.16,1,0.3,1) both`,
       }}
     >
-      {/* Top glow */}
+      {/* Ghost rank */}
       <div
         style={{
           position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: "60px",
-          background: `linear-gradient(180deg, ${rankColor}14 0%, transparent 100%)`,
-          pointerEvents: "none",
-        }}
-      />
-      {/* Ghost rank number */}
-      <div
-        style={{
-          position: "absolute",
-          right: "-4%",
-          bottom: "-10%",
+          right: "-2%",
+          bottom: "-8%",
           fontFamily: "'Russo One', sans-serif",
-          fontSize: "clamp(5rem, 10vw, 8rem)",
+          fontSize: "clamp(5rem, 10vw, 7rem)",
           color: "transparent",
-          WebkitTextStroke: `1px rgba(255,255,255,0.04)`,
+          WebkitTextStroke: `1px rgba(255,255,255,0.03)`,
           lineHeight: 1,
           pointerEvents: "none",
           userSelect: "none",
@@ -498,148 +558,230 @@ function PodiumCard({
         {rank}
       </div>
 
-      <div style={{ position: "relative" }}>
-        {/* Rank + prob row */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            marginBottom: "0.75rem",
-          }}
-        >
+      {/* Top row */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: "0.75rem",
+          position: "relative",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <span
             style={{
               fontFamily: "'Russo One', sans-serif",
-              fontSize: "2rem",
+              fontSize: "1.8rem",
               color: rankColor,
               lineHeight: 1,
             }}
           >
             P{rank}
           </span>
-          <div style={{ textAlign: "right" }}>
+          <div>
             <div
               style={{
                 fontFamily: "'Russo One', sans-serif",
-                fontSize: "1.4rem",
-                color: rankColor,
-                lineHeight: 1,
+                fontSize: "clamp(0.9rem, 2vw, 1.2rem)",
+                textTransform: "uppercase",
+                color: "white",
+                letterSpacing: "-0.01em",
+                lineHeight: 1.05,
               }}
             >
-              {driver.podiumProbability}%
+              {driver.givenName}{" "}
+              <span style={{ color: rankColor }}>{driver.familyName}</span>
             </div>
             <div
               style={{
                 fontFamily: "'Rajdhani', sans-serif",
-                fontSize: "0.5rem",
-                fontWeight: 600,
-                letterSpacing: "0.14em",
+                fontSize: "0.62rem",
+                fontWeight: 700,
+                letterSpacing: "0.12em",
                 textTransform: "uppercase",
-                color: "rgba(255,255,255,0.2)",
+                color: teamColor,
                 marginTop: "2px",
               }}
             >
-              Probability
+              {driver.constructorName}
             </div>
           </div>
         </div>
 
-        {/* Driver name */}
+        <div style={{ textAlign: "right", flexShrink: 0 }}>
+          <div
+            style={{
+              fontFamily: "'Russo One', sans-serif",
+              fontSize: "1.4rem",
+              color: rankColor,
+              lineHeight: 1,
+            }}
+          >
+            {driver.podiumProbability}%
+          </div>
+          <div
+            style={{
+              fontFamily: "'Rajdhani', sans-serif",
+              fontSize: "0.48rem",
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              color: "rgba(255,255,255,0.18)",
+              marginTop: "2px",
+            }}
+          >
+            Probability
+          </div>
+        </div>
+      </div>
+
+      {/* Score bar */}
+      <div style={{ marginBottom: "0.75rem", position: "relative" }}>
         <div
           style={{
-            fontFamily: "'Russo One', sans-serif",
-            fontSize: "clamp(1.1rem, 2vw, 1.4rem)",
-            textTransform: "uppercase",
-            color: "white",
-            letterSpacing: "-0.01em",
-            lineHeight: 1.05,
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: "4px",
           }}
         >
-          {driver.givenName}{" "}
-          <span style={{ color: rankColor }}>{driver.familyName}</span>
+          <span
+            style={{
+              fontFamily: "'Rajdhani', sans-serif",
+              fontSize: "0.48rem",
+              fontWeight: 600,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "rgba(255,255,255,0.18)",
+            }}
+          >
+            Model Score
+          </span>
+          <span
+            style={{
+              fontFamily: "'Russo One', sans-serif",
+              fontSize: "0.48rem",
+              color: "rgba(255,255,255,0.3)",
+            }}
+          >
+            {driver.score.toFixed(1)} / 100
+          </span>
         </div>
-
-        {/* Team */}
         <div
           style={{
-            fontFamily: "'Rajdhani', sans-serif",
-            fontSize: "0.65rem",
-            fontWeight: 700,
-            letterSpacing: "0.14em",
-            textTransform: "uppercase",
-            color: teamColor,
-            marginTop: "4px",
-            marginBottom: "1rem",
+            height: "2px",
+            background: "rgba(255,255,255,0.06)",
+            overflow: "hidden",
           }}
         >
-          {driver.constructorName}
+          <div
+            style={{
+              height: "100%",
+              width: `${driver.score}%`,
+              background: `linear-gradient(90deg, ${rankColor} 0%, ${rankColor}88 100%)`,
+              transition: "width 1s cubic-bezier(0.16,1,0.3,1)",
+            }}
+          />
         </div>
+      </div>
 
-        {/* Score bar */}
-        <div>
+      {/* Insight */}
+      <p
+        style={{
+          fontFamily: "'Rajdhani', sans-serif",
+          fontSize: "0.72rem",
+          color: "rgba(255,255,255,0.25)",
+          margin: "0 0 0.75rem",
+          lineHeight: 1.55,
+          fontStyle: "italic",
+          position: "relative",
+        }}
+      >
+        {driver.insight}
+      </p>
+
+      {/* Expand toggle */}
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        style={{
+          background: "transparent",
+          border: "1px solid rgba(255,255,255,0.08)",
+          color: "rgba(255,255,255,0.3)",
+          padding: "0.3rem 0.75rem",
+          fontFamily: "'Rajdhani', sans-serif",
+          fontWeight: 600,
+          fontSize: "0.55rem",
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          cursor: "pointer",
+          width: "100%",
+          textAlign: "center",
+          transition: "all 0.15s ease",
+          position: "relative",
+        }}
+      >
+        {expanded ? "▲ Hide charts" : "▼ Show factor charts"}
+      </button>
+
+      {/* Expanded charts */}
+      <div
+        style={{
+          maxHeight: expanded ? "500px" : "0",
+          overflow: "hidden",
+          transition: "max-height 0.4s cubic-bezier(0.16,1,0.3,1)",
+        }}
+      >
+        <div
+          style={{
+            borderTop: "1px solid rgba(255,255,255,0.05)",
+            marginTop: "0.75rem",
+            paddingTop: "1rem",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+            gap: "1.25rem",
+          }}
+        >
           <div
             style={{
               display: "flex",
-              justifyContent: "space-between",
-              marginBottom: "4px",
+              flexDirection: "column",
+              alignItems: "center",
             }}
           >
             <span
               style={{
                 fontFamily: "'Rajdhani', sans-serif",
                 fontSize: "0.5rem",
-                fontWeight: 600,
-                letterSpacing: "0.1em",
+                fontWeight: 700,
+                letterSpacing: "0.18em",
                 textTransform: "uppercase",
-                color: "rgba(255,255,255,0.2)",
+                color: "rgba(255,255,255,0.16)",
+                marginBottom: "0.5rem",
               }}
             >
-              Model Score
+              Factor Profile
             </span>
+            <ScoreRadarChart driver={driver} accentColor={rankColor} />
+          </div>
+          <div>
             <span
               style={{
-                fontFamily: "'Russo One', sans-serif",
+                fontFamily: "'Rajdhani', sans-serif",
                 fontSize: "0.5rem",
-                color: "rgba(255,255,255,0.35)",
+                fontWeight: 700,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.16)",
+                display: "block",
+                marginBottom: "0.5rem",
               }}
             >
-              {driver.score.toFixed(1)}
+              vs Field Average
             </span>
-          </div>
-          <div
-            style={{
-              height: "2px",
-              background: "rgba(255,255,255,0.06)",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                height: "100%",
-                width: `${driver.score}%`,
-                background: `linear-gradient(90deg, ${rankColor} 0%, ${rankColor}88 100%)`,
-                transition: "width 1s cubic-bezier(0.16,1,0.3,1)",
-              }}
-            />
+            <DriverVsFieldChart driver={driver} allDrivers={allDrivers} />
           </div>
         </div>
-
-        {/* Insight */}
-        <p
-          style={{
-            fontFamily: "'Rajdhani', sans-serif",
-            fontSize: "0.72rem",
-            color: "rgba(255,255,255,0.25)",
-            margin: "0.75rem 0 0",
-            lineHeight: 1.55,
-            fontStyle: "italic",
-          }}
-        >
-          {driver.insight}
-        </p>
       </div>
-    </div>
+    </Panel>
   );
 }
 
@@ -661,24 +803,22 @@ function FinisherRow({
       onMouseLeave={() => setHovered(false)}
       style={{
         display: "grid",
-        gridTemplateColumns: "2rem 1fr auto auto auto",
+        gridTemplateColumns: "2rem 1fr 80px auto auto",
         alignItems: "center",
-        gap: "1rem",
-        padding: "0.9rem 1.25rem",
+        gap: "0.75rem",
+        padding: "0.85rem 1rem",
         borderBottom: "1px solid rgba(255,255,255,0.04)",
-        background: hovered ? "rgba(255,255,255,0.02)" : "transparent",
+        background: hovered ? "rgba(255,255,255,0.025)" : "transparent",
         borderLeft: hovered
           ? "2px solid rgba(225,6,0,0.5)"
           : "2px solid transparent",
         transition: "all 0.15s ease",
-        animation: `clientSlideUp 0.5s ${0.05 * index}s cubic-bezier(0.16,1,0.3,1) both`,
       }}
     >
-      {/* Position indicator */}
       <div
         style={{
           fontFamily: "'Russo One', sans-serif",
-          fontSize: "0.65rem",
+          fontSize: "0.6rem",
           color: "rgba(255,255,255,0.15)",
           textAlign: "center",
         }}
@@ -686,13 +826,12 @@ function FinisherRow({
         P{index + 4}
       </div>
 
-      {/* Driver + team */}
       <div style={{ minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
           <div
             style={{
-              width: "6px",
-              height: "6px",
+              width: "5px",
+              height: "5px",
               borderRadius: "50%",
               background: teamColor,
               flexShrink: 0,
@@ -701,7 +840,7 @@ function FinisherRow({
           <span
             style={{
               fontFamily: "'Russo One', sans-serif",
-              fontSize: "0.82rem",
+              fontSize: "0.78rem",
               textTransform: "uppercase",
               color: "white",
               letterSpacing: "-0.01em",
@@ -716,29 +855,22 @@ function FinisherRow({
         <div
           style={{
             fontFamily: "'Rajdhani', sans-serif",
-            fontSize: "0.6rem",
+            fontSize: "0.55rem",
             fontWeight: 600,
             letterSpacing: "0.1em",
             textTransform: "uppercase",
             color: teamColor,
             opacity: 0.75,
-            marginTop: "2px",
-            paddingLeft: "14px",
+            marginTop: "1px",
+            paddingLeft: "13px",
           }}
         >
           {driver.constructorName}
         </div>
       </div>
 
-      {/* Mini factor bar */}
-      <div
-        style={{
-          width: "80px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "3px",
-        }}
-      >
+      {/* Mini dual bars (form + quali) */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
         {[driver.factors.currentForm, driver.factors.qualifyingStrength].map(
           (val, i) => (
             <div
@@ -761,26 +893,22 @@ function FinisherRow({
         )}
       </div>
 
-      {/* Score */}
       <div
         style={{
           fontFamily: "'Russo One', sans-serif",
-          fontSize: "0.72rem",
-          color: "rgba(255,255,255,0.35)",
-          minWidth: "2.5rem",
+          fontSize: "0.68rem",
+          color: "rgba(255,255,255,0.3)",
           textAlign: "right",
         }}
       >
         {driver.score.toFixed(1)}
       </div>
 
-      {/* Probability */}
       <div
         style={{
           fontFamily: "'Russo One', sans-serif",
-          fontSize: "0.72rem",
-          color: "rgba(255,255,255,0.2)",
-          minWidth: "2.5rem",
+          fontSize: "0.68rem",
+          color: "rgba(255,255,255,0.18)",
           textAlign: "right",
         }}
       >
@@ -792,7 +920,11 @@ function FinisherRow({
 
 // ─── Methodology section ──────────────────────────────────────────────────────
 
-function MethodologySection() {
+function MethodologySection({
+  allDrivers,
+}: {
+  allDrivers: DriverPrediction[];
+}) {
   const factors = [
     {
       weight: 45,
@@ -832,7 +964,7 @@ function MethodologySection() {
         style={{
           maxWidth: "1280px",
           margin: "0 auto",
-          padding: "4rem clamp(1.25rem,4vw,1.5rem)",
+          padding: "4rem clamp(1.25rem, 4vw, 1.5rem)",
         }}
       >
         <SectionHeader
@@ -841,129 +973,137 @@ function MethodologySection() {
           subtitle="Factor weights and data sources behind every prediction"
         />
 
-        {/* Segmented weight bar */}
+        {/* Two-column layout: factor rows + donut */}
         <div
           style={{
-            display: "flex",
-            gap: "2px",
-            height: "6px",
-            marginBottom: "2.5rem",
-            overflow: "hidden",
+            display: "grid",
+            gridTemplateColumns: "1fr auto",
+            gap: "3rem",
+            alignItems: "start",
           }}
+          className="methodology-grid"
         >
-          {factors.map((f) => (
+          {/* Factor rows */}
+          <div>
+            {/* Segmented weight bar */}
             <div
-              key={f.label}
               style={{
-                height: "100%",
-                width: `${f.weight}%`,
-                background: f.color,
-                transition: "width 1s cubic-bezier(0.16,1,0.3,1)",
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Factor rows */}
-        <div style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
-          {factors.map((f, i) => (
-            <div
-              key={f.label}
-              className="methodology-row"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "72px 1fr",
-                alignItems: "start",
-                gap: "1.25rem 1.5rem",
-                padding: "1.25rem 1.5rem",
-                borderBottom:
-                  i < factors.length - 1
-                    ? "1px solid rgba(255,255,255,0.05)"
-                    : "none",
+                display: "flex",
+                gap: "2px",
+                height: "6px",
+                marginBottom: "2rem",
+                overflow: "hidden",
               }}
             >
-              {/* Weight */}
-              <div
-                style={{
-                  fontFamily: "'Russo One', sans-serif",
-                  fontSize: "2rem",
-                  color: f.color,
-                  lineHeight: 1,
-                  flexShrink: 0,
-                }}
-              >
-                {f.weight}%
-              </div>
-
-              {/* Right side: label + bar + desc */}
-              <div>
-                {/* Label row with inline bar */}
+              {factors.map((f) => (
                 <div
+                  key={f.label}
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.75rem",
-                    marginBottom: "0.5rem",
-                    flexWrap: "wrap",
+                    height: "100%",
+                    width: `${f.weight}%`,
+                    background: f.color,
+                    transition: "width 1s cubic-bezier(0.16,1,0.3,1)",
+                  }}
+                />
+              ))}
+            </div>
+
+            <div style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
+              {factors.map((f, i) => (
+                <div
+                  key={f.label}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "60px 1fr",
+                    alignItems: "start",
+                    gap: "1rem 1.25rem",
+                    padding: "1.1rem 1.25rem",
+                    borderBottom:
+                      i < factors.length - 1
+                        ? "1px solid rgba(255,255,255,0.05)"
+                        : "none",
                   }}
                 >
                   <div
                     style={{
-                      fontFamily: "'Rajdhani', sans-serif",
-                      fontWeight: 700,
-                      fontSize: "0.75rem",
-                      letterSpacing: "0.14em",
-                      textTransform: "uppercase",
-                      color: "white",
-                      whiteSpace: "nowrap",
+                      fontFamily: "'Russo One', sans-serif",
+                      fontSize: "1.6rem",
+                      color: f.color,
+                      lineHeight: 1,
+                      flexShrink: 0,
                     }}
                   >
-                    {f.label}
+                    {f.weight}%
                   </div>
-                  {/* Bar — hidden on mobile, shown on sm+ via class */}
-                  <div
-                    className="methodology-bar"
-                    style={{
-                      flex: 1,
-                      minWidth: "60px",
-                      height: "2px",
-                      background: "rgba(255,255,255,0.06)",
-                    }}
-                  >
+                  <div>
                     <div
                       style={{
-                        height: "100%",
-                        width: `${f.weight * 2}%`,
-                        background: f.color,
-                        maxWidth: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.75rem",
+                        marginBottom: "0.4rem",
+                        flexWrap: "wrap",
                       }}
-                    />
+                    >
+                      <span
+                        style={{
+                          fontFamily: "'Rajdhani', sans-serif",
+                          fontWeight: 700,
+                          fontSize: "0.72rem",
+                          letterSpacing: "0.12em",
+                          textTransform: "uppercase",
+                          color: "white",
+                        }}
+                      >
+                        {f.label}
+                      </span>
+                      <div
+                        style={{
+                          flex: 1,
+                          minWidth: "40px",
+                          height: "2px",
+                          background: "rgba(255,255,255,0.06)",
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            width: `${f.weight * 2}%`,
+                            background: f.color,
+                            maxWidth: "100%",
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <p
+                      style={{
+                        fontFamily: "'Rajdhani', sans-serif",
+                        fontSize: "0.75rem",
+                        lineHeight: 1.7,
+                        color: "rgba(255,255,255,0.3)",
+                        margin: 0,
+                      }}
+                    >
+                      {f.desc}
+                    </p>
                   </div>
                 </div>
-
-                {/* Description */}
-                <p
-                  style={{
-                    fontFamily: "'Rajdhani', sans-serif",
-                    fontSize: "0.78rem",
-                    lineHeight: 1.7,
-                    color: "rgba(255,255,255,0.32)",
-                    margin: 0,
-                  }}
-                >
-                  {f.desc}
-                </p>
-              </div>
+              ))}
             </div>
-          ))}
+          </div>
+
+          {/* Donut chart */}
+          <div style={{ paddingTop: "3.5rem" }}>
+            <FactorWeightDonut />
+          </div>
         </div>
 
         {/* Disclaimer */}
         <p
           style={{
             fontFamily: "'Rajdhani', sans-serif",
-            fontSize: "0.7rem",
-            color: "rgba(255,255,255,0.15)",
+            fontSize: "0.68rem",
+            color: "rgba(255,255,255,0.13)",
             marginTop: "1.5rem",
             lineHeight: 1.7,
             maxWidth: "680px",
@@ -978,15 +1118,9 @@ function MethodologySection() {
       </div>
 
       <style>{`
-        /* On mobile: tighten padding and shrink the weight number */
-        @media (max-width: 480px) {
-          .methodology-row {
-            grid-template-columns: 56px 1fr !important;
-            padding: 1rem 1rem !important;
-            gap: 0.75rem 1rem !important;
-          }
-          .methodology-row > div:first-child {
-            font-size: 1.4rem !important;
+        @media (max-width: 560px) {
+          .methodology-grid {
+            grid-template-columns: 1fr !important;
           }
         }
       `}</style>
@@ -1021,7 +1155,7 @@ export default function PredictionClient({
     }
   };
 
-  // ── Error ─────────────────────────────────────────────────────────────────
+  // ── Error ──────────────────────────────────────────────────────────────────
   if (error && !prediction) {
     return (
       <div
@@ -1067,20 +1201,20 @@ export default function PredictionClient({
     );
   }
 
-  // ── Loading ───────────────────────────────────────────────────────────────
+  // ── Loading ────────────────────────────────────────────────────────────────
   if (isLoading && !prediction) {
     return (
       <div
         style={{
           maxWidth: "1280px",
           margin: "0 auto",
-          padding: "3rem clamp(1.25rem,4vw,1.5rem)",
+          padding: "3rem clamp(1.25rem, 4vw, 1.5rem)",
           display: "flex",
           flexDirection: "column",
           gap: "2px",
         }}
       >
-        <SkeletonBlock height={320} />
+        <SkeletonBlock height={360} />
         <div
           style={{
             display: "grid",
@@ -1088,8 +1222,8 @@ export default function PredictionClient({
             gap: "2px",
           }}
         >
-          <SkeletonBlock height={260} />
-          <SkeletonBlock height={260} />
+          <SkeletonBlock height={280} />
+          <SkeletonBlock height={280} />
         </div>
         {Array.from({ length: 7 }).map((_, i) => (
           <SkeletonBlock key={i} height={56} />
@@ -1102,13 +1236,13 @@ export default function PredictionClient({
 
   const [p1, p2, p3] = prediction.predictions;
   const likelyFinishers = prediction.likelyFinishers;
+  const allDrivers = [...prediction.predictions, ...likelyFinishers];
 
-  // Sort finishers by score descending for consistent ordering
   const sortedFinishers = [...likelyFinishers].sort(
     (a, b) => b.score - a.score,
   );
 
-  // Refresh button (shared)
+  // Refresh button
   const RefreshButton = (
     <button
       onClick={handleRefresh}
@@ -1154,118 +1288,349 @@ export default function PredictionClient({
 
   return (
     <>
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      {/* ── Hero ────────────────────────────────────────────────────────────── */}
       <PredictionHero prediction={prediction} />
 
-      {/* ── Podium ────────────────────────────────────────────────────────── */}
-      <section
+      {/* ── Page content backdrop ────────────────────────────────────────────
+          Subtle radial glow + dot grid to give the dark page some depth     */}
+      <div
         style={{
-          borderBottom: "1px solid rgba(255,255,255,0.05)",
-          background: "#060606",
+          position: "relative",
+          background: PAGE_BG,
+          // Dot grid texture
+          backgroundImage:
+            "radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px)",
+          backgroundSize: "32px 32px",
         }}
       >
+        {/* Ambient glow behind the top of the content */}
         <div
           style={{
-            maxWidth: "1280px",
-            margin: "0 auto",
-            padding: "3rem clamp(1.25rem,4vw,1.5rem)",
+            position: "absolute",
+            top: 0,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "80%",
+            height: "400px",
+            background:
+              "radial-gradient(ellipse at top, rgba(225,6,0,0.06) 0%, transparent 70%)",
+            pointerEvents: "none",
           }}
-        >
-          <SectionHeader
-            overline="Podium Prediction"
-            title="Race Contenders"
-            subtitle="AI-powered finishing order for the top 3"
-            action={RefreshButton}
-          />
+        />
 
-          {/* P1 — full width feature */}
-          {p1 && <P1FeatureCard driver={p1} animDelay={0} />}
-
-          {/* P2 / P3 — side by side below */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(auto-fit, minmax(min(100%, 300px), 1fr))",
-              gap: "2px",
-              marginTop: "2px",
-            }}
-          >
-            {p2 && <PodiumCard driver={p2} rank={2} animDelay={0.1} />}
-            {p3 && <PodiumCard driver={p3} rank={3} animDelay={0.2} />}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Likely Finishers ──────────────────────────────────────────────── */}
-      {sortedFinishers.length > 0 && (
+        {/* ── Podium ──────────────────────────────────────────────────────── */}
         <section
           style={{
             borderBottom: "1px solid rgba(255,255,255,0.05)",
-            background: "#060606",
+            position: "relative",
           }}
         >
           <div
             style={{
               maxWidth: "1280px",
               margin: "0 auto",
-              padding: "3rem clamp(1.25rem,4vw,1.5rem)",
+              padding: "3rem clamp(1rem, 4vw, 1.5rem)",
             }}
           >
             <SectionHeader
-              overline="Points Finishers"
-              title="Likely Top 10"
-              subtitle="Drivers predicted to score points — red bar = form, grey bar = qualifying"
+              overline="Podium Prediction"
+              title="Race Contenders"
+              subtitle="AI-powered finishing order — factor radar, probability, and vs-field analysis"
+              action={RefreshButton}
             />
 
-            {/* Column headers */}
+            {/* P1 — full width feature */}
+            {p1 && (
+              <div
+                style={{
+                  marginBottom: "2px",
+                  animation:
+                    "clientSlideUp 0.7s cubic-bezier(0.16,1,0.3,1) both",
+                }}
+              >
+                <P1FeatureCard driver={p1} allDrivers={allDrivers} />
+              </div>
+            )}
+
+            {/* P2 / P3 — side by side */}
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "2rem 1fr auto auto auto",
-                gap: "1rem",
-                padding: "0.4rem 1.25rem",
-                borderBottom: "1px solid rgba(255,255,255,0.06)",
-                marginBottom: "0",
+                gridTemplateColumns:
+                  "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
+                gap: "2px",
+                marginTop: "2px",
               }}
             >
-              {["Pos", "Driver", "Form/Quali", "Score", "Prob"].map((h) => (
+              {p2 && (
                 <div
-                  key={h}
                   style={{
-                    fontFamily: "'Rajdhani', sans-serif",
-                    fontSize: "0.5rem",
-                    fontWeight: 700,
-                    letterSpacing: "0.16em",
-                    textTransform: "uppercase",
-                    color: "rgba(255,255,255,0.18)",
-                    textAlign: h === "Driver" ? "left" : "right",
+                    animation:
+                      "clientSlideUp 0.7s 0.1s cubic-bezier(0.16,1,0.3,1) both",
                   }}
                 >
-                  {h}
+                  <PodiumCard driver={p2} rank={2} allDrivers={allDrivers} />
                 </div>
-              ))}
-            </div>
-
-            {/* Rows */}
-            <div
-              style={{
-                border: "1px solid rgba(255,255,255,0.06)",
-                borderTop: "none",
-              }}
-            >
-              {sortedFinishers.map((driver, i) => (
-                <FinisherRow key={driver.driverId} driver={driver} index={i} />
-              ))}
+              )}
+              {p3 && (
+                <div
+                  style={{
+                    animation:
+                      "clientSlideUp 0.7s 0.2s cubic-bezier(0.16,1,0.3,1) both",
+                  }}
+                >
+                  <PodiumCard driver={p3} rank={3} allDrivers={allDrivers} />
+                </div>
+              )}
             </div>
           </div>
         </section>
-      )}
 
-      {/* ── Methodology ───────────────────────────────────────────────────── */}
-      <MethodologySection />
+        {/* ── Probability Landscape ─────────────────────────────────────────── */}
+        <section style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+          <div
+            style={{
+              maxWidth: "1280px",
+              margin: "0 auto",
+              padding: "3rem clamp(1rem, 4vw, 1.5rem)",
+            }}
+          >
+            <SectionHeader
+              overline="Statistical Overview"
+              title="Probability Landscape"
+              subtitle="Win probability distribution across all scored drivers — softmax τ=8 over top-10 model scores"
+            />
 
-      {/* ── Global keyframes ──────────────────────────────────────────────── */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr auto",
+                gap: "2.5rem",
+                alignItems: "start",
+              }}
+              className="landscape-grid"
+            >
+              <Panel>
+                <ProbabilityDistributionChart
+                  podium={prediction.predictions}
+                  finishers={sortedFinishers}
+                />
+              </Panel>
+
+              {/* Key stats */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "2px",
+                  minWidth: "160px",
+                }}
+              >
+                <Panel>
+                  <div
+                    style={{
+                      fontFamily: "'Rajdhani', sans-serif",
+                      fontSize: "0.52rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.16em",
+                      textTransform: "uppercase",
+                      color: "rgba(255,255,255,0.2)",
+                      marginBottom: "0.5rem",
+                    }}
+                  >
+                    Favourite
+                  </div>
+                  {p1 && (
+                    <>
+                      <div
+                        style={{
+                          fontFamily: "'Russo One', sans-serif",
+                          fontSize: "1rem",
+                          textTransform: "uppercase",
+                          color: RANK_COLORS[0],
+                          letterSpacing: "-0.01em",
+                          lineHeight: 1.1,
+                        }}
+                      >
+                        {p1.familyName}
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: "'Russo One', sans-serif",
+                          fontSize: "1.8rem",
+                          color: RANK_COLORS[0],
+                          lineHeight: 1,
+                          marginTop: "2px",
+                        }}
+                      >
+                        {p1.podiumProbability}%
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: "'Rajdhani', sans-serif",
+                          fontSize: "0.5rem",
+                          color: "rgba(255,255,255,0.15)",
+                          letterSpacing: "0.06em",
+                          marginTop: "2px",
+                        }}
+                      >
+                        win probability
+                      </div>
+                    </>
+                  )}
+                </Panel>
+
+                <Panel>
+                  <div
+                    style={{
+                      fontFamily: "'Rajdhani', sans-serif",
+                      fontSize: "0.52rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.16em",
+                      textTransform: "uppercase",
+                      color: "rgba(255,255,255,0.2)",
+                      marginBottom: "0.5rem",
+                    }}
+                  >
+                    Model τ
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: "'Russo One', sans-serif",
+                      fontSize: "1.8rem",
+                      color: "#27F4D2",
+                      lineHeight: 1,
+                    }}
+                  >
+                    8
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: "'Rajdhani', sans-serif",
+                      fontSize: "0.5rem",
+                      color: "rgba(255,255,255,0.15)",
+                      letterSpacing: "0.06em",
+                      marginTop: "2px",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    softmax temperature
+                  </div>
+                </Panel>
+
+                <Panel>
+                  <div
+                    style={{
+                      fontFamily: "'Rajdhani', sans-serif",
+                      fontSize: "0.52rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.16em",
+                      textTransform: "uppercase",
+                      color: "rgba(255,255,255,0.2)",
+                      marginBottom: "0.5rem",
+                    }}
+                  >
+                    Top-10 Coverage
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: "'Russo One', sans-serif",
+                      fontSize: "1.8rem",
+                      color: "#FF8000",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {[...prediction.predictions, ...sortedFinishers].reduce(
+                      (s, d) => s + d.podiumProbability,
+                      0,
+                    )}
+                    %
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: "'Rajdhani', sans-serif",
+                      fontSize: "0.5rem",
+                      color: "rgba(255,255,255,0.15)",
+                      letterSpacing: "0.06em",
+                      marginTop: "2px",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    of total probability mass
+                  </div>
+                </Panel>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Likely Finishers ──────────────────────────────────────────────── */}
+        {sortedFinishers.length > 0 && (
+          <section style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+            <div
+              style={{
+                maxWidth: "1280px",
+                margin: "0 auto",
+                padding: "3rem clamp(1rem, 4vw, 1.5rem)",
+              }}
+            >
+              <SectionHeader
+                overline="Points Finishers"
+                title="Likely Top 10"
+                subtitle="Drivers predicted to score points — red bar = form, grey bar = qualifying pace"
+              />
+
+              {/* Column headers */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "2rem 1fr 80px auto auto",
+                  gap: "0.75rem",
+                  padding: "0.35rem 1rem",
+                  borderBottom: "1px solid rgba(255,255,255,0.06)",
+                }}
+              >
+                {["Pos", "Driver", "Form/Quali", "Score", "Prob"].map((h) => (
+                  <div
+                    key={h}
+                    style={{
+                      fontFamily: "'Rajdhani', sans-serif",
+                      fontSize: "0.48rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.16em",
+                      textTransform: "uppercase",
+                      color: "rgba(255,255,255,0.16)",
+                      textAlign: h === "Driver" ? "left" : "right",
+                    }}
+                  >
+                    {h}
+                  </div>
+                ))}
+              </div>
+
+              <Panel
+                style={{
+                  padding: 0,
+                  border: "1px solid rgba(255,255,255,0.06)",
+                }}
+              >
+                {sortedFinishers.map((driver, i) => (
+                  <FinisherRow
+                    key={driver.driverId}
+                    driver={driver}
+                    index={i}
+                  />
+                ))}
+              </Panel>
+            </div>
+          </section>
+        )}
+
+        {/* ── Methodology ───────────────────────────────────────────────────── */}
+        <MethodologySection allDrivers={allDrivers} />
+      </div>
+
+      {/* ── Keyframes ─────────────────────────────────────────────────────── */}
       <style>{`
         @keyframes clientSlideUp {
           from { opacity: 0; transform: translateY(16px); }
@@ -1277,6 +1642,13 @@ export default function PredictionClient({
         }
         @keyframes clientSpin {
           to { transform: rotate(360deg); }
+        }
+
+        /* Mobile: stack probability landscape */
+        @media (max-width: 640px) {
+          .landscape-grid {
+            grid-template-columns: 1fr !important;
+          }
         }
       `}</style>
     </>

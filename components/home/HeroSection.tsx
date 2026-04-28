@@ -1,427 +1,374 @@
 /**
- * components/home/HeroSection.tsx
+ * components/home/HeroSection.tsx — "Pit Wall" redesign
  *
- * Full-viewport homepage hero — completely redesigned.
+ * Compact cinematic header. Not full-viewport — real estate belongs to the
+ * dashboard below. Sets the tone: dark, precise, military-industrial.
  *
- * Visual layers (back to front):
- *   1.  Noise grain overlay
- *   2.  Animated scan-line sweep (top to bottom, looping)
- *   3.  Mouse-tracking radial glow
- *   4.  Top radial red bloom
- *   5.  Fine 48px grid with parallax drift on mouse
- *   6.  Diagonal speed lines (right edge, staggered)
- *   7.  Giant "F1" watermark — parallax on mouse
- *   8.  Animated corner brackets (top-left, bottom-right)
- *   9.  LIVE ticker bar
- *   10. Main content: overline, FJUAN title, subtitle, CTAs, stats
- *   11. Scroll hint with pulsing line
- *
- * Interactions:
- *   - mousemove  → radial glow + parallax on grid + F1 watermark
- *   - glitch     → every 6s, 120ms skew + ghost layer on title
- *   - scan line  → continuous top-to-bottom sweep, CSS animation
- *   - brackets   → CSS draw-in animation on mount
- *   - stats      → count-up animation on mount
+ * Layers:
+ *  1. Abstract SVG circuit outline (annotated with DRS zones, sectors, SF line)
+ *  2. Noise grain + fine grid
+ *  3. Animated telemetry waveform (SVG, two traces: speed + throttle)
+ *  4. Scan-line sweep + mouse radial glow
+ *  5. Content: season badge · FJUAN wordmark · data strip · CTA pills
  */
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
-/* ── Ticker items ─────────────────────────────────────────────────────────── */
-const TICKER_ITEMS = [
-  "2026 F1 SEASON UNDERWAY",
-  "LIVE TELEMETRY AVAILABLE DURING SESSIONS",
-  "DRIVER STANDINGS UPDATED IN REAL TIME",
+const TICKER = [
+  "2026 SEASON LIVE",
   "24 RACES · 10 TEAMS · 20 DRIVERS",
-  "COMPARE ANY TWO DRIVERS HEAD TO HEAD",
-  "FULL RACE CALENDAR WITH COUNTDOWN TIMERS",
+  "REAL-TIME TELEMETRY AVAILABLE",
+  "STATISTICAL PREDICTION ENGINE V2",
   "HISTORICAL DATA BACK TO 1950",
-  "POWERED BY JOLPICA & OPENF1 APIS",
+  "COMPARE ANY TWO DRIVERS HEAD TO HEAD",
+  "BUILT BY XANDER RANCAP",
+  "POWERED BY JOLPICA + OPENF1",
 ];
 
-/* ── Stats ────────────────────────────────────────────────────────────────── */
-const STATS = [
-  { value: 20,  suffix: "",  label: "Drivers",  sub: "on the grid"  },
-  { value: 24,  suffix: "",  label: "Races",    sub: "this season"  },
-  { value: 76,  suffix: "",  label: "Years",    sub: "of F1 data"   },
-];
-
-/* ── Count-up hook ────────────────────────────────────────────────────────── */
-function useCountUp(target: number, duration: number = 1200, delay: number = 0) {
-  const [val, setVal] = useState(0);
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      const start = performance.now();
-      const step = (now: number) => {
-        const t = Math.min((now - start) / duration, 1);
-        // Ease out cubic
-        const eased = 1 - Math.pow(1 - t, 3);
-        setVal(Math.round(eased * target));
-        if (t < 1) requestAnimationFrame(step);
-      };
-      requestAnimationFrame(step);
-    }, delay);
-    return () => clearTimeout(timeout);
-  }, [target, duration, delay]);
-  return val;
+function buildWave(pts: number, w: number, h: number, phase: number, amp: number): string {
+  let d = `M 0 ${h * 0.5}`;
+  for (let i = 1; i <= pts; i++) {
+    const x = (i / pts) * w;
+    const y =
+      h * 0.5 +
+      Math.sin(i * 0.28 + phase) * h * amp +
+      Math.sin(i * 0.73 + phase * 1.3) * h * amp * 0.45 +
+      Math.sin(i * 2.1 + phase * 0.7) * h * amp * 0.18;
+    d += ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
+  }
+  return d;
 }
-
-/* ── Stat cell ────────────────────────────────────────────────────────────── */
-function StatCell({ stat, index }: { stat: typeof STATS[0]; index: number }) {
-  const val = useCountUp(stat.value, 1400, 600 + index * 120);
-  return (
-    <div
-      style={{
-        padding: "1.25rem 2rem",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRight: index === STATS.length - 1 ? "1px solid rgba(255,255,255,0.08)" : "none",
-        position: "relative",
-      }}
-    >
-      {/* Red 2px top accent on first cell only */}
-      {index === 0 && (
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "#E10600" }} />
-      )}
-      <div className="stat-value" style={{ fontSize: "2.4rem", letterSpacing: "-0.02em" }}>
-        {val}{stat.suffix}
-      </div>
-      <div className="stat-label">{stat.label}</div>
-      <div className="data-readout" style={{ fontSize: "0.55rem", marginTop: "2px" }}>{stat.sub}</div>
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────────────────── */
 
 export default function HeroSection() {
-  const [mounted,      setMounted]      = useState(false);
-  const [mousePos,     setMousePos]     = useState({ x: 0.5, y: 0.3 });
-  const [glitchActive, setGlitchActive] = useState(false);
-  const heroRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted]     = useState(false);
+  const [glitch, setGlitch]       = useState(false);
+  const [mouse, setMouse]         = useState({ x: 0.5, y: 0.5 });
+  const [phase, setPhase]         = useState(0);
+  const sectionRef                = useRef<HTMLElement>(null);
+  const rafRef                    = useRef<number>(0);
 
   useEffect(() => {
     setMounted(true);
 
-    /* Glitch every 6 seconds — 120ms burst */
-    const glitchTimer = setInterval(() => {
-      setGlitchActive(true);
-      setTimeout(() => setGlitchActive(false), 120);
-    }, 6000);
+    // Glitch burst every 7s
+    const gi = setInterval(() => {
+      setGlitch(true);
+      setTimeout(() => setGlitch(false), 110);
+    }, 7000);
 
-    return () => clearInterval(glitchTimer);
-  }, []);
-
-  /* Mouse tracking for parallax + glow */
-  useEffect(() => {
-    const handleMouse = (e: MouseEvent) => {
-      if (!heroRef.current) return;
-      const rect = heroRef.current.getBoundingClientRect();
-      setMousePos({
-        x: (e.clientX - rect.left) / rect.width,
-        y: (e.clientY - rect.top)  / rect.height,
-      });
+    // Animate telemetry waveform phase
+    const animate = () => {
+      setPhase(p => p + 0.018);
+      rafRef.current = requestAnimationFrame(animate);
     };
-    const el = heroRef.current;
-    el?.addEventListener("mousemove", handleMouse);
-    return () => el?.removeEventListener("mousemove", handleMouse);
+    rafRef.current = requestAnimationFrame(animate);
+
+    return () => { clearInterval(gi); cancelAnimationFrame(rafRef.current); };
   }, []);
 
-  /* Parallax offsets — subtle drift */
-  const gridOffsetX  = (mousePos.x - 0.5) * 12;
-  const gridOffsetY  = (mousePos.y - 0.5) * 12;
-  const f1OffsetX    = (mousePos.x - 0.5) * -24;
-  const f1OffsetY    = (mousePos.y - 0.5) * -12;
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    const onMove = (e: MouseEvent) => {
+      const r = el.getBoundingClientRect();
+      setMouse({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height });
+    };
+    el.addEventListener("mousemove", onMove);
+    return () => el.removeEventListener("mousemove", onMove);
+  }, []);
+
+  const speedWave    = mounted ? buildWave(100, 1400, 100, phase, 0.22) : "";
+  const throttleWave = mounted ? buildWave(100, 1400, 100, phase * 0.8 + 1.2, 0.14) : "";
 
   return (
     <section
-      ref={heroRef}
-      className="relative overflow-hidden"
-      style={{ minHeight: "100vh", background: "#060606", display: "flex", flexDirection: "column" }}
+      ref={sectionRef}
+      style={{
+        position: "relative", overflow: "hidden",
+        background: "#060606",
+        borderBottom: "1px solid rgba(255,255,255,0.07)",
+      }}
     >
-
-      {/* ── Layer 1: Noise grain ─────────────────────────────────────── */}
-      <div className="absolute inset-0 pointer-events-none" style={{
-        zIndex: 0, opacity: 0.4, mixBlendMode: "overlay",
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E")`,
-        backgroundRepeat: "repeat", backgroundSize: "128px",
+      {/* ── 1. Noise grain ──────────────────────────────────────── */}
+      <div style={{
+        position: "absolute", inset: 0, zIndex: 0,
+        pointerEvents: "none", opacity: 0.38, mixBlendMode: "overlay",
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.1'/%3E%3C/svg%3E")`,
+        backgroundSize: "160px",
       }} />
 
-      {/* ── Layer 2: Scan-line sweep ──────────────────────────────────── */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{ zIndex: 1, overflow: "hidden" }}
+      {/* ── 2. Abstract circuit SVG backdrop ────────────────────── */}
+      <svg
+        style={{
+          position: "absolute", top: 0, right: 0,
+          height: "100%", width: "55%", zIndex: 0,
+          pointerEvents: "none", opacity: 0.055,
+        }}
+        viewBox="0 0 800 340"
+        preserveAspectRatio="xMaxYMid meet"
       >
+        {/* Track outline */}
+        <polyline
+          points="60,280 130,255 200,290 290,305 375,272 415,210 393,148 328,110 282,72 348,44 458,34 578,50 676,76 736,54 792,88 828,145 808,208 742,250 704,296 618,314 532,292 468,258 408,268 368,308 282,318 178,306 96,288 60,280"
+          fill="none" stroke="#E10600" strokeWidth="1.8"
+          strokeLinecap="round" strokeLinejoin="round"
+        />
+        {/* SF line */}
+        <line x1="58" y1="262" x2="58" y2="298" stroke="#E10600" strokeWidth="2.5" />
+        <text x="40" y="258" fill="rgba(255,255,255,0.5)" fontSize="8" fontFamily="monospace" letterSpacing="0.5">SF</text>
+        {/* Sector dots */}
+        <circle cx="415" cy="210" r="3.5" fill="#E10600" opacity="0.7" />
+        <circle cx="676" cy="76"  r="3.5" fill="#E10600" opacity="0.7" />
+        <text x="424" y="206" fill="rgba(255,255,255,0.3)" fontSize="7" fontFamily="monospace">S2</text>
+        <text x="685" y="72"  fill="rgba(255,255,255,0.3)" fontSize="7" fontFamily="monospace">S3</text>
+        {/* DRS zones */}
+        <line x1="200" y1="290" x2="290" y2="305" stroke="#27F4D2" strokeWidth="2" opacity="0.55" strokeDasharray="5 4" />
+        <line x1="618" y1="314" x2="704" y2="296" stroke="#27F4D2" strokeWidth="2" opacity="0.55" strokeDasharray="5 4" />
+        <text x="228" y="322" fill="#27F4D2" fontSize="6.5" fontFamily="monospace" opacity="0.55">DRS 1</text>
+        <text x="640" y="312" fill="#27F4D2" fontSize="6.5" fontFamily="monospace" opacity="0.55">DRS 2</text>
+        {/* Speed trap marker */}
+        <polygon points="455,34 465,34 460,26" fill="#FFD700" opacity="0.5" />
+        <text x="468" y="38" fill="#FFD700" fontSize="6" fontFamily="monospace" opacity="0.5">TRAP</text>
+      </svg>
+
+      {/* ── 3. Fine grid ────────────────────────────────────────── */}
+      <div style={{
+        position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none",
+        backgroundImage: `linear-gradient(rgba(255,255,255,0.016) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.016) 1px, transparent 1px)`,
+        backgroundSize: "40px 40px",
+      }} />
+
+      {/* ── 4. Mouse glow ───────────────────────────────────────── */}
+      <div style={{
+        position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none",
+        background: `radial-gradient(700px circle at ${mouse.x * 100}% ${mouse.y * 100}%, rgba(225,6,0,0.09) 0%, transparent 55%)`,
+        transition: "background 0.1s linear",
+      }} />
+
+      {/* ── 5. Red bloom top ────────────────────────────────────── */}
+      <div style={{
+        position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none",
+        background: "radial-gradient(ellipse 80% 70% at 50% -15%, rgba(225,6,0,0.16) 0%, transparent 60%)",
+      }} />
+
+      {/* ── 6. Scan line ────────────────────────────────────────── */}
+      <div style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none", overflow: "hidden" }}>
         <div style={{
-          position: "absolute", left: 0, right: 0,
-          height: "120px",
-          background: "linear-gradient(180deg, transparent 0%, rgba(225,6,0,0.04) 40%, rgba(225,6,0,0.07) 50%, rgba(225,6,0,0.04) 60%, transparent 100%)",
-          animation: "scanline 8s linear infinite",
+          position: "absolute", left: 0, right: 0, height: "80px",
+          background: "linear-gradient(180deg, transparent 0%, rgba(225,6,0,0.025) 45%, rgba(225,6,0,0.05) 50%, rgba(225,6,0,0.025) 55%, transparent 100%)",
+          animation: "heroScan 12s linear infinite",
         }} />
       </div>
 
-      {/* ── Layer 3: Mouse glow ───────────────────────────────────────── */}
-      <div className="absolute pointer-events-none" style={{
-        inset: 0, zIndex: 1,
-        background: `radial-gradient(800px circle at ${mousePos.x * 100}% ${mousePos.y * 100}%, rgba(225,6,0,0.10) 0%, transparent 55%)`,
-        transition: "background 0.15s ease",
-      }} />
-
-      {/* ── Layer 4: Top red bloom ────────────────────────────────────── */}
-      <div className="absolute inset-0 pointer-events-none" style={{
-        background: "radial-gradient(ellipse 80% 55% at 50% -5%, rgba(225,6,0,0.22) 0%, transparent 65%)",
-        zIndex: 1,
-      }} />
-
-      {/* ── Layer 5: Grid with parallax ──────────────────────────────── */}
-      <div className="absolute inset-0 pointer-events-none" style={{
-        backgroundImage: `linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)`,
-        backgroundSize: "48px 48px",
-        backgroundPosition: `${gridOffsetX}px ${gridOffsetY}px`,
-        transition: "background-position 0.3s ease",
-        zIndex: 1,
-      }} />
-
-      {/* ── Layer 6: Speed lines ─────────────────────────────────────── */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 1 }}>
-        {[
-          { right: "4%",    opacity: 0.55, width: "3px",  delay: "0s"    },
-          { right: "6.5%",  opacity: 0.12, width: "1px",  delay: "0.3s"  },
-          { right: "2.5%",  opacity: 0.09, width: "1px",  delay: "0.6s"  },
-          { right: "9%",    opacity: 0.06, width: "1px",  delay: "0.9s"  },
-          { right: "11.5%", opacity: 0.04, width: "1px",  delay: "1.2s"  },
-        ].map((line, i) => (
-          <div key={i} style={{
-            position: "absolute", top: "-20%", bottom: "-20%",
-            right: line.right, width: line.width,
-            background: `linear-gradient(180deg, transparent 0%, rgba(225,6,0,${line.opacity}) 25%, rgba(225,6,0,${line.opacity * 0.7}) 75%, transparent 100%)`,
-            transform: "skewX(-8deg)",
-            animation: `speedline 4s ease-in-out ${line.delay} infinite alternate`,
-          }} />
-        ))}
-      </div>
-
-      {/* ── Layer 7: F1 watermark with parallax ──────────────────────── */}
-      <div
-        className="absolute right-0 top-0 bottom-0 flex items-center pointer-events-none select-none overflow-hidden"
-        style={{
-          paddingRight: "2vw", zIndex: 1,
-          transform: `translate(${f1OffsetX}px, ${f1OffsetY}px)`,
-          transition: "transform 0.4s ease",
-        }}
-      >
-        <span style={{
-          fontFamily: "'Russo One', sans-serif",
-          fontSize: "clamp(10rem, 26vw, 26rem)",
-          color: "rgba(255,255,255,0.018)", lineHeight: 1, letterSpacing: "-0.04em",
-        }}>F1</span>
-      </div>
-
-      {/* ── Layer 8: Animated corner brackets ────────────────────────── */}
+      {/* ── 7. Animated telemetry waveforms ─────────────────────── */}
       {mounted && (
-        <>
-          {/* Top-left */}
-          <div style={{ position: "absolute", top: "48px", left: "24px", zIndex: 2, pointerEvents: "none" }}>
-            <div style={{
-              width: "32px", height: "2px", background: "#E10600",
-              animation: "bracketH 0.6s ease forwards",
-              transformOrigin: "left",
-            }} />
-            <div style={{
-              width: "2px", height: "32px", background: "#E10600",
-              animation: "bracketV 0.6s 0.1s ease forwards",
-              transformOrigin: "top",
-            }} />
-          </div>
-          {/* Bottom-right */}
-          <div style={{ position: "absolute", bottom: "48px", right: "24px", zIndex: 2, pointerEvents: "none", display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-            <div style={{
-              width: "32px", height: "2px", background: "rgba(225,6,0,0.4)",
-              animation: "bracketH 0.6s 0.2s ease forwards",
-              transformOrigin: "right",
-            }} />
-            <div style={{
-              width: "2px", height: "32px", background: "rgba(225,6,0,0.4)",
-              animation: "bracketV 0.6s 0.3s ease forwards",
-              transformOrigin: "bottom",
-            }} />
-          </div>
-        </>
+        <svg
+          style={{ position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 2, pointerEvents: "none" }}
+          viewBox="0 0 1400 100" preserveAspectRatio="none" width="100%" height="100"
+        >
+          <defs>
+            <linearGradient id="speedGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%"   stopColor="transparent" />
+              <stop offset="10%"  stopColor="#E10600" stopOpacity="0.6" />
+              <stop offset="90%"  stopColor="#E10600" stopOpacity="0.6" />
+              <stop offset="100%" stopColor="transparent" />
+            </linearGradient>
+            <linearGradient id="throttleGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%"   stopColor="transparent" />
+              <stop offset="10%"  stopColor="#27F4D2" stopOpacity="0.35" />
+              <stop offset="90%"  stopColor="#27F4D2" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="transparent" />
+            </linearGradient>
+          </defs>
+          <path d={speedWave}    fill="none" stroke="url(#speedGrad)"    strokeWidth="1.5" />
+          <path d={throttleWave} fill="none" stroke="url(#throttleGrad)" strokeWidth="1"   />
+        </svg>
       )}
 
-      {/* ── Layer 9: LIVE ticker ──────────────────────────────────────── */}
+      {/* ── LIVE ticker ─────────────────────────────────────────── */}
       <div style={{
-        borderBottom: "1px solid rgba(255,255,255,0.07)",
-        background: "rgba(0,0,0,0.5)",
-        overflow: "hidden", position: "relative", zIndex: 10,
+        position: "relative", zIndex: 10,
+        borderBottom: "1px solid rgba(255,255,255,0.055)",
+        background: "rgba(0,0,0,0.55)",
+        overflow: "hidden", height: "28px", display: "flex",
       }}>
-        <div style={{ display: "flex", alignItems: "center", height: "30px" }}>
+        <div style={{
+          flexShrink: 0, display: "flex", alignItems: "center",
+          padding: "0 14px", background: "#E10600", gap: "5px",
+        }}>
           <div style={{
-            flexShrink: 0, display: "flex", alignItems: "center",
-            padding: "0 16px", height: "100%", background: "#E10600",
-            gap: "6px",
+            width: "5px", height: "5px", borderRadius: "50%", background: "white",
+            animation: "liveDot 1.2s ease-in-out infinite",
+          }} />
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem", fontWeight: 700, letterSpacing: "0.2em", color: "white" }}>
+            LIVE
+          </span>
+        </div>
+        <div style={{ overflow: "hidden", flex: 1, display: "flex", alignItems: "center" }}>
+          <div style={{
+            display: "flex", whiteSpace: "nowrap",
+            animation: "tickerScroll 42s linear infinite",
           }}>
-            {/* Pulsing dot inside LIVE badge */}
-            <div style={{
-              width: "5px", height: "5px", borderRadius: "50%",
-              background: "white", animation: "livePulse 1.2s ease-in-out infinite",
-            }} />
-            <span className="data-readout" style={{ fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.2em", color: "white" }}>
-              LIVE
-            </span>
-          </div>
-          <div style={{ overflow: "hidden", flex: 1 }}>
-            <div className="ticker-track">
-              {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
-                <span key={i} className="data-readout" style={{
-                  fontSize: "0.58rem", letterSpacing: "0.14em",
-                  padding: "0 3rem", whiteSpace: "nowrap",
-                }}>
-                  {item}
-                </span>
-              ))}
-            </div>
+            {[...TICKER, ...TICKER].map((item, i) => (
+              <span key={i} style={{
+                fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem",
+                letterSpacing: "0.14em", padding: "0 2.5rem",
+                color: "rgba(255,255,255,0.32)",
+              }}>
+                {item}
+                <span style={{ color: "#E10600", marginLeft: "2.5rem" }}>·</span>
+              </span>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* ── Layer 10: Main content ────────────────────────────────────── */}
-      <div className="relative flex-1 flex items-center" style={{ zIndex: 5 }}>
-        <div className="w-full max-w-7xl mx-auto px-6 md:px-12 py-16">
+      {/* ── Main content ────────────────────────────────────────── */}
+      <div style={{
+        position: "relative", zIndex: 5,
+        maxWidth: "1280px", margin: "0 auto",
+        padding: "clamp(2.2rem, 5vw, 3.8rem) clamp(1.25rem, 4vw, 1.5rem)",
+        display: "flex", alignItems: "flex-end",
+        justifyContent: "space-between", gap: "2rem", flexWrap: "wrap",
+      }}>
 
-          {/* Overline */}
-          <div className="flex items-center gap-3 mb-10 animate-slide-up">
-            <div style={{ width: "2px", height: "28px", background: "#E10600" }} />
-            <span className="data-readout" style={{ fontSize: "0.6rem", letterSpacing: "0.26em", textTransform: "uppercase" }}>
-              2026 Season · Formula 1 Analytics
+        {/* Left: wordmark */}
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1rem" }}>
+            <div style={{ width: "2px", height: "20px", background: "#E10600" }} />
+            <span style={{
+              fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem",
+              letterSpacing: "0.26em", textTransform: "uppercase",
+              color: "rgba(255,255,255,0.3)",
+            }}>
+              2026 · Formula 1 Analytics
             </span>
           </div>
 
-          {/* FJUAN title + glitch */}
-          <div className="animate-slide-up" style={{ animationDelay: "0.06s", position: "relative", marginBottom: "0.05em" }}>
+          {/* Wordmark + glitch */}
+          <div style={{ position: "relative", display: "inline-block" }}>
             <h1 style={{
               fontFamily: "'Russo One', sans-serif",
-              fontSize: "clamp(5.5rem, 16vw, 14rem)",
+              fontSize: "clamp(4rem, 11vw, 9rem)",
               lineHeight: 0.88, letterSpacing: "-0.025em",
-              color: "white", margin: 0,
-              transform: glitchActive ? "skewX(-1.5deg) translateX(2px)" : "none",
-              transition: glitchActive ? "none" : "transform 0.1s ease",
+              textTransform: "uppercase", color: "white", margin: 0,
+              transform: glitch ? "skewX(-2deg) translateX(3px)" : "none",
+              transition: glitch ? "none" : "transform 0.08s ease",
             }}>
-              FJ<span style={{ color: "#E10600", position: "relative" }}>U</span>AN
+              FJ<span style={{ color: "#E10600" }}>U</span>AN
             </h1>
-            {/* Ghost glitch layer */}
-            {glitchActive && (
+            {glitch && (
               <h1 aria-hidden style={{
                 fontFamily: "'Russo One', sans-serif",
-                fontSize: "clamp(5.5rem, 16vw, 14rem)",
+                fontSize: "clamp(4rem, 11vw, 9rem)",
                 lineHeight: 0.88, letterSpacing: "-0.025em",
-                color: "#E10600", margin: 0,
-                position: "absolute", top: 0, left: "3px",
-                opacity: 0.3, clipPath: "inset(30% 0 50% 0)",
+                textTransform: "uppercase", color: "#E10600",
+                margin: 0, position: "absolute", top: 0, left: "4px",
+                opacity: 0.22, clipPath: "inset(30% 0 48% 0)", pointerEvents: "none",
               }}>
                 FJUAN
               </h1>
             )}
           </div>
 
-          {/* Subtitle bar */}
-          <div className="animate-slide-up" style={{
-            animationDelay: "0.12s", display: "flex", alignItems: "center",
-            gap: "1.5rem", margin: "1.5rem 0 2rem",
-          }}>
-            <div style={{ height: "1px", width: "48px", background: "rgba(225,6,0,0.5)" }} />
-            <span className="data-readout" style={{ fontSize: "0.6rem", letterSpacing: "0.24em", textTransform: "uppercase" }}>
-              Race Data · Live Telemetry · Driver Stats
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginTop: "1rem" }}>
+            <div style={{ height: "1px", width: "28px", background: "rgba(225,6,0,0.5)" }} />
+            <span style={{
+              fontFamily: "'JetBrains Mono', monospace", fontSize: "0.5rem",
+              letterSpacing: "0.2em", textTransform: "uppercase",
+              color: "rgba(255,255,255,0.2)",
+            }}>
+              Race Data · Telemetry · Prediction
             </span>
           </div>
+        </div>
 
-          {/* Description */}
-          <p className="animate-slide-up" style={{
-            fontFamily: "'Rajdhani', sans-serif", fontWeight: 400, fontSize: "1.05rem",
-            lineHeight: 1.85, color: "rgba(255,255,255,0.32)",
-            maxWidth: "380px", marginBottom: "2.5rem", animationDelay: "0.18s",
+        {/* Right: data strip + nav */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1rem" }}>
+
+          {/* Telemetry readout chips */}
+          <div style={{
+            display: "flex", gap: "1px",
+            border: "1px solid rgba(255,255,255,0.07)",
+            background: "rgba(255,255,255,0.03)",
           }}>
-            Real-time analytics, live telemetry, and comprehensive race statistics for the ultimate Formula 1 experience.
-          </p>
-
-          {/* CTAs */}
-          <div className="flex flex-wrap gap-3 animate-slide-up" style={{ marginBottom: "4.5rem", animationDelay: "0.26s" }}>
-            <Link href="/drivers">
-              <button className="btn-primary">
-                Driver Standings
-                <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                  <path d="M1 6h10M6 1l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-            </Link>
-            <Link href="/live">
-              <button className="btn-ghost">
-                <span className="live-dot" />
-                Race Data
-              </button>
-            </Link>
-            <Link href="/calendar">
-              <button className="btn-ghost" style={{ borderColor: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.35)" }}>
-                Calendar
-              </button>
-            </Link>
+            {[
+              { label: "Drivers", value: "20" },
+              { label: "Rounds",  value: "24" },
+              { label: "Seasons", value: "76" },
+            ].map((d, i) => (
+              <div key={i} style={{
+                padding: "0.6rem 1rem", background: "#080808",
+                borderTop: i === 0 ? "2px solid #E10600" : "2px solid transparent",
+                textAlign: "center", minWidth: "64px",
+              }}>
+                <div style={{ fontFamily: "'Russo One', sans-serif", fontSize: "1.15rem", color: "white", lineHeight: 1 }}>{d.value}</div>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.4rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)", marginTop: "3px" }}>{d.label}</div>
+              </div>
+            ))}
           </div>
 
-          {/* Stats strip with count-up */}
-          <div className="animate-slide-up" style={{ animationDelay: "0.34s", display: "flex", gap: "0" }}>
-            {STATS.map((stat, i) => (
-              <StatCell key={i} stat={stat} index={i} />
+          {/* CTAs */}
+          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "flex-end" }}>
+            {[
+              { href: "/drivers", label: "Standings", primary: true },
+              { href: "/predict", label: "Predict",   primary: false },
+              { href: "/compare", label: "Compare",   primary: false },
+              { href: "/calendar",label: "Calendar",  primary: false },
+            ].map(({ href, label, primary }) => (
+              <Link key={href} href={href}>
+                <button style={{
+                  padding: "0.5rem 1rem",
+                  background: primary ? "#E10600" : "transparent",
+                  border: `1px solid ${primary ? "#E10600" : "rgba(255,255,255,0.1)"}`,
+                  cursor: "pointer",
+                  fontFamily: "'Rajdhani', sans-serif", fontWeight: 700,
+                  fontSize: "0.68rem", letterSpacing: "0.1em", textTransform: "uppercase",
+                  color: primary ? "white" : "rgba(255,255,255,0.4)",
+                  transition: "all 0.15s ease",
+                  display: "flex", alignItems: "center", gap: "0.35rem",
+                }}
+                onMouseEnter={e => {
+                  const el = e.currentTarget as HTMLElement;
+                  if (!primary) { el.style.borderColor = "rgba(225,6,0,0.45)"; el.style.color = "white"; }
+                  else el.style.opacity = "0.85";
+                }}
+                onMouseLeave={e => {
+                  const el = e.currentTarget as HTMLElement;
+                  if (!primary) { el.style.borderColor = "rgba(255,255,255,0.1)"; el.style.color = "rgba(255,255,255,0.4)"; }
+                  else el.style.opacity = "1";
+                }}
+                >
+                  {label}
+                  {primary && <svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M1 6h10M6 1l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                </button>
+              </Link>
             ))}
           </div>
         </div>
       </div>
 
-      {/* ── Scroll hint ───────────────────────────────────────────────── */}
-      <div className="relative flex justify-center pb-8 animate-fade-in" style={{ animationDelay: "1s", zIndex: 5 }}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
-          <div style={{
-            width: "1px", height: "40px",
-            background: "linear-gradient(to bottom, transparent, rgba(225,6,0,0.5))",
-            animation: "scrollPulse 2s ease-in-out infinite",
-          }} />
-          <span className="data-readout" style={{ fontSize: "0.5rem", letterSpacing: "0.22em", textTransform: "uppercase" }}>
-            Scroll
-          </span>
-        </div>
-      </div>
-
       {/* Bottom fade */}
-      <div className="absolute bottom-0 left-0 right-0 pointer-events-none" style={{
-        height: "160px",
-        background: "linear-gradient(to bottom, transparent, #060606)",
-        zIndex: 3,
+      <div style={{
+        position: "absolute", bottom: 0, left: 0, right: 0, height: "48px",
+        background: "linear-gradient(to bottom, transparent, rgba(6,6,6,0.8))",
+        pointerEvents: "none", zIndex: 6,
       }} />
 
-      {/* ── Keyframes ─────────────────────────────────────────────────── */}
       <style>{`
-        @keyframes scanline {
-          0%   { top: -120px; }
-          100% { top: 100%; }
+        @keyframes heroScan {
+          from { top: -80px; }
+          to   { top: 100%; }
         }
-        @keyframes speedline {
-          0%   { opacity: 0.4; }
-          100% { opacity: 1; }
-        }
-        @keyframes bracketH {
-          from { transform: scaleX(0); }
-          to   { transform: scaleX(1); }
-        }
-        @keyframes bracketV {
-          from { transform: scaleY(0); }
-          to   { transform: scaleY(1); }
-        }
-        @keyframes livePulse {
+        @keyframes liveDot {
           0%, 100% { opacity: 1; transform: scale(1); }
-          50%      { opacity: 0.4; transform: scale(0.7); }
+          50%      { opacity: 0.3; transform: scale(0.6); }
         }
-        @keyframes scrollPulse {
-          0%, 100% { opacity: 0.4; transform: scaleY(1); }
-          50%      { opacity: 1;   transform: scaleY(1.2); }
+        @keyframes tickerScroll {
+          from { transform: translateX(0); }
+          to   { transform: translateX(-50%); }
         }
       `}</style>
     </section>

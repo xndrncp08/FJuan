@@ -8,6 +8,7 @@ import {
   DriverSelector,
   DriverBanner,
   StatsBattle,
+  ChartsSection,
   Skeleton,
   D1_COLOR,
 } from "@/components/compare";
@@ -57,10 +58,14 @@ export default function ComparePage() {
           <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
             <Skeleton h={220} />
             <Skeleton h={480} />
+            <Skeleton h={420} />
           </div>
         ) : d1Stats && d2Stats ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
             <DriverBanner d1={d1Stats} d2={d2Stats} team1={team1} team2={team2} />
+            {/* ── Charts section — the new nerdy stuff ── */}
+            <ChartsSection d1={d1Stats} d2={d2Stats} team1={team1} team2={team2} />
+            {/* ── Raw stat battle rows below ── */}
             <StatsBattle d1={d1Stats} d2={d2Stats} />
           </div>
         ) : (
@@ -90,7 +95,6 @@ export default function ComparePage() {
           50%       { opacity: 0.4; }
         }
 
-        /* Mobile: stack selector grid */
         @media (max-width: 600px) {
           .compare-selector-grid {
             grid-template-columns: 1fr !important;

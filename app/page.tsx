@@ -3,13 +3,11 @@ import { getCurrentStandings } from "@/lib/api/fetchers";
 import { getNextRace, getLastRace } from "@/lib/api/jolpica";
 import { generateRacePrediction } from "@/lib/types/prediction/engine";
 import HeroSection from "@/components/home/HeroSection";
-import NextRaceSection from "@/components/home/NextRaceSection";
-import NewsSection from "@/components/home/NewsSection";
+import DashboardSection from "@/components/home/DashboardSection";
 import LastRaceSection from "@/components/home/LastRaceSection";
-import PredictionPreview from "@/components/home/PredictionPreview";
-import FeaturesGrid from "@/components/home/FeaturesGrid";
+import NewsSection from "@/components/home/NewsSection";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const [standings, nextRace, lastRace, news] = await Promise.all([
@@ -19,7 +17,6 @@ export default async function Home() {
     getF1News(),
   ]);
 
-  // Prediction preview — generate for next race if available
   let predictionPreview = null;
   if (nextRace) {
     try {
@@ -30,7 +27,7 @@ export default async function Home() {
         nextRace.Circuit.circuitId,
         nextRace.Circuit.circuitName,
         nextRace.date,
-        3 // only need top 3 for preview
+        3,
       );
     } catch {
       // prediction failing shouldn't break the homepage
@@ -38,11 +35,14 @@ export default async function Home() {
   }
 
   return (
-    <main className="min-h-screen" style={{ background: "#060606" }}>
+    <main style={{ minHeight: "100vh", background: "#060606" }}>
       <HeroSection />
-      <NextRaceSection nextRace={nextRace} />
+      <DashboardSection
+        standings={standings ?? []}
+        nextRace={nextRace}
+        prediction={predictionPreview}
+      />
       <LastRaceSection lastRace={lastRace} />
-      <PredictionPreview prediction={predictionPreview} nextRace={nextRace} />
       <NewsSection news={news} />
     </main>
   );
