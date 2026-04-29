@@ -1,21 +1,12 @@
 /**
  * components/prediction/PredictionClient.tsx
  *
- * F1 prediction page — nerd edition.
+ * v3 — threads isSprint/isWet down to all child components,
+ * updates methodology section to reflect all 8 factors,
+ * and adds a weather/sprint context panel above the podium grid.
  *
- * Sections:
- *   PredictionHero       ← unchanged
- *   Podium Analysis      ← P1 feature card + radar chart + vs-field chart
- *   P2/P3 cards          ← with their own radars
- *   Probability Landscape ← full distribution chart + donut
- *   Likely Finishers     ← dense table (unchanged)
- *   Methodology          ← factor breakdown with donut
- *
- * New components consumed:
- *   ScoreRadarChart
- *   ProbabilityDistributionChart
- *   FactorWeightDonut
- *   DriverVsFieldChart
+ * Only the changed sections are noted below. Everything else
+ * (loading, error, layout) is unchanged from v2.
  */
 "use client";
 
@@ -33,8 +24,6 @@ interface PredictionClientProps {
   initialError: string | null;
 }
 
-// ─── Constants ─────────────────────────────────────────────────────────────────
-
 const TEAM_COLORS: Record<string, string> = {
   red_bull: "#3671C6",
   ferrari: "#E8002D",
@@ -50,13 +39,62 @@ const TEAM_COLORS: Record<string, string> = {
 
 const RANK_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32"];
 const RANK_LABELS = ["RACE WINNER", "2ND PLACE", "3RD PLACE"];
-
-// ─── Page background ───────────────────────────────────────────────────────────
-// Carbon-texture dark bg with a very faint grid, so content pops.
-
 const PAGE_BG = "#080808";
 
-// ─── Reusable primitives ───────────────────────────────────────────────────────
+// ─── Methodology factor definitions (v3) ─────────────────────────────────────
+
+const METHODOLOGY_FACTORS = [
+  {
+    weight: 35,
+    label: "Recent Form",
+    desc: "Recency-weighted race finishing positions across the last 5 races. Most recent race counts 3× the oldest. Mechanical DNFs carry a −2 reliability penalty; collision DNFs score 0 (not the driver's fault).",
+    color: "#E10600",
+  },
+  {
+    weight: 15,
+    label: "Qualifying Pace",
+    desc: "Recency-weighted qualifying positions across the same 5-race window. Pole position converts to a win ~40% of the time in modern F1 — now weighted at 15% to reflect this.",
+    color: "#FF8000",
+  },
+  {
+    weight: 15,
+    label: "Championship Standing",
+    desc: "Position + wins bonus (wins×0.5) after the last completed round. Two drivers tied on position are separated by win count. Snapshot taken after round N−1 to avoid future data bleed.",
+    color: "#27F4D2",
+  },
+  {
+    weight: 10,
+    label: "Circuit History",
+    desc: "Podium finishes at this circuit in the last 10 seasons only. All-time history is excluded — Schumacher's 5 wins at Suzuka in 2000 shouldn't influence a 2026 prediction.",
+    color: "#FFD700",
+  },
+  {
+    weight: 10,
+    label: "Weather Adaptability",
+    desc: "Active when rain probability exceeds 40% (via OpenMeteo forecast). Scores each driver on known wet-weather ability. On dry weekends this factor is neutral — all drivers score 50 — so it adds no noise.",
+    color: "#64C4FF",
+  },
+  {
+    weight: 7,
+    label: "Sprint Form",
+    desc: "Active only on sprint weekends. The sprint result is the freshest possible data point (it just happened), so it replaces the oldest race in the form window and is scored at a higher recency weight.",
+    color: "#FF87BC",
+  },
+  {
+    weight: 5,
+    label: "Tyre Fit",
+    desc: "Each circuit has a primary compound allocation (soft / medium / hard). Constructors are rated on their historical management of each compound. Driver tyre fit is derived from their team's rating.",
+    color: "#B6BABD",
+  },
+  {
+    weight: 3,
+    label: "Grid Penalty",
+    desc: "Detected via OpenF1 race control messages. A confirmed engine, gearbox, or unsafe-release penalty drops the driver's grid score to 0 (vs 100 for a clean grid). Binary and high-confidence when it applies.",
+    color: "#52E252",
+  },
+];
+
+// ─── Shared primitives (unchanged from v2) ────────────────────────────────────
 
 function SkeletonBlock({ height = 200 }: { height?: number }) {
   return (
@@ -152,8 +190,6 @@ function SectionHeader({
   );
 }
 
-// ─── Panel wrapper — shared backdrop card ─────────────────────────────────────
-
 function Panel({
   children,
   style,
@@ -175,8 +211,6 @@ function Panel({
     </div>
   );
 }
-
-// ─── Stat tile ────────────────────────────────────────────────────────────────
 
 function StatTile({
   label,
@@ -239,14 +273,204 @@ function StatTile({
   );
 }
 
-// ─── P1 feature ───────────────────────────────────────────────────────────────
+// ─── Weekend context banner (v3 NEW) ─────────────────────────────────────────
+// Shows weather forecast tiles + sprint indicator above the podium section.
+
+function WeekendContextBanner({ prediction }: { prediction: RacePrediction }) {
+  const { weather, isSprint } = prediction;
+  if (!weather && !isSprint) return null;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: "2px",
+        marginBottom: "2rem",
+        flexWrap: "wrap",
+      }}
+    >
+      {/* Weather tile */}
+      {weather && (
+        <div
+          style={{
+            flex: "1 1 200px",
+            padding: "0.85rem 1.1rem",
+            background: weather.isWetExpected
+              ? "rgba(100,196,255,0.05)"
+              : "rgba(255,255,255,0.015)",
+            border: `1px solid ${weather.isWetExpected ? "rgba(100,196,255,0.18)" : "rgba(255,255,255,0.06)"}`,
+            display: "flex",
+            alignItems: "center",
+            gap: "1rem",
+          }}
+        >
+          {/* Big rain % */}
+          <div>
+            <div
+              style={{
+                fontFamily: "'Russo One', sans-serif",
+                fontSize: "2rem",
+                color: weather.isWetExpected
+                  ? "#64C4FF"
+                  : "rgba(255,255,255,0.4)",
+                lineHeight: 1,
+              }}
+            >
+              {weather.rainProbability}%
+            </div>
+            <div
+              style={{
+                fontFamily: "'Rajdhani', sans-serif",
+                fontSize: "0.5rem",
+                fontWeight: 700,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.2)",
+                marginTop: "2px",
+              }}
+            >
+              Rain Probability
+            </div>
+          </div>
+          {/* Divider */}
+          <div
+            style={{
+              width: "1px",
+              height: "36px",
+              background: "rgba(255,255,255,0.07)",
+              flexShrink: 0,
+            }}
+          />
+          {/* Temp + wind */}
+          <div style={{ display: "flex", gap: "1.25rem" }}>
+            <div>
+              <div
+                style={{
+                  fontFamily: "'Russo One', sans-serif",
+                  fontSize: "1rem",
+                  color: "rgba(255,255,255,0.5)",
+                  lineHeight: 1,
+                }}
+              >
+                {Math.round(weather.temperatureC)}°C
+              </div>
+              <div
+                style={{
+                  fontFamily: "'Rajdhani', sans-serif",
+                  fontSize: "0.48rem",
+                  fontWeight: 700,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.18)",
+                  marginTop: "2px",
+                }}
+              >
+                Temp
+              </div>
+            </div>
+            <div>
+              <div
+                style={{
+                  fontFamily: "'Russo One', sans-serif",
+                  fontSize: "1rem",
+                  color: "rgba(255,255,255,0.5)",
+                  lineHeight: 1,
+                }}
+              >
+                {Math.round(weather.windSpeedKph)}
+                <span style={{ fontSize: "0.6rem" }}>km/h</span>
+              </div>
+              <div
+                style={{
+                  fontFamily: "'Rajdhani', sans-serif",
+                  fontSize: "0.48rem",
+                  fontWeight: 700,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.18)",
+                  marginTop: "2px",
+                }}
+              >
+                Wind
+              </div>
+            </div>
+          </div>
+          {/* Wet badge */}
+          {weather.isWetExpected && (
+            <div
+              style={{
+                marginLeft: "auto",
+                fontFamily: "'Rajdhani', sans-serif",
+                fontSize: "0.5rem",
+                fontWeight: 700,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: "#64C4FF",
+                border: "1px solid rgba(100,196,255,0.3)",
+                padding: "0.3rem 0.6rem",
+              }}
+            >
+              Wet Race Likely
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Sprint tile */}
+      {isSprint && (
+        <div
+          style={{
+            flex: "0 1 180px",
+            padding: "0.85rem 1.1rem",
+            background: "rgba(255,128,0,0.05)",
+            border: "1px solid rgba(255,128,0,0.18)",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "'Russo One', sans-serif",
+              fontSize: "0.85rem",
+              textTransform: "uppercase",
+              color: "#FF8000",
+              letterSpacing: "0.02em",
+              lineHeight: 1.1,
+            }}
+          >
+            Sprint Weekend
+          </div>
+          <div
+            style={{
+              fontFamily: "'Rajdhani', sans-serif",
+              fontSize: "0.58rem",
+              color: "rgba(255,255,255,0.25)",
+              marginTop: "4px",
+              lineHeight: 1.5,
+            }}
+          >
+            Sprint result active in form window · Sprint shootout qualifying
+            weighted separately
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── P1 feature card (v3 — passes isSprint/isWet to charts) ──────────────────
 
 function P1FeatureCard({
   driver,
   allDrivers,
+  isSprint,
+  isWet,
 }: {
   driver: DriverPrediction;
   allDrivers: DriverPrediction[];
+  isSprint: boolean;
+  isWet: boolean;
 }) {
   const teamColor = TEAM_COLORS[driver.constructorId] ?? "#E10600";
   const rankColor = RANK_COLORS[0];
@@ -271,7 +495,6 @@ function P1FeatureCard({
           pointerEvents: "none",
         }}
       />
-
       {/* Ghost number */}
       <div
         style={{
@@ -291,7 +514,6 @@ function P1FeatureCard({
         1
       </div>
 
-      {/* Top: rank badge + name + probability */}
       <div
         style={{
           display: "flex",
@@ -343,7 +565,6 @@ function P1FeatureCard({
               </span>
             </div>
           </div>
-
           <div
             style={{
               fontFamily: "'Russo One', sans-serif",
@@ -358,7 +579,6 @@ function P1FeatureCard({
             {driver.givenName}{" "}
             <span style={{ color: rankColor }}>{driver.familyName}</span>
           </div>
-
           <div
             style={{
               fontFamily: "'Rajdhani', sans-serif",
@@ -372,8 +592,6 @@ function P1FeatureCard({
             {driver.constructorName}
           </div>
         </div>
-
-        {/* Probability */}
         <div style={{ textAlign: "right" }}>
           <div
             style={{
@@ -402,7 +620,6 @@ function P1FeatureCard({
         </div>
       </div>
 
-      {/* Insight */}
       <p
         style={{
           fontFamily: "'Rajdhani', sans-serif",
@@ -418,11 +635,11 @@ function P1FeatureCard({
         {driver.insight}
       </p>
 
-      {/* Stats row */}
+      {/* Stats row — v3 includes weather + tyre */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(80px, 1fr))",
           gap: "2px",
           marginBottom: "1.5rem",
           position: "relative",
@@ -438,23 +655,35 @@ function P1FeatureCard({
           label="Recent Form"
           value={driver.factors.currentForm}
           color={teamColor}
-          sub="0–100 normalised"
+          sub="0–100"
         />
         <StatTile
           label="Qualifying"
           value={driver.factors.qualifyingStrength}
           color={teamColor}
-          sub="0–100 normalised"
+          sub="0–100"
         />
         <StatTile
-          label="Circuit Hist."
+          label="Circuit"
           value={driver.factors.circuitHistory}
           color={teamColor}
-          sub="last 10 seasons"
+          sub="10 seasons"
+        />
+        <StatTile
+          label="Weather"
+          value={driver.factors.weatherAdaptability}
+          color={isWet ? "#64C4FF" : "rgba(255,255,255,0.3)"}
+          sub={isWet ? "wet active" : "dry / neutral"}
+        />
+        <StatTile
+          label="Tyre Fit"
+          value={driver.factors.tyreFit}
+          color={teamColor}
+          sub="compound fit"
         />
       </div>
 
-      {/* Charts row — radar + vs field */}
+      {/* Charts */}
       <div
         style={{
           display: "grid",
@@ -465,7 +694,6 @@ function P1FeatureCard({
           paddingTop: "1.5rem",
         }}
       >
-        {/* Radar */}
         <div>
           <div
             style={{
@@ -481,11 +709,14 @@ function P1FeatureCard({
             Factor Profile
           </div>
           <div style={{ display: "flex", justifyContent: "center" }}>
-            <ScoreRadarChart driver={driver} accentColor={rankColor} />
+            <ScoreRadarChart
+              driver={driver}
+              accentColor={rankColor}
+              isSprint={isSprint}
+              isWet={isWet}
+            />
           </div>
         </div>
-
-        {/* Vs field */}
         <div
           style={{
             display: "flex",
@@ -504,12 +735,14 @@ function P1FeatureCard({
               marginBottom: "0.75rem",
             }}
           >
-            Performance vs Field
+            vs Field Average
           </div>
           <DriverVsFieldChart
             driver={driver}
             allDrivers={allDrivers}
             accentColor={rankColor}
+            isSprint={isSprint}
+            isWet={isWet}
           />
         </div>
       </div>
@@ -517,16 +750,20 @@ function P1FeatureCard({
   );
 }
 
-// ─── P2/P3 compact card ───────────────────────────────────────────────────────
+// ─── P2/P3 podium card (v3 — passes isSprint/isWet to charts) ────────────────
 
 function PodiumCard({
   driver,
   rank,
   allDrivers,
+  isSprint,
+  isWet,
 }: {
   driver: DriverPrediction;
   rank: number;
   allDrivers: DriverPrediction[];
+  isSprint: boolean;
+  isWet: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const teamColor = TEAM_COLORS[driver.constructorId] ?? "#E10600";
@@ -540,7 +777,6 @@ function PodiumCard({
         overflow: "hidden",
       }}
     >
-      {/* Ghost rank */}
       <div
         style={{
           position: "absolute",
@@ -558,7 +794,6 @@ function PodiumCard({
         {rank}
       </div>
 
-      {/* Top row */}
       <div
         style={{
           display: "flex",
@@ -608,7 +843,6 @@ function PodiumCard({
             </div>
           </div>
         </div>
-
         <div style={{ textAlign: "right", flexShrink: 0 }}>
           <div
             style={{
@@ -635,7 +869,6 @@ function PodiumCard({
         </div>
       </div>
 
-      {/* Score bar */}
       <div style={{ marginBottom: "0.75rem", position: "relative" }}>
         <div
           style={{
@@ -684,7 +917,6 @@ function PodiumCard({
         </div>
       </div>
 
-      {/* Insight */}
       <p
         style={{
           fontFamily: "'Rajdhani', sans-serif",
@@ -699,7 +931,6 @@ function PodiumCard({
         {driver.insight}
       </p>
 
-      {/* Expand toggle */}
       <button
         onClick={() => setExpanded((v) => !v)}
         style={{
@@ -722,10 +953,9 @@ function PodiumCard({
         {expanded ? "▲ Hide charts" : "▼ Show factor charts"}
       </button>
 
-      {/* Expanded charts */}
       <div
         style={{
-          maxHeight: expanded ? "500px" : "0",
+          maxHeight: expanded ? "560px" : "0",
           overflow: "hidden",
           transition: "max-height 0.4s cubic-bezier(0.16,1,0.3,1)",
         }}
@@ -760,7 +990,12 @@ function PodiumCard({
             >
               Factor Profile
             </span>
-            <ScoreRadarChart driver={driver} accentColor={rankColor} />
+            <ScoreRadarChart
+              driver={driver}
+              accentColor={rankColor}
+              isSprint={isSprint}
+              isWet={isWet}
+            />
           </div>
           <div>
             <span
@@ -777,7 +1012,12 @@ function PodiumCard({
             >
               vs Field Average
             </span>
-            <DriverVsFieldChart driver={driver} allDrivers={allDrivers} />
+            <DriverVsFieldChart
+              driver={driver}
+              allDrivers={allDrivers}
+              isSprint={isSprint}
+              isWet={isWet}
+            />
           </div>
         </div>
       </div>
@@ -785,7 +1025,7 @@ function PodiumCard({
   );
 }
 
-// ─── Finisher row ─────────────────────────────────────────────────────────────
+// ─── Finisher row (unchanged from v2) ─────────────────────────────────────────
 
 function FinisherRow({
   driver,
@@ -796,6 +1036,7 @@ function FinisherRow({
 }) {
   const [hovered, setHovered] = useState(false);
   const teamColor = TEAM_COLORS[driver.constructorId] ?? "#E10600";
+  const hasPenalty = driver.factors.gridPenalty < 50;
 
   return (
     <div
@@ -825,7 +1066,6 @@ function FinisherRow({
       >
         P{index + 4}
       </div>
-
       <div style={{ minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
           <div
@@ -851,6 +1091,23 @@ function FinisherRow({
           >
             {driver.givenName} {driver.familyName}
           </span>
+          {hasPenalty && (
+            <span
+              style={{
+                fontFamily: "'Rajdhani', sans-serif",
+                fontSize: "0.44rem",
+                fontWeight: 700,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: "rgba(255,160,0,0.7)",
+                border: "1px solid rgba(255,160,0,0.2)",
+                padding: "1px 3px",
+                flexShrink: 0,
+              }}
+            >
+              ⚠ PEN
+            </span>
+          )}
         </div>
         <div
           style={{
@@ -868,8 +1125,6 @@ function FinisherRow({
           {driver.constructorName}
         </div>
       </div>
-
-      {/* Mini dual bars (form + quali) */}
       <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
         {[driver.factors.currentForm, driver.factors.qualifyingStrength].map(
           (val, i) => (
@@ -892,7 +1147,6 @@ function FinisherRow({
           ),
         )}
       </div>
-
       <div
         style={{
           fontFamily: "'Russo One', sans-serif",
@@ -903,7 +1157,6 @@ function FinisherRow({
       >
         {driver.score.toFixed(1)}
       </div>
-
       <div
         style={{
           fontFamily: "'Russo One', sans-serif",
@@ -918,40 +1171,9 @@ function FinisherRow({
   );
 }
 
-// ─── Methodology section ──────────────────────────────────────────────────────
+// ─── Methodology section (v3 — 8 factors) ────────────────────────────────────
 
-function MethodologySection({
-  allDrivers,
-}: {
-  allDrivers: DriverPrediction[];
-}) {
-  const factors = [
-    {
-      weight: 45,
-      label: "Recent Form",
-      desc: "Recency-weighted race finishing positions across the last 5 races. Most recent counts 3× the oldest. Mechanical DNFs carry a -2 penalty; collision DNFs score 0.",
-      color: "#E10600",
-    },
-    {
-      weight: 20,
-      label: "Qualifying Pace",
-      desc: "Recency-weighted qualifying positions, same 5-race window. Pole position converts to a win ~40% of the time in modern F1 — doubled in weight vs v1.",
-      color: "#FF8000",
-    },
-    {
-      weight: 20,
-      label: "Championship Standing",
-      desc: "Position + wins bonus (wins×0.5) after the last completed round. Two drivers tied on position are separated by win count.",
-      color: "#27F4D2",
-    },
-    {
-      weight: 15,
-      label: "Circuit History",
-      desc: "Podium finishes at this specific circuit in the last 10 seasons only. All-time data is excluded to prevent retired-era drivers from skewing scores.",
-      color: "#FFD700",
-    },
-  ];
-
+function MethodologySection() {
   return (
     <section
       style={{
@@ -970,10 +1192,9 @@ function MethodologySection({
         <SectionHeader
           overline="How It Works"
           title="Model Methodology"
-          subtitle="Factor weights and data sources behind every prediction"
+          subtitle="8 factor weights and data sources behind every prediction"
         />
 
-        {/* Two-column layout: factor rows + donut */}
         <div
           style={{
             display: "grid",
@@ -983,19 +1204,18 @@ function MethodologySection({
           }}
           className="methodology-grid"
         >
-          {/* Factor rows */}
           <div>
             {/* Segmented weight bar */}
             <div
               style={{
                 display: "flex",
-                gap: "2px",
+                gap: "1px",
                 height: "6px",
                 marginBottom: "2rem",
                 overflow: "hidden",
               }}
             >
-              {factors.map((f) => (
+              {METHODOLOGY_FACTORS.map((f) => (
                 <div
                   key={f.label}
                   style={{
@@ -1009,17 +1229,17 @@ function MethodologySection({
             </div>
 
             <div style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
-              {factors.map((f, i) => (
+              {METHODOLOGY_FACTORS.map((f, i) => (
                 <div
                   key={f.label}
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "60px 1fr",
+                    gridTemplateColumns: "56px 1fr",
                     alignItems: "start",
                     gap: "1rem 1.25rem",
-                    padding: "1.1rem 1.25rem",
+                    padding: "1rem 1.25rem",
                     borderBottom:
-                      i < factors.length - 1
+                      i < METHODOLOGY_FACTORS.length - 1
                         ? "1px solid rgba(255,255,255,0.05)"
                         : "none",
                   }}
@@ -1027,7 +1247,7 @@ function MethodologySection({
                   <div
                     style={{
                       fontFamily: "'Russo One', sans-serif",
-                      fontSize: "1.6rem",
+                      fontSize: "1.4rem",
                       color: f.color,
                       lineHeight: 1,
                       flexShrink: 0,
@@ -1041,7 +1261,7 @@ function MethodologySection({
                         display: "flex",
                         alignItems: "center",
                         gap: "0.75rem",
-                        marginBottom: "0.4rem",
+                        marginBottom: "0.35rem",
                         flexWrap: "wrap",
                       }}
                     >
@@ -1068,7 +1288,7 @@ function MethodologySection({
                         <div
                           style={{
                             height: "100%",
-                            width: `${f.weight * 2}%`,
+                            width: `${f.weight * 2.86}%`,
                             background: f.color,
                             maxWidth: "100%",
                           }}
@@ -1078,7 +1298,7 @@ function MethodologySection({
                     <p
                       style={{
                         fontFamily: "'Rajdhani', sans-serif",
-                        fontSize: "0.75rem",
+                        fontSize: "0.73rem",
                         lineHeight: 1.7,
                         color: "rgba(255,255,255,0.3)",
                         margin: 0,
@@ -1092,13 +1312,12 @@ function MethodologySection({
             </div>
           </div>
 
-          {/* Donut chart */}
+          {/* Donut */}
           <div style={{ paddingTop: "3.5rem" }}>
             <FactorWeightDonut />
           </div>
         </div>
 
-        {/* Disclaimer */}
         <p
           style={{
             fontFamily: "'Rajdhani', sans-serif",
@@ -1109,21 +1328,16 @@ function MethodologySection({
             maxWidth: "680px",
           }}
         >
-          Predictions are generated from historical and current-season data via
-          the Jolpica F1 API. All scores are min-max normalised per factor and
-          weighted. Win probabilities are derived from softmax (τ=8) over the
-          top-10 scores. This is a statistical model — actual race outcomes
-          depend on many unpredictable factors.
+          Predictions are generated from Jolpica F1 API data, OpenMeteo weather
+          forecasts, and OpenF1 race control messages. All scores are min-max
+          normalised per factor then combined with the weights above. Win
+          probabilities are derived from softmax (τ=8) over the top-10 model
+          scores. Weather and sprint factors are neutral (score 50) when not
+          applicable — they add signal only when active.
         </p>
       </div>
 
-      <style>{`
-        @media (max-width: 560px) {
-          .methodology-grid {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
+      <style>{`@media (max-width: 560px) { .methodology-grid { grid-template-columns: 1fr !important; } }`}</style>
     </section>
   );
 }
@@ -1135,7 +1349,6 @@ export default function PredictionClient({
   initialError,
 }: PredictionClientProps) {
   const [refreshEnabled, setRefreshEnabled] = useState(false);
-
   const {
     prediction: livePrediction,
     isLoading,
@@ -1155,7 +1368,6 @@ export default function PredictionClient({
     }
   };
 
-  // ── Error ──────────────────────────────────────────────────────────────────
   if (error && !prediction) {
     return (
       <div
@@ -1201,7 +1413,6 @@ export default function PredictionClient({
     );
   }
 
-  // ── Loading ────────────────────────────────────────────────────────────────
   if (isLoading && !prediction) {
     return (
       <div
@@ -1237,12 +1448,14 @@ export default function PredictionClient({
   const [p1, p2, p3] = prediction.predictions;
   const likelyFinishers = prediction.likelyFinishers;
   const allDrivers = [...prediction.predictions, ...likelyFinishers];
-
   const sortedFinishers = [...likelyFinishers].sort(
     (a, b) => b.score - a.score,
   );
 
-  // Refresh button
+  // v3 context flags — passed down to all child components
+  const isSprint = prediction.isSprint ?? false;
+  const isWet = prediction.weather?.isWetExpected ?? false;
+
   const RefreshButton = (
     <button
       onClick={handleRefresh}
@@ -1288,22 +1501,17 @@ export default function PredictionClient({
 
   return (
     <>
-      {/* ── Hero ────────────────────────────────────────────────────────────── */}
       <PredictionHero prediction={prediction} />
 
-      {/* ── Page content backdrop ────────────────────────────────────────────
-          Subtle radial glow + dot grid to give the dark page some depth     */}
       <div
         style={{
           position: "relative",
           background: PAGE_BG,
-          // Dot grid texture
           backgroundImage:
             "radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px)",
           backgroundSize: "32px 32px",
         }}
       >
-        {/* Ambient glow behind the top of the content */}
         <div
           style={{
             position: "absolute",
@@ -1318,7 +1526,7 @@ export default function PredictionClient({
           }}
         />
 
-        {/* ── Podium ──────────────────────────────────────────────────────── */}
+        {/* Podium section */}
         <section
           style={{
             borderBottom: "1px solid rgba(255,255,255,0.05)",
@@ -1335,11 +1543,13 @@ export default function PredictionClient({
             <SectionHeader
               overline="Podium Prediction"
               title="Race Contenders"
-              subtitle="AI-powered finishing order — factor radar, probability, and vs-field analysis"
+              subtitle="8-factor model · weather, sprint, and tyre compound awareness"
               action={RefreshButton}
             />
 
-            {/* P1 — full width feature */}
+            {/* v3: Weekend context banner */}
+            <WeekendContextBanner prediction={prediction} />
+
             {p1 && (
               <div
                 style={{
@@ -1348,11 +1558,15 @@ export default function PredictionClient({
                     "clientSlideUp 0.7s cubic-bezier(0.16,1,0.3,1) both",
                 }}
               >
-                <P1FeatureCard driver={p1} allDrivers={allDrivers} />
+                <P1FeatureCard
+                  driver={p1}
+                  allDrivers={allDrivers}
+                  isSprint={isSprint}
+                  isWet={isWet}
+                />
               </div>
             )}
 
-            {/* P2 / P3 — side by side */}
             <div
               style={{
                 display: "grid",
@@ -1369,7 +1583,13 @@ export default function PredictionClient({
                       "clientSlideUp 0.7s 0.1s cubic-bezier(0.16,1,0.3,1) both",
                   }}
                 >
-                  <PodiumCard driver={p2} rank={2} allDrivers={allDrivers} />
+                  <PodiumCard
+                    driver={p2}
+                    rank={2}
+                    allDrivers={allDrivers}
+                    isSprint={isSprint}
+                    isWet={isWet}
+                  />
                 </div>
               )}
               {p3 && (
@@ -1379,14 +1599,20 @@ export default function PredictionClient({
                       "clientSlideUp 0.7s 0.2s cubic-bezier(0.16,1,0.3,1) both",
                   }}
                 >
-                  <PodiumCard driver={p3} rank={3} allDrivers={allDrivers} />
+                  <PodiumCard
+                    driver={p3}
+                    rank={3}
+                    allDrivers={allDrivers}
+                    isSprint={isSprint}
+                    isWet={isWet}
+                  />
                 </div>
               )}
             </div>
           </div>
         </section>
 
-        {/* ── Probability Landscape ─────────────────────────────────────────── */}
+        {/* Probability landscape (unchanged) */}
         <section style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
           <div
             style={{
@@ -1398,9 +1624,8 @@ export default function PredictionClient({
             <SectionHeader
               overline="Statistical Overview"
               title="Probability Landscape"
-              subtitle="Win probability distribution across all scored drivers — softmax τ=8 over top-10 model scores"
+              subtitle="Win probability distribution — softmax τ=8 over top-10 model scores"
             />
-
             <div
               style={{
                 display: "grid",
@@ -1416,8 +1641,6 @@ export default function PredictionClient({
                   finishers={sortedFinishers}
                 />
               </Panel>
-
-              {/* Key stats */}
               <div
                 style={{
                   display: "flex",
@@ -1479,7 +1702,6 @@ export default function PredictionClient({
                     </>
                   )}
                 </Panel>
-
                 <Panel>
                   <div
                     style={{
@@ -1517,7 +1739,6 @@ export default function PredictionClient({
                     softmax temperature
                   </div>
                 </Panel>
-
                 <Panel>
                   <div
                     style={{
@@ -1564,7 +1785,7 @@ export default function PredictionClient({
           </div>
         </section>
 
-        {/* ── Likely Finishers ──────────────────────────────────────────────── */}
+        {/* Likely finishers */}
         {sortedFinishers.length > 0 && (
           <section style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
             <div
@@ -1577,10 +1798,8 @@ export default function PredictionClient({
               <SectionHeader
                 overline="Points Finishers"
                 title="Likely Top 10"
-                subtitle="Drivers predicted to score points — red bar = form, grey bar = qualifying pace"
+                subtitle="Red bar = form · grey bar = qualifying pace · ⚠ = grid penalty"
               />
-
-              {/* Column headers */}
               <div
                 style={{
                   display: "grid",
@@ -1607,7 +1826,6 @@ export default function PredictionClient({
                   </div>
                 ))}
               </div>
-
               <Panel
                 style={{
                   padding: 0,
@@ -1626,30 +1844,14 @@ export default function PredictionClient({
           </section>
         )}
 
-        {/* ── Methodology ───────────────────────────────────────────────────── */}
-        <MethodologySection allDrivers={allDrivers} />
+        <MethodologySection />
       </div>
 
-      {/* ── Keyframes ─────────────────────────────────────────────────────── */}
       <style>{`
-        @keyframes clientSlideUp {
-          from { opacity: 0; transform: translateY(16px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes clientPulse {
-          0%, 100% { opacity: 1; }
-          50%       { opacity: 0.4; }
-        }
-        @keyframes clientSpin {
-          to { transform: rotate(360deg); }
-        }
-
-        /* Mobile: stack probability landscape */
-        @media (max-width: 640px) {
-          .landscape-grid {
-            grid-template-columns: 1fr !important;
-          }
-        }
+        @keyframes clientSlideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes clientPulse   { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        @keyframes clientSpin    { to { transform: rotate(360deg); } }
+        @media (max-width: 640px) { .landscape-grid { grid-template-columns: 1fr !important; } }
       `}</style>
     </>
   );
