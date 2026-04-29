@@ -34,7 +34,7 @@ const Navbar = () => {
   const [searchFocused,    setSearchFocused]     = useState(false);
   const [hoveredLink,      setHoveredLink]       = useState<string | null>(null);
   const [scanPos,          setScanPos]           = useState(0);
-  const [tick,             setTick]              = useState(0);
+  const [timeStr,          setTimeStr]           = useState("");
   const pathname  = usePathname();
   const router    = useRouter();
   const rafRef    = useRef<number>(0);
@@ -72,9 +72,16 @@ const Navbar = () => {
     return () => cancelAnimationFrame(rafRef.current);
   }, [searchOpen]);
 
-  /* Blinking clock tick */
+  /* Live clock — client only to avoid hydration mismatch */
   useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 1000);
+    const update = () =>
+      setTimeStr(
+        new Date().toLocaleTimeString("en-US", {
+          hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+        })
+      );
+    update();
+    const id = setInterval(update, 1000);
     return () => clearInterval(id);
   }, []);
 
@@ -86,9 +93,6 @@ const Navbar = () => {
       setSearchQuery("");
     }
   };
-
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 
   return (
     <>

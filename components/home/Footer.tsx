@@ -1,12 +1,3 @@
-/**
- * components/home/Footer.tsx — "TECHNICAL BULLETIN" redesign
- *
- * Aesthetic: race team's end-of-season technical report.
- * Grid-aligned, monospaced data columns, red-ruled section headers,
- * a lap counter easter egg, and a bottom bar that reads like an FIA bulletin.
- *
- * Layout:
- */
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -22,454 +13,315 @@ const NAV_LINKS = [
   { href: "/live",     label: "Live",      code: "07" },
 ];
 
-const DATA_SOURCES = [
-  { name: "Jolpica API",   status: "LIVE",    latency: "42ms"  },
-  { name: "OpenF1 API",    status: "LIVE",    latency: "89ms"  },
-  { name: "RSS News",      status: "POLLING", latency: "—"     },
-];
-
-const STATS = [
-  { label: "Seasons",  value: "76"   },
-  { label: "Races",    value: "1100+" },
-  { label: "Drivers",  value: "780+" },
-  { label: "Circuits", value: "77"   },
-];
-
 const Footer = () => {
-  const [lapTime, setLapTime]   = useState(0);
-  const [ticking, setTicking]   = useState(false);
-  const [blinkOn, setBlinkOn]   = useState(true);
+  const [mounted, setMounted] = useState(false);
 
-  /* Lap timer easter egg — click to start/stop */
-  useEffect(() => {
-    if (!ticking) return;
-    const id = setInterval(() => setLapTime(t => t + 0.013), 13);
-    return () => clearInterval(id);
-  }, [ticking]);
-
-  /* Status blink */
-  useEffect(() => {
-    const id = setInterval(() => setBlinkOn(b => !b), 800);
-    return () => clearInterval(id);
-  }, []);
-
-  const formatLap = (t: number) => {
-    const mins = Math.floor(t / 60);
-    const secs = Math.floor(t % 60);
-    const ms   = Math.floor((t % 1) * 1000);
-    return `${String(mins).padStart(1,"0")}:${String(secs).padStart(2,"0")}.${String(ms).padStart(3,"0")}`;
-  };
+  useEffect(() => { setMounted(true); }, []);
 
   return (
     <>
       <style>{`
-        @keyframes footerDotBlink {
-          0%, 49% { opacity: 1; }
-          50%, 100% { opacity: 0.15; }
+        @keyframes footerEdgeWipe {
+          from { transform: scaleX(0); transform-origin: left; }
+          to   { transform: scaleX(1); transform-origin: left; }
         }
-        @keyframes statusPulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
-          50%       { box-shadow: 0 0 6px 1px rgba(34, 197, 94, 0.3); }
+        @keyframes footerFadeUp {
+          from { opacity: 0; transform: translateY(12px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
-        .footer-nav-link {
-          font-family: 'Rajdhani', sans-serif;
-          font-weight: 700;
-          font-size: 0.72rem;
-          letter-spacing: 0.14em;
-          text-transform: uppercase;
-          color: rgba(255,255,255,0.3);
-          text-decoration: none;
+        @keyframes footerPulseRing {
+          0%   { transform: scale(0.4); opacity: 0.9; }
+          100% { transform: scale(3);   opacity: 0; }
+        }
+        @keyframes footerPulseCore {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50%       { transform: scale(0.75); opacity: 0.6; }
+        }
+
+        .footer-link {
           display: flex;
           align-items: center;
           gap: 8px;
-          padding: 6px 0;
+          text-decoration: none;
+          padding: 0.55rem 0;
           border-bottom: 1px solid rgba(255,255,255,0.04);
-          transition: color 0.12s ease, padding-left 0.15s ease;
-          min-height: 36px;
+          transition: padding-left 0.15s ease;
+          position: relative;
         }
-        .footer-nav-link:hover {
-          color: white;
-          padding-left: 6px;
+        .footer-link::before {
+          content: '';
+          position: absolute;
+          left: 0; top: 0; bottom: 0;
+          width: 2px;
+          background: #E10600;
+          transform: scaleY(0);
+          transform-origin: bottom;
+          transition: transform 0.15s ease;
         }
-        .footer-nav-link:hover .footer-link-code {
-          color: #E10600;
-        }
-        .footer-stat-val {
-          font-family: 'Russo One', sans-serif;
-          font-size: clamp(1.1rem, 2.5vw, 1.5rem);
-          color: white;
-          line-height: 1;
-          letter-spacing: -0.02em;
-        }
-        .footer-stat-label {
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 0.42rem;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-          color: rgba(255,255,255,0.2);
-          margin-top: 3px;
-        }
-
-        /* Mobile responsiveness */
-        @media (max-width: 768px) {
-          .footer-grid {
-            grid-template-columns: 1fr 1fr !important;
-          }
-          .footer-brand-col {
-            grid-column: 1 / -1 !important;
-          }
-          .footer-stats-strip {
-            grid-template-columns: repeat(2, 1fr) !important;
-          }
-        }
-        @media (max-width: 480px) {
-          .footer-grid {
-            grid-template-columns: 1fr !important;
-          }
-          .footer-brand-col {
-            grid-column: 1 !important;
-          }
-        }
+        .footer-link:hover { padding-left: 8px; }
+        .footer-link:hover::before { transform: scaleY(1); }
+        .footer-link:hover .fl-label { color: white !important; }
+        .footer-link:hover .fl-arrow { color: #E10600 !important; opacity: 1 !important; }
       `}</style>
 
       <footer style={{
-        borderTop: "1px solid rgba(255,255,255,0.05)",
         position: "relative",
         background: "#060606",
+        borderTop: "1px solid rgba(255,255,255,0.05)",
         overflow: "hidden",
       }}>
 
-        {/* 2px red top accent */}
+        {/* 2px red rule — wipes in */}
         <div style={{
           height: "2px",
-          background: "linear-gradient(90deg, #E10600 0%, #ff2010 40%, rgba(225,6,0,0.5) 70%, transparent 100%)",
+          background: "linear-gradient(90deg, #E10600 0%, rgba(225,6,0,0.4) 50%, transparent 100%)",
+          animation: mounted ? "footerEdgeWipe 0.9s 0.1s cubic-bezier(0.16,1,0.3,1) both" : "none",
         }} />
 
-        {/* Subtle grid texture */}
+        {/* Dot-grid texture — same as circuits hero */}
         <div style={{
-          position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0,
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.008) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.008) 1px, transparent 1px)`,
-          backgroundSize: "40px 40px",
+          position: "absolute", inset: 0, pointerEvents: "none",
+          backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)",
+          backgroundSize: "28px 28px",
         }} />
 
-        {/* Red corner bloom */}
+        {/* Diagonal slash */}
+        <div style={{
+          position: "absolute",
+          top: "-10%", right: "-5%",
+          width: "40%", height: "120%",
+          background: "linear-gradient(105deg, transparent 45%, rgba(225,6,0,0.03) 45%, rgba(225,6,0,0.06) 55%, transparent 55%)",
+          pointerEvents: "none",
+        }} />
+
+        {/* Red radial bloom — bottom left */}
         <div style={{
           position: "absolute", bottom: 0, left: 0,
           width: "40%", height: "60%",
-          background: "radial-gradient(ellipse 80% 70% at 0% 100%, rgba(225,6,0,0.04) 0%, transparent 70%)",
-          pointerEvents: "none", zIndex: 0,
+          background: "radial-gradient(ellipse 80% 70% at 0% 100%, rgba(225,6,0,0.05) 0%, transparent 70%)",
+          pointerEvents: "none",
         }} />
+
+        {/* Ghost watermark */}
+        <div style={{
+          position: "absolute",
+          right: "-2%", bottom: "-12%",
+          fontFamily: "'Russo One', sans-serif",
+          fontSize: "clamp(6rem, 14vw, 13rem)",
+          color: "transparent",
+          WebkitTextStroke: "1px rgba(255,255,255,0.025)",
+          letterSpacing: "-0.04em",
+          lineHeight: 1,
+          pointerEvents: "none",
+          userSelect: "none",
+          whiteSpace: "nowrap",
+          opacity: mounted ? 1 : 0,
+          transition: "opacity 1s ease",
+        }}>
+          FJUAN
+        </div>
 
         <div style={{
           maxWidth: "1280px", margin: "0 auto",
-          padding: "clamp(2rem, 5vw, 3.5rem) clamp(0.75rem, 4vw, 1.5rem) clamp(1.5rem, 4vw, 2.5rem)",
+          padding: "clamp(2rem,5vw,3.5rem) clamp(1rem,4vw,1.5rem) clamp(1.25rem,3vw,2rem)",
           position: "relative", zIndex: 1,
         }}>
 
-          {/* ── Stats strip — full width above columns ─────────────── */}
-          <div
-            className="footer-stats-strip"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: "1px",
-              background: "rgba(255,255,255,0.04)",
-              marginBottom: "2rem",
-            }}
-          >
-            {STATS.map((s, i) => (
-              <div key={s.label} style={{
-                background: "#090909",
-                padding: "0.85rem 1rem",
-                borderTop: i === 0 ? "2px solid #E10600" : "2px solid transparent",
-              }}>
-                <div className="footer-stat-val">{s.value}</div>
-                <div className="footer-stat-label">{s.label}</div>
-              </div>
-            ))}
-          </div>
+          {/* ── Main row ────────────────────────────────────── */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "1.6fr 1fr 1fr",
+            gap: "clamp(2rem,5vw,4rem)",
+            alignItems: "start",
+            marginBottom: "clamp(1.5rem,4vw,2.5rem)",
+          }}>
 
-          {/* ── Main 4-column grid ────────────────────────────────── */}
-          <div
-            className="footer-grid"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1.4fr 1fr 1fr 1fr",
-              gap: "clamp(1.5rem, 4vw, 2.5rem)",
-              alignItems: "start",
-            }}
-          >
-
-            {/* Brand column */}
-            <div className="footer-brand-col">
-              {/* Logo */}
-              <div style={{ marginBottom: "1rem", display: "flex", alignItems: "baseline", gap: "0" }}>
-                {["FJ", "U", "AN"].map((p, i) => (
+            {/* Brand */}
+            <div style={{
+              animation: mounted ? "footerFadeUp 0.6s 0.15s cubic-bezier(0.16,1,0.3,1) both" : "none",
+            }}>
+              {/* Wordmark */}
+              <div style={{ display: "flex", alignItems: "baseline", marginBottom: "1rem" }}>
+                {["FJ","U","AN"].map((p, i) => (
                   <span key={i} style={{
                     fontFamily: "'Russo One', sans-serif",
-                    fontSize: "1.5rem", letterSpacing: "-0.01em",
+                    fontSize: "1.5rem",
+                    letterSpacing: "-0.01em",
                     color: i === 1 ? "#E10600" : "white",
                   }}>{p}</span>
                 ))}
                 <span style={{
                   fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: "0.4rem", letterSpacing: "0.1em",
-                  color: "rgba(255,255,255,0.2)",
+                  fontSize: "0.38rem", letterSpacing: "0.1em",
+                  color: "rgba(255,255,255,0.18)",
                   alignSelf: "flex-end", marginLeft: "5px", marginBottom: "2px",
                 }}>·26</span>
               </div>
 
               <p style={{
-                fontFamily: "'Rajdhani', sans-serif", fontWeight: 400,
-                fontSize: "0.85rem", lineHeight: 1.75,
-                color: "rgba(255,255,255,0.28)",
-                maxWidth: "220px", margin: "0 0 1rem",
+                fontFamily: "'Rajdhani', sans-serif",
+                fontWeight: 400, fontSize: "0.82rem",
+                lineHeight: 1.7, color: "rgba(255,255,255,0.24)",
+                maxWidth: "220px", margin: "0 0 1.5rem",
               }}>
-                Comprehensive Formula 1 statistics, telemetry analytics, and race prediction engine.
+                Formula 1 statistics, telemetry analytics, and race prediction.
               </p>
 
-              {/* Lap timer easter egg */}
-              <button
-                onClick={() => setTicking(t => !t)}
-                style={{
-                  background: ticking ? "rgba(225,6,0,0.08)" : "rgba(255,255,255,0.03)",
-                  border: `1px solid ${ticking ? "rgba(225,6,0,0.4)" : "rgba(255,255,255,0.08)"}`,
-                  cursor: "pointer",
-                  padding: "0.45rem 0.75rem",
-                  display: "flex", alignItems: "center", gap: "8px",
-                  transition: "all 0.15s ease",
-                  marginBottom: "0.75rem",
-                }}
-                title="Lap timer"
-              >
-                <span style={{
-                  width: "5px", height: "5px", borderRadius: "50%",
-                  background: ticking ? "#E10600" : "rgba(255,255,255,0.2)",
-                  animation: ticking ? "footerDotBlink 0.6s step-end infinite" : "none",
-                  transition: "background 0.15s ease",
-                  flexShrink: 0,
-                }} />
+              {/* Live pill */}
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: "8px",
+                padding: "5px 12px",
+                border: "1px solid rgba(225,6,0,0.2)",
+                background: "rgba(225,6,0,0.04)",
+              }}>
+                <div style={{ position: "relative", width: "6px", height: "6px" }}>
+                  <div style={{
+                    position: "absolute", inset: 0, borderRadius: "50%",
+                    background: "#E10600",
+                    animation: "footerPulseCore 2s ease-in-out infinite",
+                  }} />
+                  <div style={{
+                    position: "absolute", inset: "-3px", borderRadius: "50%",
+                    background: "rgba(225,6,0,0.3)",
+                    animation: "footerPulseRing 2s ease-in-out infinite",
+                  }} />
+                </div>
                 <span style={{
                   fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: "0.58rem", letterSpacing: "0.1em",
-                  color: ticking ? "white" : "rgba(255,255,255,0.25)",
-                  fontVariantNumeric: "tabular-nums",
-                  transition: "color 0.15s ease",
-                  minWidth: "7ch",
-                }}>
-                  {formatLap(lapTime)}
-                </span>
-                <span style={{
-                  fontFamily: "'JetBrains Mono', monospace", fontSize: "0.38rem",
-                  letterSpacing: "0.12em", textTransform: "uppercase",
-                  color: "rgba(255,255,255,0.18)",
-                }}>
-                  {ticking ? "STOP" : "LAP"}
-                </span>
-              </button>
-
-              <p style={{
-                fontFamily: "'JetBrains Mono', monospace", fontSize: "0.46rem",
-                letterSpacing: "0.1em", color: "rgba(255,255,255,0.2)",
-                textTransform: "uppercase", margin: 0,
-              }}>
-                Built by Xander Rancap
-              </p>
+                  fontSize: "0.4rem", letterSpacing: "0.14em",
+                  textTransform: "uppercase", color: "rgba(225,6,0,0.65)",
+                }}>Live · 2026 Season</span>
+              </div>
             </div>
 
-            {/* Navigate column */}
-            <div>
-              {/* Column header */}
+            {/* Navigate */}
+            <div style={{
+              animation: mounted ? "footerFadeUp 0.6s 0.22s cubic-bezier(0.16,1,0.3,1) both" : "none",
+            }}>
               <div style={{
                 display: "flex", alignItems: "center", gap: "8px",
-                marginBottom: "0.85rem",
-                paddingBottom: "0.5rem",
-                borderBottom: "1px solid rgba(225,6,0,0.25)",
+                marginBottom: "0.85rem", paddingBottom: "0.5rem",
+                borderBottom: "1px solid rgba(225,6,0,0.18)",
               }}>
-                <div style={{ width: "12px", height: "1.5px", background: "#E10600" }} />
+                <div style={{ width: "10px", height: "1.5px", background: "#E10600" }} />
                 <span style={{
-                  fontFamily: "'JetBrains Mono', monospace", fontSize: "0.44rem",
-                  letterSpacing: "0.2em", textTransform: "uppercase",
-                  color: "rgba(255,255,255,0.25)",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: "0.42rem", letterSpacing: "0.22em",
+                  textTransform: "uppercase", color: "rgba(255,255,255,0.22)",
                 }}>Navigate</span>
               </div>
               <nav>
-                {NAV_LINKS.map(link => (
-                  <Link key={link.href} href={link.href} className="footer-nav-link">
-                    <span className="footer-link-code" style={{
+                {NAV_LINKS.map((link) => (
+                  <Link key={link.href} href={link.href} className="footer-link">
+                    <span style={{
                       fontFamily: "'JetBrains Mono', monospace",
-                      fontSize: "0.38rem", letterSpacing: "0.06em",
-                      color: "rgba(255,255,255,0.18)",
-                      minWidth: "1.4rem",
-                      transition: "color 0.12s ease",
+                      fontSize: "0.36rem", letterSpacing: "0.06em",
+                      color: "rgba(255,255,255,0.14)", minWidth: "1.4rem",
                     }}>{link.code}</span>
-                    {link.label}
+                    <span className="fl-label" style={{
+                      fontFamily: "'Rajdhani', sans-serif",
+                      fontWeight: 700, fontSize: "0.7rem",
+                      letterSpacing: "0.12em", textTransform: "uppercase",
+                      color: "rgba(255,255,255,0.28)",
+                      transition: "color 0.12s ease", flex: 1,
+                    }}>{link.label}</span>
+                    <span className="fl-arrow" style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: "0.32rem", color: "rgba(255,255,255,0.1)",
+                      opacity: 0.5, transition: "color 0.12s ease, opacity 0.12s ease",
+                    }}>→</span>
                   </Link>
                 ))}
               </nav>
             </div>
 
-            {/* Data sources column */}
-            <div>
+            {/* Info */}
+            <div style={{
+              animation: mounted ? "footerFadeUp 0.6s 0.3s cubic-bezier(0.16,1,0.3,1) both" : "none",
+            }}>
               <div style={{
                 display: "flex", alignItems: "center", gap: "8px",
-                marginBottom: "0.85rem",
-                paddingBottom: "0.5rem",
-                borderBottom: "1px solid rgba(225,6,0,0.25)",
+                marginBottom: "0.85rem", paddingBottom: "0.5rem",
+                borderBottom: "1px solid rgba(225,6,0,0.18)",
               }}>
-                <div style={{ width: "12px", height: "1.5px", background: "#E10600" }} />
+                <div style={{ width: "10px", height: "1.5px", background: "#E10600" }} />
                 <span style={{
-                  fontFamily: "'JetBrains Mono', monospace", fontSize: "0.44rem",
-                  letterSpacing: "0.2em", textTransform: "uppercase",
-                  color: "rgba(255,255,255,0.25)",
-                }}>Data Sources</span>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                {DATA_SOURCES.map(src => (
-                  <div key={src.name} style={{
-                    display: "flex", alignItems: "center", justifyContent: "space-between",
-                    padding: "0.5rem 0.6rem",
-                    background: "#0a0a0a",
-                    borderLeft: `2px solid ${src.status === "LIVE" ? "rgba(34,197,94,0.5)" : "rgba(255,200,0,0.4)"}`,
-                  }}>
-                    <span style={{
-                      fontFamily: "'JetBrains Mono', monospace", fontSize: "0.5rem",
-                      letterSpacing: "0.06em", color: "rgba(255,255,255,0.45)",
-                    }}>{src.name}</span>
-                    <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                      <span style={{
-                        fontFamily: "'JetBrains Mono', monospace", fontSize: "0.38rem",
-                        letterSpacing: "0.08em",
-                        color: src.status === "LIVE" ? "rgba(34,197,94,0.7)" : "rgba(255,200,0,0.6)",
-                      }}>{src.latency}</span>
-                      <span style={{
-                        width: "4px", height: "4px", borderRadius: "50%",
-                        background: src.status === "LIVE" ? "#22c55e" : "#fbbf24",
-                        opacity: blinkOn ? 1 : 0.2,
-                        transition: "opacity 0.1s",
-                        animation: src.status === "LIVE" ? "statusPulse 2s ease infinite" : "none",
-                      }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Status column */}
-            <div>
-              <div style={{
-                display: "flex", alignItems: "center", gap: "8px",
-                marginBottom: "0.85rem",
-                paddingBottom: "0.5rem",
-                borderBottom: "1px solid rgba(225,6,0,0.25)",
-              }}>
-                <div style={{ width: "12px", height: "1.5px", background: "#E10600" }} />
-                <span style={{
-                  fontFamily: "'JetBrains Mono', monospace", fontSize: "0.44rem",
-                  letterSpacing: "0.2em", textTransform: "uppercase",
-                  color: "rgba(255,255,255,0.25)",
-                }}>System</span>
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: "0.42rem", letterSpacing: "0.22em",
+                  textTransform: "uppercase", color: "rgba(255,255,255,0.22)",
+                }}>Info</span>
               </div>
 
-              {/* System status tiles */}
               {[
-                { label: "API",       ok: true  },
-                { label: "Standings", ok: true  },
-                { label: "Live Feed", ok: true  },
-                { label: "Predict",   ok: true  },
-              ].map(item => (
-                <div key={item.label} style={{
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                { label: "Seasons",  value: "76"    },
+                { label: "Races",    value: "1100+" },
+                { label: "Drivers",  value: "780+"  },
+                { label: "Circuits", value: "77"    },
+              ].map((s, i) => (
+                <div key={s.label} style={{
+                  display: "flex", justifyContent: "space-between", alignItems: "baseline",
                   padding: "0.45rem 0",
                   borderBottom: "1px solid rgba(255,255,255,0.04)",
+                  animation: mounted ? `footerFadeUp 0.5s ${0.35 + i * 0.06}s cubic-bezier(0.16,1,0.3,1) both` : "none",
                 }}>
                   <span style={{
-                    fontFamily: "'JetBrains Mono', monospace", fontSize: "0.46rem",
-                    letterSpacing: "0.08em", textTransform: "uppercase",
-                    color: "rgba(255,255,255,0.28)",
-                  }}>{item.label}</span>
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: "0.4rem", letterSpacing: "0.1em",
+                    textTransform: "uppercase", color: "rgba(255,255,255,0.2)",
+                  }}>{s.label}</span>
                   <span style={{
-                    fontFamily: "'JetBrains Mono', monospace", fontSize: "0.4rem",
-                    letterSpacing: "0.1em",
-                    color: item.ok ? "rgba(34,197,94,0.7)" : "rgba(225,6,0,0.8)",
-                    display: "flex", alignItems: "center", gap: "4px",
-                  }}>
-                    <span style={{
-                      width: "4px", height: "4px", borderRadius: "50%",
-                      background: item.ok ? "#22c55e" : "#E10600",
-                      opacity: blinkOn ? 1 : 0.3,
-                      transition: "opacity 0.1s",
-                    }} />
-                    {item.ok ? "OK" : "ERR"}
-                  </span>
+                    fontFamily: "'Russo One', sans-serif",
+                    fontSize: "0.85rem", color: "white", letterSpacing: "-0.01em",
+                  }}>{s.value}</span>
                 </div>
               ))}
 
-              {/* Version tag */}
-              <div style={{
-                marginTop: "1rem",
-                padding: "0.5rem 0.65rem",
-                background: "rgba(225,6,0,0.06)",
-                border: "1px solid rgba(225,6,0,0.15)",
-              }}>
+              <div style={{ marginTop: "1rem" }}>
                 <div style={{
-                  fontFamily: "'JetBrains Mono', monospace", fontSize: "0.38rem",
-                  letterSpacing: "0.1em", textTransform: "uppercase",
-                  color: "rgba(255,255,255,0.18)", marginBottom: "2px",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: "0.35rem", letterSpacing: "0.12em",
+                  textTransform: "uppercase", color: "rgba(255,255,255,0.12)",
+                  marginBottom: "3px",
                 }}>Build</div>
                 <div style={{
-                  fontFamily: "'JetBrains Mono', monospace", fontSize: "0.52rem",
-                  letterSpacing: "0.06em", color: "#E10600",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: "0.48rem", letterSpacing: "0.06em",
+                  color: "#E10600",
                 }}>v2.6.0 · 2026</div>
               </div>
             </div>
           </div>
 
-          {/* ── Bottom FIA-style bulletin bar ──────────────────────── */}
+          {/* ── Bottom bar ──────────────────────────────────── */}
           <div style={{
-            marginTop: "clamp(1.5rem, 4vw, 2.5rem)",
             paddingTop: "1rem",
-            borderTop: "1px solid rgba(255,255,255,0.06)",
-            display: "flex", alignItems: "center",
+            borderTop: "1px solid rgba(255,255,255,0.05)",
+            display: "flex",
+            alignItems: "center",
             justifyContent: "space-between",
-            flexWrap: "wrap", gap: "0.5rem",
+            flexWrap: "wrap",
+            gap: "0.75rem",
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "1.5rem", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
               <span style={{
-                fontFamily: "'JetBrains Mono', monospace", fontSize: "0.46rem",
-                letterSpacing: "0.12em", textTransform: "uppercase",
-                color: "rgba(255,255,255,0.25)",
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "0.42rem", letterSpacing: "0.12em",
+                textTransform: "uppercase", color: "rgba(255,255,255,0.2)",
               }}>© 2026 FJUAN</span>
+              <span style={{ width: "1px", height: "10px", background: "rgba(255,255,255,0.08)" }} />
               <span style={{
-                fontFamily: "'JetBrains Mono', monospace", fontSize: "0.42rem",
-                letterSpacing: "0.1em",
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "0.38rem", letterSpacing: "0.08em",
                 color: "rgba(255,255,255,0.1)",
-                display: "flex", alignItems: "center", gap: "6px",
-              }}>
-                <span style={{ width: "1px", height: "10px", background: "rgba(255,255,255,0.1)" }} />
-                NOT AFFILIATED WITH FORMULA 1, FOM, OR FIA
-              </span>
+              }}>NOT AFFILIATED WITH F1, FOM, OR FIA</span>
             </div>
-
-            {/* Mini live indicator */}
-            <div style={{
-              display: "flex", alignItems: "center", gap: "6px",
-              padding: "4px 10px",
-              border: "1px solid rgba(225,6,0,0.18)",
-              background: "rgba(225,6,0,0.04)",
-            }}>
-              <span style={{
-                width: "4px", height: "4px", borderRadius: "50%",
-                background: "#E10600",
-                animation: "footerDotBlink 1.2s step-end infinite",
-              }} />
-              <span style={{
-                fontFamily: "'JetBrains Mono', monospace", fontSize: "0.42rem",
-                letterSpacing: "0.14em", textTransform: "uppercase",
-                color: "rgba(225,6,0,0.7)",
-              }}>Live · 2026 Season</span>
-            </div>
+            <span style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "0.38rem", letterSpacing: "0.1em",
+              color: "rgba(255,255,255,0.12)",
+            }}>Built by Xander Rancap</span>
           </div>
+
         </div>
       </footer>
     </>
