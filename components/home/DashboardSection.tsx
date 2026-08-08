@@ -1,408 +1,357 @@
 /**
  * components/home/DashboardSection.tsx
  *
- * Mobile-responsive "Pit Wall" dashboard.
+ * FJuanDASH "Pit Wall" dashboard.
  *
- * Responsive strategy (all rules in the single <style> block at render root):
+ * This component combines three key pieces of race intelligence:
  *
- *   > 768px  (desktop)  : 2-col bento — standings left (span 2 rows) · race/prediction right
- *   641–768px (tablet)  : same 2-col but right column narrows to minmax(240px,28%)
- *   ≤ 640px  (mobile)   : single column stack — standings · race · prediction
+ * 1. Championship standings
+ *    - Displays the top eight drivers.
+ *    - Shows championship points.
+ *    - Provides a visual points comparison.
  *
- * Sub-component responsive notes:
- *   - StandingsPanel  : driver rows use clamp() fonts; bar always visible
- *   - NextRacePanel   : countdown digits use clamp(); circuit chips stack on xs
- *   - PredictionPanel : recharts bar collapses to 60px on mobile; rows tighten
- *   - PanelLabel      : font clamp so it never overflows
- *   - Touch targets   : all interactive/link rows ≥ 44px
+ * 2. Next race
+ *    - Displays the upcoming race and circuit.
+ *    - Shows the country and locality.
+ *    - Provides a live countdown to race start.
+ *
+ * 3. Prediction engine
+ *    - Displays the top three predicted podium finishers.
+ *    - Visualizes podium probabilities.
+ *
+ * Responsive layout:
+ * - Desktop: two-column bento layout.
+ * - Tablet: single-column layout.
+ * - Mobile: compact spacing and typography.
+ *
+ * The component is client-side because the countdown requires
+ * browser timing APIs and React state.
  */
+
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
-  AreaChart, Area, ResponsiveContainer,
-  BarChart, Bar, Cell,
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  Cell,
+  ResponsiveContainer,
 } from "recharts";
 
-/* ── Types ───────────────────────────────────────────────────────────────── */
+/**
+ * Data provided by the parent dashboard page.
+ *
+ * These are currently typed as `any` because the API response
+ * models are defined outside this component. These should
+ * eventually be replaced with shared TypeScript interfaces.
+ */
 interface DashboardSectionProps {
-  standings:  any[];
-  nextRace:   any;
+  standings: any[];
+  nextRace: any;
   prediction: any;
 }
 
-/* ── Constants ───────────────────────────────────────────────────────────── */
-const TEAM_COLORS: Record<string, string> = {
-  "Red Bull":      "#3671C6",
-  "Ferrari":       "#E8002D",
-  "Mercedes":      "#27F4D2",
-  "McLaren":       "#FF8000",
-  "Aston Martin":  "#229971",
-  "Alpine":        "#FF87BC",
-  "Williams":      "#64C4FF",
-  "RB":            "#6692FF",
-  "Kick Sauber":   "#52E252",
-  "Haas F1 Team":  "#B6BABD",
+/**
+ * Centralized dashboard color tokens.
+ *
+ * Keeping the dashboard palette here ensures the charts,
+ * UI elements, and CSS share the same visual language.
+ */
+const COLORS = {
+  black: "#050202",
+  dark: "#0B0302",
+  panel: "#100504",
+  panelLight: "#180705",
+  wine: "#280905",
+  red: "#740A03",
+  primary: "#C3110C",
+  orange: "#E6501B",
+  white: "#F5F1ED",
+  muted: "rgba(245,241,237,0.48)",
+  faint: "rgba(245,241,237,0.18)",
+  line: "rgba(230,80,27,0.16)",
 };
 
-const CONSTRUCTOR_COLORS: Record<string, string> = {
-  red_bull:     "#3671C6",
-  ferrari:      "#E8002D",
-  mercedes:     "#27F4D2",
-  mclaren:      "#FF8000",
-  aston_martin: "#229971",
-  alpine:       "#FF87BC",
-  williams:     "#64C4FF",
-  rb:           "#6692FF",
-  kick_sauber:  "#52E252",
-  haas:         "#B6BABD",
-};
+/**
+ * Colors used for the three predicted podium positions.
+ *
+ * Index 0 = P1
+ * Index 1 = P2
+ * Index 2 = P3
+ */
+const PODIUM_COLORS = ["#E6501B", "#C3110C", "#740A03"];
 
-const RANK_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32"];
-
-/* ── Countdown hook ──────────────────────────────────────────────────────── */
+/**
+ * Live race countdown hook.
+ *
+ * Calculates the time remaining between the current time
+ * and the supplied target date.
+ *
+ * The countdown updates every second while the target is
+ * still in the future.
+ *
+ * The interval is cleaned up when the component unmounts
+ * or when the target date changes.
+ */
 function useCountdown(target: Date | null) {
-  const [t, setT] = useState({ d: 0, h: 0, m: 0, s: 0 });
+  const [time, setTime] = useState({
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+  });
+
   useEffect(() => {
     if (!target) return;
-    const tick = () => {
-      const diff = target.getTime() - Date.now();
-      if (diff <= 0) return setT({ d: 0, h: 0, m: 0, s: 0 });
-      setT({
-        d: Math.floor(diff / 86400000),
-        h: Math.floor((diff % 86400000) / 3600000),
-        m: Math.floor((diff % 3600000) / 60000),
-        s: Math.floor((diff % 60000) / 1000),
+
+    const update = () => {
+      const difference = target.getTime() - Date.now();
+
+      // Prevent the countdown from displaying negative values.
+      if (difference <= 0) {
+        setTime({
+          days: 0,
+          hours: 0,
+          minutes: 0,
+          seconds: 0,
+        });
+
+        return;
+      }
+
+      // Convert the remaining milliseconds into readable units.
+      setTime({
+        days: Math.floor(difference / 86400000),
+        hours: Math.floor((difference % 86400000) / 3600000),
+        minutes: Math.floor((difference % 3600000) / 60000),
+        seconds: Math.floor((difference % 60000) / 1000),
       });
     };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
+
+    // Run immediately so the UI has a value before the
+    // first one-second interval completes.
+    update();
+
+    const interval = setInterval(update, 1000);
+
+    // Clean up the interval when the component changes
+    // or is removed from the page.
+    return () => clearInterval(interval);
   }, [target?.getTime()]);
-  return t;
+
+  return time;
 }
 
-/* ── Section label ───────────────────────────────────────────────────────── */
-function PanelLabel({ children, accent }: { children: React.ReactNode; accent?: boolean }) {
+/**
+ * Shared header used by all dashboard panels.
+ *
+ * Provides a consistent eyebrow, title, and optional
+ * contextual action label.
+ */
+function SectionHeader({
+  eyebrow,
+  title,
+  action,
+}: {
+  eyebrow: string;
+  title: string;
+  action?: string;
+}) {
   return (
-    <div style={{
-      display: "flex", alignItems: "center", gap: "8px",
-      padding: "0.65rem 1.25rem",
-      borderBottom: "1px solid rgba(255,255,255,0.055)",
-      background: "rgba(0,0,0,0.35)",
-      /* Prevent label text overflowing on xs screens */
-      overflow: "hidden",
-    }}>
-      {accent && (
-        <div style={{ width: "6px", height: "6px", background: "#E10600", flexShrink: 0 }} />
-      )}
-      <span style={{
-        fontFamily: "'JetBrains Mono', monospace",
-        /* clamp so it never overflows a narrow panel */
-        fontSize: "clamp(0.42rem, 1.4vw, 0.52rem)",
-        fontWeight: 600, letterSpacing: "0.2em", textTransform: "uppercase",
-        color: "rgba(255,255,255,0.28)",
-        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-      }}>
-        {children}
-      </span>
+    <div className="dashboard-header">
+      <div>
+        <div className="dashboard-eyebrow">
+          <span />
+          {eyebrow}
+        </div>
+
+        <h2>{title}</h2>
+      </div>
+
+      {action && <span className="dashboard-action">{action}</span>}
     </div>
   );
 }
 
-/* ── Ghost sparkline background ─────────────────────────────────────────── */
-function StandingsSparkline({ standings }: { standings: any[] }) {
-  const data = standings.slice(0, 10).map((s: any) => ({
-    pts: parseInt(s.points) || 0,
-  }));
-  if (!data.length) return null;
-  return (
-    <div style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.07, zIndex: 0 }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-          <defs>
-            <linearGradient id="ghostGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%"   stopColor="#E10600" stopOpacity={1} />
-              <stop offset="100%" stopColor="#E10600" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <Area
-            type="monotone" dataKey="pts"
-            stroke="#E10600" strokeWidth={2}
-            fill="url(#ghostGrad)" dot={false}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-/* ── Standings panel ─────────────────────────────────────────────────────── */
+/**
+ * Championship standings panel.
+ *
+ * Displays the current top eight drivers and compares
+ * each driver's points against the championship leader.
+ */
 function StandingsPanel({ standings }: { standings: any[] }) {
-  const top10 = standings.slice(0, 10);
-  const max   = parseInt(top10[0]?.points) || 1;
+  // The dashboard intentionally limits the list to eight drivers.
+  const drivers = standings.slice(0, 8);
+
+  // Used as the reference point for each driver's progress bar.
+  // Defaulting to 1 prevents division by zero.
+  const leaderPoints = Number(drivers[0]?.points) || 1;
+
+  // Transform the API data into the format expected by Recharts.
+  const chartData = drivers.map((driver: any) => ({
+    points: Number(driver.points) || 0,
+  }));
 
   return (
-    <div style={{ position: "relative", display: "flex", flexDirection: "column", height: "100%" }}>
-      <PanelLabel accent>Driver Standings · 2026</PanelLabel>
+    <div className="standings-panel">
+      <SectionHeader
+        eyebrow="01 / Championship"
+        title="Driver standings"
+        action="Top 8"
+      />
 
-      <StandingsSparkline standings={standings} />
+      {/* Decorative points chart positioned behind the standings list. */}
+      <div className="standings-chart">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={chartData}>
+            <defs>
+              <linearGradient id="standingsFill" x1="0" y1="0" x2="0" y2="1">
+                <stop
+                  offset="0%"
+                  stopColor={COLORS.orange}
+                  stopOpacity={0.24}
+                />
 
-      <div style={{
-        position: "relative", zIndex: 1, flex: 1,
-        overflowY: "auto", scrollbarWidth: "none",
-      }}>
-        {top10.map((s: any, i: number) => {
-          const pts       = parseInt(s.points) || 0;
-          const pct       = (pts / max) * 100;
-          const teamColor = TEAM_COLORS[s.Constructors?.[0]?.name] ?? "#E10600";
-          const isPodium  = i < 3;
-          const posColor  = isPodium ? RANK_COLORS[i] : "rgba(255,255,255,0.25)";
+                <stop offset="100%" stopColor={COLORS.orange} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+
+            <Area
+              type="monotone"
+              dataKey="points"
+              stroke={COLORS.orange}
+              strokeWidth={1.5}
+              fill="url(#standingsFill)"
+              dot={false}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Driver standings list. */}
+      <div className="standings-list">
+        {drivers.map((driver: any, index: number) => {
+          const points = Number(driver.points) || 0;
+
+          // Calculate points relative to the championship leader.
+          const percentage = (points / leaderPoints) * 100;
 
           return (
-            <div
-              key={s.Driver?.driverId}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "2.2rem 1fr auto",
-                alignItems: "center",
-                gap: "0.75rem",
-                /* clamp padding so rows feel comfortable but don't waste space */
-                padding: "clamp(0.55rem, 2vw, 0.7rem) clamp(0.75rem, 3vw, 1.25rem)",
-                borderBottom: "1px solid rgba(255,255,255,0.04)",
-                borderLeft: isPodium ? `2px solid ${posColor}` : "2px solid transparent",
-                background: isPodium ? "rgba(255,255,255,0.015)" : "transparent",
-                transition: "background 0.15s ease",
-                cursor: "default",
-                /* Touch target */
-                minHeight: "44px",
-              }}
-              onMouseEnter={e =>
-                (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.025)"
-              }
-              onMouseLeave={e =>
-                (e.currentTarget as HTMLElement).style.background =
-                  isPodium ? "rgba(255,255,255,0.015)" : "transparent"
-              }
-            >
-              {/* Position */}
-              <span style={{
-                fontFamily: "'Russo One', sans-serif",
-                fontSize: isPodium
-                  ? "clamp(0.8rem, 2.5vw, 1rem)"
-                  : "clamp(0.65rem, 2vw, 0.8rem)",
-                color: posColor, lineHeight: 1, textAlign: "center",
-              }}>
-                P{i + 1}
-              </span>
+            <div className="standing-row" key={driver.Driver?.driverId}>
+              <div
+                className={`standing-position ${index < 3 ? "is-podium" : ""}`}
+              >
+                {String(index + 1).padStart(2, "0")}
+              </div>
 
-              {/* Name + team + bar */}
-              <div style={{ minWidth: 0 }}>
-                <div style={{
-                  display: "flex", alignItems: "baseline",
-                  gap: "0.4rem", marginBottom: "3px",
-                  overflow: "hidden",
-                }}>
-                  <span style={{
-                    fontFamily: "'Russo One', sans-serif",
-                    fontSize: isPodium
-                      ? "clamp(0.7rem, 2.2vw, 0.88rem)"
-                      : "clamp(0.62rem, 1.9vw, 0.78rem)",
-                    textTransform: "uppercase", color: "white",
-                    letterSpacing: "-0.01em",
-                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                  }}>
-                    {s.Driver?.givenName?.charAt(0)}.{" "}
-                    <span style={{ color: isPodium ? posColor : "rgba(255,255,255,0.8)" }}>
-                      {s.Driver?.familyName}
-                    </span>
-                  </span>
-                  {/* Hide constructor name on very small screens via class */}
-                  <span className="standings-constructor-name" style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: "clamp(0.38rem, 1.2vw, 0.44rem)",
-                    color: teamColor, letterSpacing: "0.06em",
-                    textTransform: "uppercase", flexShrink: 0,
-                  }}>
-                    {s.Constructors?.[0]?.name}
-                  </span>
+              <div className="standing-driver">
+                <div className="standing-name">
+                  {driver.Driver?.givenName}{" "}
+                  <strong>{driver.Driver?.familyName}</strong>
                 </div>
-                {/* Points bar */}
-                <div style={{ height: "2px", background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
-                  <div style={{
-                    height: "100%", width: `${pct}%`,
-                    background: isPodium ? posColor : teamColor,
-                    opacity: isPodium ? 0.9 : 0.55,
-                    transition: "width 0.8s cubic-bezier(0.16,1,0.3,1)",
-                  }} />
+
+                <div className="standing-team">
+                  {driver.Constructors?.[0]?.name ?? "Unknown constructor"}
+                </div>
+
+                <div className="standing-progress">
+                  <span
+                    style={{
+                      width: `${percentage}%`,
+                    }}
+                  />
                 </div>
               </div>
 
-              {/* Points */}
-              <span style={{
-                fontFamily: "'Russo One', sans-serif",
-                fontSize: isPodium
-                  ? "clamp(0.8rem, 2.5vw, 1rem)"
-                  : "clamp(0.65rem, 2vw, 0.82rem)",
-                color: isPodium ? posColor : "rgba(255,255,255,0.5)",
-                lineHeight: 1, letterSpacing: "-0.01em", textAlign: "right",
-                flexShrink: 0,
-              }}>
-                {pts}
-              </span>
+              <div className="standing-points">
+                {points}
+                <small>PTS</small>
+              </div>
             </div>
           );
         })}
       </div>
 
-      {/* Footer link */}
-      <div style={{
-        padding: "0.75rem 1.25rem",
-        borderTop: "1px solid rgba(255,255,255,0.055)",
-        background: "rgba(0,0,0,0.25)",
-      }}>
-        <Link href="/drivers" style={{
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: "clamp(0.44rem, 1.4vw, 0.52rem)",
-          letterSpacing: "0.16em", textTransform: "uppercase",
-          color: "rgba(255,255,255,0.28)", textDecoration: "none",
-          display: "inline-flex", alignItems: "center", gap: "0.5rem",
-          transition: "color 0.15s",
-          minHeight: "44px",
-        }}
-        onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "#E10600"}
-        onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.28)"}
-        >
-          Full Standings
-          <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
-            <path d="M1 6h10M6 1l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </Link>
-      </div>
+      {/* Navigate to the complete driver standings page. */}
+      <Link className="dashboard-link" href="/drivers">
+        <span>View full standings</span>
+        <span className="dashboard-arrow">↗</span>
+      </Link>
     </div>
   );
 }
 
-/* ── Next race panel ─────────────────────────────────────────────────────── */
+/**
+ * Upcoming race panel.
+ *
+ * Builds the target race date and feeds it into the countdown hook.
+ *
+ * The current implementation assumes the race begins at 15:00 UTC
+ * because only the race date is being consumed here.
+ *
+ * If the API exposes an actual race start time, this should be
+ * replaced with that value.
+ */
 function NextRacePanel({ nextRace }: { nextRace: any }) {
-  const raceDate = nextRace ? new Date(nextRace.date + "T15:00:00Z") : null;
-  const cd = useCountdown(raceDate);
+  const raceDate = nextRace ? new Date(`${nextRace.date}T15:00:00Z`) : null;
+
+  const countdown = useCountdown(raceDate);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <PanelLabel>
-        <span style={{ color: "#27F4D2", marginRight: "4px" }}>▶</span>
-        Next Event · Round {nextRace?.round ?? "—"}
-      </PanelLabel>
+    <div className="race-panel">
+      <SectionHeader
+        eyebrow="02 / Next event"
+        title="Race weekend"
+        action={`R${nextRace?.round ?? "—"}`}
+      />
 
-      <div style={{ padding: "clamp(0.85rem, 3vw, 1.25rem)", flex: 1 }}>
-        {/* Race name */}
-        <h2 style={{
-          fontFamily: "'Russo One', sans-serif",
-          fontSize: "clamp(1.1rem, 3.5vw, 1.9rem)",
-          lineHeight: 0.92, letterSpacing: "-0.02em",
-          textTransform: "uppercase", color: "white",
-          margin: "0 0 0.3rem",
-        }}>
-          {nextRace?.raceName ?? "Season Concluded"}
-        </h2>
-        <p style={{
-          fontFamily: "'Rajdhani', sans-serif", fontWeight: 500,
-          fontSize: "clamp(0.65rem, 2vw, 0.78rem)",
-          color: "rgba(255,255,255,0.28)",
-          letterSpacing: "0.06em", margin: "0 0 1rem",
-        }}>
-          {nextRace?.Circuit?.Location?.locality},{" "}
-          {nextRace?.Circuit?.Location?.country}
-        </p>
+      <div className="race-content">
+        <div className="race-location">
+          <span>{nextRace?.Circuit?.Location?.country ?? "TBD"}</span>
 
-        {/* Circuit + date chips — stack on xs via .race-chips class */}
-        <div
-          className="race-chips"
-          style={{
-            display: "flex", gap: "1px",
-            marginBottom: "1rem",
-            background: "rgba(255,255,255,0.04)",
-          }}
-        >
-          {[
-            { l: "Circuit",   v: nextRace?.Circuit?.circuitName ?? "TBD" },
-            {
-              l: "Race Date",
-              v: raceDate
-                ? raceDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-                : "TBD",
-            },
-          ].map(({ l, v }) => (
-            <div key={l} style={{ flex: 1, background: "#0a0a0a", padding: "0.6rem 0.85rem", minWidth: 0 }}>
-              <div style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: "clamp(0.38rem, 1.2vw, 0.42rem)",
-                color: "rgba(255,255,255,0.2)",
-                letterSpacing: "0.08em", textTransform: "uppercase",
-                marginBottom: "2px",
-              }}>{l}</div>
-              <div style={{
-                fontFamily: "'Russo One', sans-serif",
-                fontSize: "clamp(0.62rem, 2vw, 0.75rem)",
-                color: "rgba(255,255,255,0.7)",
-                textTransform: "uppercase", letterSpacing: "0.03em",
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              }}>{v}</div>
-            </div>
-          ))}
+          <span className="race-dot" />
+
+          <span>
+            {nextRace?.Circuit?.Location?.locality ?? "Circuit unknown"}
+          </span>
         </div>
 
-        {/* Countdown grid */}
+        <h3>{nextRace?.raceName ?? "Season concluded"}</h3>
+
+        <p className="race-circuit">
+          {nextRace?.Circuit?.circuitName ?? "Circuit information unavailable"}
+        </p>
+
         {nextRace && (
           <>
-            <div style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: "clamp(0.4rem, 1.3vw, 0.46rem)",
-              letterSpacing: "0.18em", textTransform: "uppercase",
-              color: "rgba(255,255,255,0.2)", marginBottom: "0.6rem",
-            }}>
-              Race Countdown
-            </div>
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4,1fr)",
-              gap: "1px",
-              background: "rgba(255,255,255,0.05)",
-            }}>
+            <div className="countdown-label">Lights out in</div>
+
+            <div className="countdown">
               {[
-                { v: cd.d, l: "Days" },
-                { v: cd.h, l: "Hrs"  },
-                { v: cd.m, l: "Min"  },
-                { v: cd.s, l: "Sec"  },
-              ].map(({ v, l }, i) => (
-                <div key={l} style={{
-                  background: "#0a0a0a",
-                  padding: "clamp(0.5rem, 2vw, 0.7rem) 0.25rem",
-                  textAlign: "center", position: "relative",
-                }}>
-                  {i === 0 && (
-                    <div style={{
-                      position: "absolute", top: 0, left: 0, right: 0,
-                      height: "2px", background: "#E10600",
-                    }} />
-                  )}
-                  <div style={{
-                    fontFamily: "'Russo One', sans-serif",
-                    fontSize: "clamp(0.9rem, 3vw, 1.5rem)",
-                    color: "white", lineHeight: 1,
-                    letterSpacing: "-0.02em",
-                    fontVariantNumeric: "tabular-nums",
-                  }}>
-                    {String(v).padStart(2, "0")}
-                  </div>
-                  <div style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: "clamp(0.36rem, 1.1vw, 0.44rem)",
-                    letterSpacing: "0.12em", textTransform: "uppercase",
-                    color: "rgba(255,255,255,0.22)", marginTop: "3px",
-                  }}>{l}</div>
+                {
+                  value: countdown.days,
+                  label: "Days",
+                },
+                {
+                  value: countdown.hours,
+                  label: "Hours",
+                },
+                {
+                  value: countdown.minutes,
+                  label: "Minutes",
+                },
+                {
+                  value: countdown.seconds,
+                  label: "Seconds",
+                },
+              ].map((item) => (
+                <div className="countdown-cell" key={item.label}>
+                  <strong>{String(item.value).padStart(2, "0")}</strong>
+
+                  <span>{item.label}</span>
                 </div>
               ))}
             </div>
@@ -410,400 +359,808 @@ function NextRacePanel({ nextRace }: { nextRace: any }) {
         )}
       </div>
 
-      <div style={{
-        padding: "0.6rem 1.25rem",
-        borderTop: "1px solid rgba(255,255,255,0.055)",
-        background: "rgba(0,0,0,0.25)",
-      }}>
-        <Link href="/calendar" style={{
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: "clamp(0.44rem, 1.4vw, 0.52rem)",
-          letterSpacing: "0.16em", textTransform: "uppercase",
-          color: "rgba(255,255,255,0.28)", textDecoration: "none",
-          display: "inline-flex", alignItems: "center", gap: "0.5rem",
-          transition: "color 0.15s",
-          minHeight: "44px",
-        }}
-        onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "#E10600"}
-        onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.28)"}
-        >
-          Full Calendar
-          <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
-            <path d="M1 6h10M6 1l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </Link>
-      </div>
+      {/* Navigate to the full race calendar. */}
+      <Link className="dashboard-link" href="/calendar">
+        <span>Explore race calendar</span>
+        <span className="dashboard-arrow">↗</span>
+      </Link>
     </div>
   );
 }
 
-/* ── Prediction panel ────────────────────────────────────────────────────── */
-function PredictionPanel({ prediction, nextRace }: { prediction: any; nextRace: any }) {
-  if (!prediction?.predictions?.length) return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <PanelLabel>
-        <span style={{ color: "#E10600" }}>◆</span> Prediction Model
-      </PanelLabel>
-      <div style={{
-        flex: 1, display: "flex", alignItems: "center",
-        justifyContent: "center", padding: "2rem",
-      }}>
-        <span style={{
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: "clamp(0.44rem, 1.4vw, 0.52rem)",
-          color: "rgba(255,255,255,0.15)", letterSpacing: "0.12em",
-        }}>
-          NO PREDICTION AVAILABLE
-        </span>
+/**
+ * Prediction-engine panel.
+ *
+ * Displays the top three predicted podium finishers and
+ * their calculated podium probabilities.
+ *
+ * When no prediction data is available, the component
+ * renders a dedicated fallback state instead of an empty chart.
+ */
+function PredictionPanel({
+  prediction,
+  nextRace,
+}: {
+  prediction: any;
+  nextRace: any;
+}) {
+  // Only the top three predictions are relevant to the podium.
+  const drivers = prediction?.predictions?.slice(0, 3) ?? [];
+
+  // Graceful fallback for missing prediction data.
+  if (!drivers.length) {
+    return (
+      <div className="prediction-panel">
+        <SectionHeader
+          eyebrow="03 / Prediction engine"
+          title="Race prediction"
+          action="Unavailable"
+        />
+
+        <div className="prediction-empty">
+          <span>Prediction unavailable</span>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
-  const top3 = prediction.predictions.slice(0, 3);
-
-  const barData = top3.map((d: any, i: number) => ({
-    name: d.familyName,
-    prob: d.podiumProbability,
-    color: RANK_COLORS[i],
+  /**
+   * Convert prediction results into the data structure
+   * required by Recharts.
+   */
+  const chartData = drivers.map((driver: any, index: number) => ({
+    name: driver.familyName,
+    probability: Number(driver.podiumProbability) || 0,
+    color: PODIUM_COLORS[index],
   }));
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <PanelLabel>
-        <span style={{ color: "#E10600", marginRight: "2px" }}>◆</span>
-        Prediction · {prediction.raceName ?? nextRace?.raceName ?? "Next Race"}
-      </PanelLabel>
+    <div className="prediction-panel">
+      <SectionHeader
+        eyebrow="03 / Prediction engine"
+        title="Race prediction"
+        action={prediction.raceName ?? nextRace?.raceName ?? "Next race"}
+      />
 
-      <div style={{ padding: "clamp(0.85rem, 3vw, 1.25rem)", flex: 1 }}>
-        {/* Probability bar chart — shorter on mobile */}
-        <div className="prediction-chart" style={{ height: "80px", marginBottom: "1rem" }}>
+      <div className="prediction-content">
+        {/* Compact visualization of podium probabilities. */}
+        <div className="prediction-chart">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={barData}
-              barCategoryGap="30%"
-              margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
-            >
-              <Bar dataKey="prob" radius={0}>
-                {barData.map((entry: any, i: number) => (
-                  <Cell key={i} fill={entry.color} fillOpacity={0.8} />
+            <BarChart data={chartData} barCategoryGap="18%">
+              <Bar dataKey="probability" radius={0}>
+                {chartData.map((entry: any, index: number) => (
+                  <Cell
+                    key={index}
+                    fill={entry.color}
+                    fillOpacity={index === 0 ? 1 : 0.7}
+                  />
                 ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Podium rows */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
-          {top3.map((d: any, i: number) => {
-            const rankColor = RANK_COLORS[i];
-            const teamColor = CONSTRUCTOR_COLORS[d.constructorId] ?? "#E10600";
-            return (
-              <div key={d.driverId} style={{
-                display: "flex", alignItems: "center",
-                gap: "clamp(0.5rem, 2vw, 0.85rem)",
-                padding: "clamp(0.5rem, 2vw, 0.65rem) clamp(0.6rem, 2.5vw, 0.85rem)",
-                background: i === 0 ? "rgba(255,215,0,0.04)" : "rgba(255,255,255,0.015)",
-                borderLeft: `2px solid ${rankColor}`,
-                minHeight: "44px",
-              }}>
-                <span style={{
-                  fontFamily: "'Russo One', sans-serif",
-                  fontSize: i === 0
-                    ? "clamp(0.9rem, 3vw, 1.2rem)"
-                    : "clamp(0.72rem, 2.2vw, 0.9rem)",
-                  color: rankColor, lineHeight: 1,
-                  minWidth: "1.8rem", flexShrink: 0,
-                }}>
-                  P{i + 1}
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontFamily: "'Russo One', sans-serif",
-                    fontSize: i === 0
-                      ? "clamp(0.7rem, 2.2vw, 0.88rem)"
-                      : "clamp(0.62rem, 1.9vw, 0.78rem)",
-                    textTransform: "uppercase", color: "white",
-                    letterSpacing: "-0.01em",
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                  }}>
-                    {d.givenName?.charAt(0)}.{" "}
-                    <span style={{ color: rankColor }}>{d.familyName}</span>
-                  </div>
-                  <div style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: "clamp(0.36rem, 1.2vw, 0.44rem)",
-                    color: teamColor, letterSpacing: "0.06em",
-                    textTransform: "uppercase", marginTop: "1px",
-                  }}>
-                    {d.constructorName}
-                  </div>
-                </div>
-                <div style={{ textAlign: "right", flexShrink: 0 }}>
-                  <div style={{
-                    fontFamily: "'Russo One', sans-serif",
-                    fontSize: "clamp(0.75rem, 2.5vw, 0.95rem)",
-                    color: rankColor, lineHeight: 1,
-                  }}>
-                    {d.podiumProbability}%
-                  </div>
-                  <div style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: "clamp(0.34rem, 1vw, 0.4rem)",
-                    color: "rgba(255,255,255,0.2)",
-                    letterSpacing: "0.08em", marginTop: "1px",
-                  }}>
-                    prob.
-                  </div>
-                </div>
+        {/* Detailed prediction results. */}
+        <div className="prediction-list">
+          {drivers.map((driver: any, index: number) => (
+            <div className="prediction-row" key={driver.driverId}>
+              <div
+                className="prediction-rank"
+                style={{
+                  color: PODIUM_COLORS[index],
+                }}
+              >
+                P{index + 1}
               </div>
-            );
-          })}
+
+              <div className="prediction-driver">
+                <strong>
+                  {driver.givenName?.charAt(0)}. {driver.familyName}
+                </strong>
+
+                <span>{driver.constructorName}</span>
+              </div>
+
+              <div className="prediction-probability">
+                <strong>{driver.podiumProbability}%</strong>
+
+                <span>probability</span>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div style={{
-        padding: "0.6rem 1.25rem",
-        borderTop: "1px solid rgba(255,255,255,0.055)",
-        background: "rgba(0,0,0,0.25)",
-      }}>
-        <Link href="/predict" style={{
-          display: "inline-flex", alignItems: "center", gap: "0.5rem",
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: "clamp(0.44rem, 1.4vw, 0.52rem)",
-          letterSpacing: "0.16em", textTransform: "uppercase",
-          color: "rgba(255,255,255,0.28)", textDecoration: "none",
-          transition: "color 0.15s",
-          minHeight: "44px",
-        }}
-        onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "#E10600"}
-        onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.28)"}
-        >
-          Full Prediction
-          <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
-            <path d="M1 6h10M6 1l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </Link>
-      </div>
+      {/* Navigate to the full prediction model. */}
+      <Link className="dashboard-link" href="/predict">
+        <span>Open prediction model</span>
+        <span className="dashboard-arrow">↗</span>
+      </Link>
     </div>
   );
 }
 
-/* ── Main export ─────────────────────────────────────────────────────────── */
-export default function DashboardSection({ standings, nextRace, prediction }: DashboardSectionProps) {
+/**
+ * Main FJuanDASH dashboard section.
+ *
+ * The layout is intentionally kept separate from the individual
+ * panel components so each panel can remain focused on its own
+ * data and presentation logic.
+ */
+export default function DashboardSection({
+  standings,
+  nextRace,
+  prediction,
+}: DashboardSectionProps) {
   return (
-    <section style={{ position: "relative", background: "#060606" }}>
-
+    <section className="dashboard-section">
       {/*
-        ── All responsive rules live here ────────────────────────────────────
-        Using a single <style> block keeps every breakpoint easy to audit.
-      */}
+       * Dashboard styles are colocated with the component.
+       *
+       * Desktop:
+       * - Two-column bento grid.
+       * - Standings span both rows.
+       *
+       * Tablet:
+       * - Panels collapse into one column.
+       *
+       * Mobile:
+       * - Reduced shell width and spacing.
+       * - Smaller typography and chart heights.
+       *
+       * Accessibility:
+       * - Reduced-motion media query disables non-essential
+       *   transitions for users who prefer reduced motion.
+       */}
       <style>{`
-        /* ── Mobile: ≤ 640px ───────────────────────────────────────────── */
+        .dashboard-section {
+          position: relative;
+          overflow: hidden;
+          background:
+            radial-gradient(
+              circle at 8% 10%,
+              rgba(195,17,12,0.12),
+              transparent 28%
+            ),
+            radial-gradient(
+              circle at 92% 90%,
+              rgba(230,80,27,0.07),
+              transparent 25%
+            ),
+            ${COLORS.black};
+          color: ${COLORS.white};
+        }
+
+        .dashboard-section::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          opacity: 0.25;
+          background-image:
+            linear-gradient(
+              rgba(230,80,27,0.025) 1px,
+              transparent 1px
+            ),
+            linear-gradient(
+              90deg,
+              rgba(230,80,27,0.025) 1px,
+              transparent 1px
+            );
+          background-size: 48px 48px;
+        }
+
+        .dashboard-shell {
+          position: relative;
+          z-index: 1;
+          width: min(1380px, calc(100% - 48px));
+          margin: 0 auto;
+          padding: clamp(5rem, 9vw, 9rem) 0;
+        }
+
+        .dashboard-intro {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 4rem;
+          align-items: end;
+          margin-bottom: clamp(3rem, 6vw, 5.5rem);
+        }
+
+        .dashboard-intro-label {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 1.25rem;
+          font-family: "JetBrains Mono", monospace;
+          font-size: 0.58rem;
+          font-weight: 600;
+          letter-spacing: 0.2em;
+          text-transform: uppercase;
+          color: ${COLORS.orange};
+        }
+
+        .dashboard-intro-label::before {
+          content: "";
+          width: 28px;
+          height: 2px;
+          background: ${COLORS.orange};
+        }
+
+        .dashboard-intro h1 {
+          max-width: 720px;
+          margin: 0;
+          font-family: "Russo One", sans-serif;
+          font-size: clamp(2.8rem, 7vw, 7rem);
+          line-height: 0.88;
+          letter-spacing: -0.055em;
+          text-transform: uppercase;
+        }
+
+        .dashboard-intro h1 span {
+          color: ${COLORS.primary};
+        }
+
+        .dashboard-intro-copy {
+          max-width: 420px;
+          margin-left: auto;
+          font-family: "Rajdhani", sans-serif;
+          font-size: clamp(0.95rem, 1.4vw, 1.1rem);
+          line-height: 1.5;
+          color: ${COLORS.muted};
+        }
+
+        .dashboard-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
+          grid-template-rows: auto auto;
+          gap: 2px;
+          background: ${COLORS.line};
+        }
+
+        .dashboard-card {
+          position: relative;
+          overflow: hidden;
+          background: ${COLORS.panel};
+          border: 1px solid rgba(230,80,27,0.08);
+        }
+
+        .dashboard-card::after {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 72px;
+          height: 3px;
+          background: ${COLORS.orange};
+        }
+
+        .dashboard-standings {
+          grid-row: 1 / 3;
+        }
+
+        .dashboard-header {
+          position: relative;
+          z-index: 2;
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 1rem;
+          padding: 1.5rem 1.5rem 1.25rem;
+          border-bottom: 1px solid rgba(245,241,237,0.06);
+        }
+
+        .dashboard-eyebrow {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          margin-bottom: 0.55rem;
+          font-family: "JetBrains Mono", monospace;
+          font-size: 0.5rem;
+          font-weight: 600;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+          color: ${COLORS.orange};
+        }
+
+        .dashboard-eyebrow span {
+          width: 5px;
+          height: 5px;
+          background: ${COLORS.orange};
+        }
+
+        .dashboard-header h2 {
+          margin: 0;
+          font-family: "Russo One", sans-serif;
+          font-size: clamp(1.2rem, 2vw, 1.65rem);
+          line-height: 1;
+          letter-spacing: -0.025em;
+          text-transform: uppercase;
+        }
+
+        .dashboard-action {
+          max-width: 150px;
+          overflow: hidden;
+          font-family: "JetBrains Mono", monospace;
+          font-size: 0.48rem;
+          letter-spacing: 0.12em;
+          text-align: right;
+          text-transform: uppercase;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          color: ${COLORS.faint};
+        }
+
+        .standings-panel,
+        .race-panel,
+        .prediction-panel {
+          display: flex;
+          min-height: 100%;
+          flex-direction: column;
+        }
+
+        .standings-chart {
+          position: absolute;
+          inset: 75px 0 auto;
+          height: 220px;
+          opacity: 0.22;
+          pointer-events: none;
+        }
+
+        .standings-list {
+          position: relative;
+          z-index: 1;
+          padding: 0.5rem 0;
+        }
+
+        .standing-row {
+          display: grid;
+          grid-template-columns: 46px minmax(0, 1fr) auto;
+          gap: 1rem;
+          align-items: center;
+          min-height: 72px;
+          padding: 0.7rem 1.5rem;
+          border-bottom: 1px solid rgba(245,241,237,0.045);
+          transition:
+            background 180ms ease,
+            padding 180ms ease;
+        }
+
+        .standing-row:hover {
+          padding-left: 1.7rem;
+          background: rgba(195,17,12,0.06);
+        }
+
+        .standing-position {
+          font-family: "Russo One", sans-serif;
+          font-size: 0.85rem;
+          color: ${COLORS.faint};
+        }
+
+        .standing-position.is-podium {
+          color: ${COLORS.orange};
+          font-size: 1rem;
+        }
+
+        .standing-driver {
+          min-width: 0;
+        }
+
+        .standing-name {
+          overflow: hidden;
+          margin-bottom: 3px;
+          font-family: "Russo One", sans-serif;
+          font-size: clamp(0.8rem, 1.6vw, 1rem);
+          letter-spacing: -0.02em;
+          text-transform: uppercase;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .standing-name strong {
+          color: ${COLORS.orange};
+        }
+
+        .standing-team {
+          overflow: hidden;
+          margin-bottom: 8px;
+          font-family: "JetBrains Mono", monospace;
+          font-size: 0.45rem;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          color: ${COLORS.faint};
+        }
+
+        .standing-progress {
+          height: 2px;
+          overflow: hidden;
+          background: rgba(245,241,237,0.06);
+        }
+
+        .standing-progress span {
+          display: block;
+          height: 100%;
+          background: linear-gradient(
+            90deg,
+            ${COLORS.red},
+            ${COLORS.orange}
+          );
+        }
+
+        .standing-points {
+          display: flex;
+          align-items: flex-end;
+          gap: 5px;
+          font-family: "Russo One", sans-serif;
+          font-size: clamp(1rem, 2vw, 1.35rem);
+          line-height: 1;
+        }
+
+        .standing-points small {
+          margin-bottom: 1px;
+          font-family: "JetBrains Mono", monospace;
+          font-size: 0.38rem;
+          letter-spacing: 0.08em;
+          color: ${COLORS.faint};
+        }
+
+        .race-content {
+          flex: 1;
+          padding: 2rem 1.5rem;
+        }
+
+        .race-location {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 1rem;
+          font-family: "JetBrains Mono", monospace;
+          font-size: 0.47rem;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: ${COLORS.orange};
+        }
+
+        .race-dot {
+          width: 3px;
+          height: 3px;
+          background: ${COLORS.faint};
+        }
+
+        .race-content h3 {
+          max-width: 550px;
+          margin: 0;
+          font-family: "Russo One", sans-serif;
+          font-size: clamp(1.7rem, 4vw, 3rem);
+          line-height: 0.9;
+          letter-spacing: -0.04em;
+          text-transform: uppercase;
+        }
+
+        .race-circuit {
+          margin: 0.75rem 0 2rem;
+          font-family: "Rajdhani", sans-serif;
+          font-size: 0.9rem;
+          color: ${COLORS.muted};
+        }
+
+        .countdown-label {
+          margin-bottom: 0.6rem;
+          font-family: "JetBrains Mono", monospace;
+          font-size: 0.45rem;
+          letter-spacing: 0.15em;
+          text-transform: uppercase;
+          color: ${COLORS.faint};
+        }
+
+        .countdown {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 1px;
+          background: rgba(230,80,27,0.1);
+        }
+
+        .countdown-cell {
+          min-width: 0;
+          padding: 0.8rem 0.4rem;
+          text-align: center;
+          background: ${COLORS.dark};
+        }
+
+        .countdown-cell strong {
+          display: block;
+          font-family: "Russo One", sans-serif;
+          font-size: clamp(1rem, 3vw, 1.7rem);
+          line-height: 1;
+          font-variant-numeric: tabular-nums;
+        }
+
+        .countdown-cell span {
+          display: block;
+          margin-top: 5px;
+          font-family: "JetBrains Mono", monospace;
+          font-size: 0.38rem;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: ${COLORS.faint};
+        }
+
+        .prediction-content {
+          flex: 1;
+          padding: 1.5rem;
+        }
+
+        .prediction-chart {
+          height: 78px;
+          margin-bottom: 1.1rem;
+        }
+
+        .prediction-list {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .prediction-row {
+          display: grid;
+          grid-template-columns: 42px minmax(0, 1fr) auto;
+          gap: 0.75rem;
+          align-items: center;
+          min-height: 58px;
+          padding: 0.65rem 0.75rem;
+          background: rgba(245,241,237,0.025);
+          border-left: 2px solid ${COLORS.red};
+          transition: background 180ms ease;
+        }
+
+        .prediction-row:first-child {
+          background: rgba(230,80,27,0.06);
+          border-left-color: ${COLORS.orange};
+        }
+
+        .prediction-row:hover {
+          background: rgba(230,80,27,0.09);
+        }
+
+        .prediction-rank {
+          font-family: "Russo One", sans-serif;
+          font-size: 0.85rem;
+        }
+
+        .prediction-driver {
+          min-width: 0;
+        }
+
+        .prediction-driver strong {
+          display: block;
+          overflow: hidden;
+          font-family: "Russo One", sans-serif;
+          font-size: clamp(0.7rem, 1.5vw, 0.9rem);
+          text-overflow: ellipsis;
+          text-transform: uppercase;
+          white-space: nowrap;
+        }
+
+        .prediction-driver span {
+          display: block;
+          overflow: hidden;
+          margin-top: 3px;
+          font-family: "JetBrains Mono", monospace;
+          font-size: 0.4rem;
+          letter-spacing: 0.08em;
+          text-overflow: ellipsis;
+          text-transform: uppercase;
+          white-space: nowrap;
+          color: ${COLORS.faint};
+        }
+
+        .prediction-probability {
+          text-align: right;
+        }
+
+        .prediction-probability strong {
+          display: block;
+          font-family: "Russo One", sans-serif;
+          font-size: 0.95rem;
+        }
+
+        .prediction-probability span {
+          display: block;
+          margin-top: 2px;
+          font-family: "JetBrains Mono", monospace;
+          font-size: 0.35rem;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: ${COLORS.faint};
+        }
+
+        .prediction-empty {
+          display: flex;
+          flex: 1;
+          align-items: center;
+          justify-content: center;
+          min-height: 240px;
+          font-family: "JetBrains Mono", monospace;
+          font-size: 0.5rem;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: ${COLORS.faint};
+        }
+
+        .dashboard-link {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          min-height: 52px;
+          padding: 0 1.5rem;
+          border-top: 1px solid rgba(245,241,237,0.06);
+          font-family: "JetBrains Mono", monospace;
+          font-size: 0.45rem;
+          font-weight: 600;
+          letter-spacing: 0.14em;
+          text-decoration: none;
+          text-transform: uppercase;
+          color: ${COLORS.muted};
+          transition:
+            color 180ms ease,
+            background 180ms ease;
+        }
+
+        .dashboard-link:hover {
+          color: ${COLORS.white};
+          background: rgba(195,17,12,0.08);
+        }
+
+        .dashboard-arrow {
+          font-size: 0.85rem;
+          color: ${COLORS.orange};
+        }
+
+        @media (max-width: 900px) {
+          .dashboard-intro {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+          }
+
+          .dashboard-intro-copy {
+            margin-left: 0;
+          }
+
+          .dashboard-grid {
+            grid-template-columns: 1fr;
+            grid-template-rows: auto;
+          }
+
+          .dashboard-standings {
+            grid-row: auto;
+          }
+        }
+
         @media (max-width: 640px) {
-
-          /* Stack bento into single column */
-          .dashboard-bento {
-            grid-template-columns: 1fr !important;
-            grid-template-rows: auto !important;
+          .dashboard-shell {
+            width: min(100% - 28px, 1380px);
+            padding: 4.5rem 0;
           }
 
-          /* Each cell takes up a single column */
-          .bento-standings {
-            grid-column: 1 !important;
-            grid-row: auto !important;
-            /* Cap height so standings scrolls rather than dominates */
-            min-height: 0 !important;
-            max-height: 420px;
-          }
-          .bento-race,
-          .bento-prediction {
-            grid-column: 1 !important;
-            grid-row: auto !important;
+          .dashboard-intro {
+            margin-bottom: 2.5rem;
           }
 
-          /* Shrink the prediction chart height on mobile */
-          .prediction-chart { height: 56px !important; }
+          .dashboard-intro h1 {
+            font-size: clamp(2.6rem, 15vw, 5rem);
+          }
 
-          /* Hide constructor team name in standings rows (saves space) */
-          .standings-constructor-name { display: none !important; }
+          .dashboard-intro-copy {
+            font-size: 0.9rem;
+          }
 
-          /* Race chips: stack vertically */
-          .race-chips {
-            flex-direction: column !important;
-            background: transparent !important;
-            gap: 1px !important;
+          .dashboard-header {
+            padding: 1.2rem 1rem;
+          }
+
+          .standing-row {
+            grid-template-columns: 32px minmax(0, 1fr) auto;
+            gap: 0.65rem;
+            min-height: 66px;
+            padding: 0.65rem 1rem;
+          }
+
+          .standing-team {
+            font-size: 0.38rem;
+          }
+
+          .standing-points small {
+            display: none;
+          }
+
+          .race-content,
+          .prediction-content {
+            padding: 1.25rem 1rem;
+          }
+
+          .race-content h3 {
+            font-size: clamp(1.6rem, 9vw, 2.4rem);
+          }
+
+          .countdown-cell {
+            padding: 0.7rem 0.2rem;
+          }
+
+          .countdown-cell strong {
+            font-size: 1rem;
+          }
+
+          .prediction-chart {
+            height: 58px;
+          }
+
+          .prediction-row {
+            grid-template-columns: 35px minmax(0, 1fr) auto;
+            min-height: 54px;
+          }
+
+          .dashboard-link {
+            padding: 0 1rem;
           }
         }
 
-        /* ── Tablet: 641–768px ─────────────────────────────────────────── */
-        @media (min-width: 641px) and (max-width: 768px) {
-          .dashboard-bento {
-            grid-template-columns: 1fr minmax(220px, 28%) !important;
+        @media (prefers-reduced-motion: reduce) {
+          .standing-row,
+          .prediction-row,
+          .dashboard-link {
+            transition: none;
           }
-          .prediction-chart { height: 64px !important; }
         }
-
-        /* ── Scrollbar hide (Webkit) ───────────────────────────────────── */
-        .standings-scroll::-webkit-scrollbar { display: none; }
       `}</style>
 
-      {/* ── Shared background atmosphere ─────────────────────────────── */}
-      <div style={{
-        height: "1px",
-        background: "linear-gradient(90deg, transparent 0%, rgba(225,6,0,0.4) 30%, rgba(225,6,0,0.4) 70%, transparent 100%)",
-      }} />
+      <div className="dashboard-shell">
+        <div className="dashboard-intro">
+          <div>
+            <div className="dashboard-intro-label">FJuanDASH / Live data</div>
 
-      {/* Noise grain */}
-      <div style={{
-        position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none",
-        opacity: 0.25, mixBlendMode: "overlay",
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.1'/%3E%3C/svg%3E")`,
-        backgroundSize: "160px",
-      }} />
-
-      {/* Subtle grid */}
-      <div style={{
-        position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none",
-        backgroundImage: `
-          linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px)
-        `,
-        backgroundSize: "40px 40px",
-      }} />
-
-      {/* Corner blooms */}
-      <div style={{
-        position: "absolute", top: 0, left: 0, right: 0, height: "50%",
-        background: "radial-gradient(ellipse 60% 50% at 0% 0%, rgba(225,6,0,0.06) 0%, transparent 60%)",
-        pointerEvents: "none", zIndex: 0,
-      }} />
-      <div style={{
-        position: "absolute", bottom: 0, right: 0, left: "50%", height: "40%",
-        background: "radial-gradient(ellipse 60% 60% at 100% 100%, rgba(225,6,0,0.05) 0%, transparent 60%)",
-        pointerEvents: "none", zIndex: 0,
-      }} />
-
-      {/* ── Dashboard grid ───────────────────────────────────────────── */}
-      <div style={{
-        position: "relative", zIndex: 1,
-        maxWidth: "1280px", margin: "0 auto",
-        padding: "clamp(1.25rem, 4vw, 2.5rem) clamp(0.75rem, 4vw, 1.5rem)",
-      }}>
-
-        {/* Section title */}
-        <div style={{
-          display: "flex", alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: "clamp(1rem, 3vw, 1.5rem)",
-          flexWrap: "wrap", gap: "0.5rem",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <div style={{ width: "20px", height: "2px", background: "#E10600" }} />
-            <span style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: "clamp(0.48rem, 1.5vw, 0.56rem)",
-              fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase",
-              color: "#E10600",
-            }}>
-              Pit Wall
-            </span>
-            <div style={{ width: "20px", height: "2px", background: "rgba(225,6,0,0.3)" }} />
+            <h1>
+              The <span>race</span>
+              <br />
+              starts here.
+            </h1>
           </div>
-          <span style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: "clamp(0.4rem, 1.3vw, 0.48rem)",
-            letterSpacing: "0.14em", textTransform: "uppercase",
-            color: "rgba(255,255,255,0.15)",
-          }}>
-            Live Dashboard · 2026 Season
-          </span>
+
+          <p className="dashboard-intro-copy">
+            Championship standings, the next race and the prediction engine.
+            Everything that matters before the lights go out, presented in one
+            place.
+          </p>
         </div>
 
-        {/*
-          Bento grid.
-          Desktop:  2 columns, standings spans 2 rows on the left.
-          Tablet:   same, narrower right column.
-          Mobile:   single column via .dashboard-bento media query override.
-
-          We set the grid-template via inline style (desktop default) and let
-          the CSS class override it on smaller screens.
-        */}
-        <div
-          className="dashboard-bento"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr clamp(260px, 30%, 380px)",
-            gridTemplateRows: "auto auto",
-            gap: "2px",
-            background: "rgba(255,255,255,0.04)",
-          }}
-        >
-
-          {/* ── Cell 1: Standings — left, spans 2 rows ── */}
-          <div
-            className="bento-standings"
-            style={{
-              gridColumn: "1",
-              gridRow: "1 / 3",
-              background: "#0a0a0a",
-              border: "1px solid rgba(255,255,255,0.07)",
-              borderTop: "2px solid #E10600",
-              position: "relative", overflow: "hidden",
-              minHeight: "520px",
-            }}
-          >
+        <div className="dashboard-grid">
+          {/*
+           * Standings are the primary dashboard panel.
+           *
+           * On desktop this panel spans both rows of the
+           * bento grid. On smaller screens it becomes a
+           * normal single-column card.
+           */}
+          <div className="dashboard-card dashboard-standings">
             {standings?.length ? (
               <StandingsPanel standings={standings} />
             ) : (
-              <div style={{
-                padding: "2rem", display: "flex",
-                alignItems: "center", justifyContent: "center", height: "100%",
-              }}>
-                <span style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: "clamp(0.44rem, 1.4vw, 0.52rem)",
-                  color: "rgba(255,255,255,0.15)", letterSpacing: "0.12em",
-                }}>
-                  STANDINGS UNAVAILABLE
-                </span>
+              <div className="prediction-empty">
+                <span>Standings unavailable</span>
               </div>
             )}
           </div>
 
-          {/* ── Cell 2: Next Race — top right ── */}
-          <div
-            className="bento-race"
-            style={{
-              gridColumn: "2", gridRow: "1",
-              background: "#0a0a0a",
-              border: "1px solid rgba(255,255,255,0.07)",
-              borderTop: "2px solid rgba(39,244,210,0.6)",
-              overflow: "hidden",
-            }}
-          >
+          {/* Upcoming race information and countdown. */}
+          <div className="dashboard-card">
             <NextRacePanel nextRace={nextRace} />
           </div>
 
-          {/* ── Cell 3: Prediction — bottom right ── */}
-          <div
-            className="bento-prediction"
-            style={{
-              gridColumn: "2", gridRow: "2",
-              background: "#0a0a0a",
-              border: "1px solid rgba(255,255,255,0.07)",
-              borderTop: "2px solid rgba(255,215,0,0.5)",
-              overflow: "hidden",
-            }}
-          >
+          {/* Prediction-engine podium analysis. */}
+          <div className="dashboard-card">
             <PredictionPanel prediction={prediction} nextRace={nextRace} />
           </div>
         </div>
-
-        {/* Bottom rule */}
-        <div style={{
-          height: "1px", marginTop: "2px",
-          background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)",
-        }} />
       </div>
     </section>
   );
