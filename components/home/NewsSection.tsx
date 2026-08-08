@@ -1,215 +1,554 @@
-/**
- * NewsSection — homepage F1 news feed.
- *
- * Layout:
- *   - Featured article (left half): large title, excerpt, read link
- *   - Secondary articles (right half): numbered list, 4 items
- *
- * Data source: Autosport RSS feed via news-fetcher.
- * Returns null if no articles are available.
- */
 "use client";
 
-/* ─── Helpers ────────────────────────────────────────────────────────────── */
+import { motion } from "framer-motion";
 
-/**
- * Returns a human-readable relative timestamp.
- * e.g. "Today", "Yesterday", "3d ago", "Apr 12"
- */
 function getRelativeTime(dateString: string): string {
   if (!dateString) return "";
-  const date     = new Date(dateString);
-  const now      = new Date();
+
+  const date = new Date(dateString);
+  const now = new Date();
+
   const diffDays = Math.floor((now.getTime() - date.getTime()) / 86_400_000);
 
   if (diffDays === 0) return "Today";
   if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7)  return `${diffDays}d ago`;
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  if (diffDays < 7) return `${diffDays}d ago`;
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
 }
 
-/* ─────────────────────────────────────────────────────────────────────────── */
-
 const NewsSection = ({ news }: { news: any[] }) => {
-  /* Bail out gracefully if no articles */
   if (!news || news.length === 0) return null;
 
-  const featured  = news[0];          /* First article — shown large on the left */
-  const secondary = news.slice(1, 5); /* Articles 2–5 — compact list on the right */
+  const featured = news[0];
+  const secondary = news.slice(1, 5);
 
   return (
-    <section className="max-w-7xl mx-auto px-6 py-16">
+    <section
+      style={{
+        position: "relative",
+        overflow: "hidden",
+        padding: "clamp(5rem, 10vw, 9rem) 0",
+        background:
+          "linear-gradient(180deg, #101113 0%, #151619 52%, #111214 100%)",
+      }}
+    >
+      {/* Red atmosphere shared with the sections above */}
+      <div
+        style={{
+          position: "absolute",
+          top: "-15%",
+          right: "-10%",
+          width: "55%",
+          height: "70%",
+          background:
+            "radial-gradient(circle, rgba(225,6,0,0.1) 0%, rgba(225,6,0,0.025) 40%, transparent 72%)",
+          pointerEvents: "none",
+        }}
+      />
 
-      {/* ── Section header ──────────────────────────────────────────────── */}
-      <div className="flex items-end justify-between mb-10 pb-8 border-b border-white/[0.06]">
-        <div>
-          <span className="label-overline block mb-3">Latest</span>
-          <h2 style={{
-            fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900,
-            fontSize: "clamp(2rem, 4vw, 3rem)", lineHeight: 0.95,
-            textTransform: "uppercase", color: "white",
-          }}>
-            F1 News
-          </h2>
-        </div>
+      {/* Subtle grid fades toward the edges */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          opacity: 0.25,
+          pointerEvents: "none",
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)",
+          backgroundSize: "80px 80px",
+          maskImage:
+            "linear-gradient(to bottom, transparent, black 25%, black 75%, transparent)",
+          WebkitMaskImage:
+            "linear-gradient(to bottom, transparent, black 25%, black 75%, transparent)",
+        }}
+      />
 
-        {/* External link to full news source — desktop only */}
-        <a
-          href="https://www.autosport.com/f1"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="nav-back hidden md:flex"
-          onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.6)"}
-          onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.30)"}
-        >
-          More News
-          <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-            <path d="M1 6h10M6 1l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </a>
+      {/* Ghost typography */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          left: "-3%",
+          bottom: "-5%",
+          fontFamily: "'Russo One', sans-serif",
+          fontSize: "clamp(8rem, 22vw, 22rem)",
+          lineHeight: 0.7,
+          color: "transparent",
+          WebkitTextStroke: "1px rgba(255,255,255,0.025)",
+          letterSpacing: "-0.08em",
+          pointerEvents: "none",
+          userSelect: "none",
+        }}
+      >
+        NEWS
       </div>
 
-      {/* ── News grid ───────────────────────────────────────────────────── */}
       <div
-        className="grid lg:grid-cols-[1fr_1fr]"
-        style={{ border: "1px solid rgba(255,255,255,0.07)" }}
+        style={{
+          maxWidth: "1280px",
+          margin: "0 auto",
+          padding: "0 clamp(1.25rem, 4vw, 2rem)",
+          position: "relative",
+          zIndex: 1,
+        }}
       >
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.25 }}
+          transition={{ duration: 0.65 }}
+          style={{
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+            gap: "2rem",
+            marginBottom: "3rem",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "9px",
+                marginBottom: "1rem",
+              }}
+            >
+              <span
+                style={{
+                  width: "7px",
+                  height: "7px",
+                  borderRadius: "50%",
+                  background: "#E10600",
+                  boxShadow: "0 0 14px rgba(225,6,0,0.65)",
+                }}
+              />
 
-        {/* Featured article — left column */}
-        {featured && (
+              <span
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: "0.46rem",
+                  letterSpacing: "0.24em",
+                  textTransform: "uppercase",
+                  color: "#E10600",
+                }}
+              >
+                Intelligence Feed
+              </span>
+            </div>
+
+            <h2
+              style={{
+                fontFamily: "'Russo One', sans-serif",
+                fontSize: "clamp(2.8rem, 6vw, 5.5rem)",
+                lineHeight: 0.86,
+                letterSpacing: "-0.05em",
+                textTransform: "uppercase",
+                color: "white",
+                margin: 0,
+              }}
+            >
+              F1 News
+            </h2>
+
+            <p
+              style={{
+                margin: "1rem 0 0",
+                maxWidth: "460px",
+                fontFamily: "'Rajdhani', sans-serif",
+                fontSize: "0.9rem",
+                lineHeight: 1.6,
+                color: "rgba(255,255,255,0.38)",
+              }}
+            >
+              The latest stories, paddock updates, and developments from around
+              the Formula 1 world.
+            </p>
+          </div>
+
           <a
-            href={featured.link}
+            href="https://www.autosport.com/f1"
             target="_blank"
             rel="noopener noreferrer"
-            className="block group"
-            style={{ borderRight: "1px solid rgba(255,255,255,0.07)", textDecoration: "none" }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "9px",
+              padding: "0.7rem 1rem",
+              background: "rgba(255,255,255,0.045)",
+              border: "1px solid rgba(255,255,255,0.09)",
+              color: "rgba(255,255,255,0.5)",
+              textDecoration: "none",
+              fontFamily: "'Rajdhani', sans-serif",
+              fontWeight: 700,
+              fontSize: "0.68rem",
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              whiteSpace: "nowrap",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              const el = e.currentTarget;
+              el.style.background = "rgba(225,6,0,0.1)";
+              el.style.borderColor = "rgba(225,6,0,0.4)";
+              el.style.color = "white";
+            }}
+            onMouseLeave={(e) => {
+              const el = e.currentTarget;
+              el.style.background = "rgba(255,255,255,0.045)";
+              el.style.borderColor = "rgba(255,255,255,0.09)";
+              el.style.color = "rgba(255,255,255,0.5)";
+            }}
           >
-            <div className="relative overflow-hidden h-full p-8" style={{ background: "#0e0e0e" }}>
+            More News
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+              <path
+                d="M1 6h10M6 1l5 5-5 5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </a>
+        </motion.div>
 
-              {/* Hover radial glow */}
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" style={{
-                background: "radial-gradient(ellipse at top right, rgba(225,6,0,0.06) 0%, transparent 70%)",
-              }} />
+        {/* Main editorial layout */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 1.2fr) minmax(0, 0.8fr)",
+            gap: "1rem",
+          }}
+          className="news-layout"
+        >
+          {/* Featured story */}
+          {featured && (
+            <motion.a
+              href={featured.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{ duration: 0.7 }}
+              whileHover={{ y: -5 }}
+              style={{
+                position: "relative",
+                minHeight: "500px",
+                padding: "clamp(1.5rem, 4vw, 2.5rem)",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                overflow: "hidden",
+                background:
+                  "linear-gradient(145deg, rgba(255,255,255,0.075), rgba(255,255,255,0.025) 60%, rgba(225,6,0,0.045))",
+                border: "1px solid rgba(255,255,255,0.09)",
+                textDecoration: "none",
+                boxShadow: "0 30px 90px rgba(0,0,0,0.22)",
+              }}
+            >
+              {/* Featured story red glow */}
+              <div
+                style={{
+                  position: "absolute",
+                  right: "-20%",
+                  top: "-25%",
+                  width: "75%",
+                  height: "75%",
+                  background:
+                    "radial-gradient(circle, rgba(225,6,0,0.16), transparent 68%)",
+                  pointerEvents: "none",
+                }}
+              />
 
-              {/* 40px red accent bar */}
-              <div style={{ height: "2px", background: "#E10600", width: "40px", marginBottom: "1.5rem" }} />
+              {/* Featured story technical lines */}
+              <div
+                style={{
+                  position: "absolute",
+                  right: "-5%",
+                  top: "30%",
+                  width: "55%",
+                  height: "1px",
+                  background:
+                    "linear-gradient(90deg, transparent, rgba(225,6,0,0.3), transparent)",
+                  transform: "rotate(-22deg)",
+                  pointerEvents: "none",
+                }}
+              />
 
-              <div className="relative">
-                {/* Source + timestamp row */}
-                <div className="flex items-center gap-3 mb-5">
-                  <span className="live-dot" />
-                  <span style={{
-                    fontFamily: "'Rajdhani', sans-serif", fontWeight: 600,
-                    fontSize: "0.65rem", letterSpacing: "0.2em", textTransform: "uppercase",
-                    color: "#E10600",
-                  }}>
+              <div style={{ position: "relative", zIndex: 1 }}>
+                {/* Source */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "9px",
+                    marginBottom: "4rem",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: "6px",
+                      height: "6px",
+                      borderRadius: "50%",
+                      background: "#E10600",
+                      boxShadow: "0 0 12px rgba(225,6,0,0.7)",
+                    }}
+                  />
+
+                  <span
+                    style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: "0.44rem",
+                      letterSpacing: "0.18em",
+                      textTransform: "uppercase",
+                      color: "#E10600",
+                    }}
+                  >
                     {featured.source}
                   </span>
-                  <span className="data-readout ml-auto" style={{ fontSize: "0.65rem" }}>
+
+                  <span
+                    style={{
+                      marginLeft: "auto",
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: "0.42rem",
+                      color: "rgba(255,255,255,0.28)",
+                    }}
+                  >
                     {getRelativeTime(featured.pubDate || featured.date || "")}
                   </span>
                 </div>
 
-                {/* Article title */}
+                {/* Featured title */}
                 <h3
-                  className="group-hover:text-white/90 transition-colors"
                   style={{
-                    fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800,
-                    fontSize: "clamp(1.4rem, 2.5vw, 1.9rem)", lineHeight: 1.05,
-                    textTransform: "uppercase", color: "white", marginBottom: "1rem",
+                    fontFamily: "'Russo One', sans-serif",
+                    fontSize: "clamp(1.9rem, 4vw, 3.3rem)",
+                    lineHeight: 0.96,
+                    letterSpacing: "-0.035em",
+                    textTransform: "uppercase",
+                    color: "white",
+                    margin: 0,
+                    maxWidth: "720px",
                   }}
                 >
                   {featured.title}
                 </h3>
+              </div>
 
-                {/* Article excerpt — 4-line clamp */}
-                <p style={{
-                  fontFamily: "'Rajdhani', sans-serif", fontWeight: 400, fontSize: "0.92rem",
-                  lineHeight: 1.7, color: "rgba(255,255,255,0.38)",
-                  marginBottom: "2rem",
-                  display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden",
-                }}>
+              <div style={{ position: "relative", zIndex: 1 }}>
+                {/* Featured excerpt */}
+                <p
+                  style={{
+                    maxWidth: "620px",
+                    fontFamily: "'Rajdhani', sans-serif",
+                    fontSize: "0.95rem",
+                    lineHeight: 1.65,
+                    color: "rgba(255,255,255,0.42)",
+                    margin: "2rem 0",
+                    display: "-webkit-box",
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                  }}
+                >
                   {featured.description}
                 </p>
 
-                {/* Read link — arrow slides right on group hover */}
+                {/* Read action */}
                 <div
-                  className="flex items-center gap-2 group-hover:text-[#E10600] transition-colors"
                   style={{
-                    fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
-                    fontSize: "0.72rem", letterSpacing: "0.12em", textTransform: "uppercase",
-                    color: "rgba(255,255,255,0.28)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "9px",
+                    fontFamily: "'Rajdhani', sans-serif",
+                    fontWeight: 700,
+                    fontSize: "0.68rem",
+                    letterSpacing: "0.16em",
+                    textTransform: "uppercase",
+                    color: "rgba(255,255,255,0.65)",
                   }}
                 >
                   Read Article
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="transition-transform duration-200 group-hover:translate-x-1">
-                    <path d="M1 6h10M6 1l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+                  <span
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: "25px",
+                      height: "25px",
+                      background: "#E10600",
+                      color: "white",
+                    }}
+                  >
+                    →
+                  </span>
                 </div>
               </div>
-            </div>
-          </a>
-        )}
+            </motion.a>
+          )}
 
-        {/* Secondary articles — right column list */}
-        <div className="flex flex-col">
-          {secondary.map((article, index) => (
-            <a
-              key={index}
-              href={article.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block group"
-              style={{
-                padding: "1.4rem 1.75rem",
-                borderBottom: index < secondary.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none",
-                textDecoration: "none",
-                position: "relative", overflow: "hidden",
-                flex: 1,
-              }}
-            >
-              {/* Subtle hover wash */}
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
-                style={{ background: "rgba(255,255,255,0.018)" }} />
-
-              <div className="relative flex items-start gap-4">
-                {/* Article index number */}
-                <span className="data-readout" style={{ fontSize: "0.62rem", paddingTop: "3px", minWidth: "1.5rem" }}>
-                  0{index + 2}
+          {/* Secondary stories */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "1rem",
+            }}
+          >
+            {secondary.map((article, index) => (
+              <motion.a
+                key={index}
+                href={article.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                initial={{ opacity: 0, x: 25 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, amount: 0.15 }}
+                transition={{
+                  duration: 0.55,
+                  delay: index * 0.08,
+                }}
+                whileHover={{ x: 5 }}
+                style={{
+                  position: "relative",
+                  flex: 1,
+                  minHeight: "115px",
+                  padding: "1.25rem 1.4rem",
+                  display: "flex",
+                  gap: "1rem",
+                  overflow: "hidden",
+                  background:
+                    "linear-gradient(120deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018))",
+                  border: "1px solid rgba(255,255,255,0.075)",
+                  textDecoration: "none",
+                  transition: "background 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background =
+                    "linear-gradient(120deg, rgba(225,6,0,0.08), rgba(255,255,255,0.025))";
+                  e.currentTarget.style.borderColor = "rgba(225,6,0,0.25)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background =
+                    "linear-gradient(120deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018))";
+                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.075)";
+                }}
+              >
+                {/* Article number */}
+                <span
+                  style={{
+                    fontFamily: "'Russo One', sans-serif",
+                    fontSize: "1.5rem",
+                    lineHeight: 1,
+                    color: "rgba(255,255,255,0.12)",
+                    letterSpacing: "-0.04em",
+                  }}
+                >
+                  {String(index + 2).padStart(2, "0")}
                 </span>
 
-                <div className="flex-1 min-w-0">
-                  {/* Source + timestamp row */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <span style={{
-                      fontFamily: "'Rajdhani', sans-serif", fontWeight: 600,
-                      fontSize: "0.6rem", letterSpacing: "0.18em", textTransform: "uppercase",
-                      color: "#E10600",
-                    }}>
+                <div
+                  style={{
+                    minWidth: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    flex: 1,
+                  }}
+                >
+                  {/* Article metadata */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      marginBottom: "0.7rem",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: "0.4rem",
+                        letterSpacing: "0.14em",
+                        textTransform: "uppercase",
+                        color: "#E10600",
+                      }}
+                    >
                       {article.source}
                     </span>
-                    <span className="data-readout ml-auto" style={{ fontSize: "0.6rem" }}>
+
+                    <span
+                      style={{
+                        marginLeft: "auto",
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: "0.4rem",
+                        color: "rgba(255,255,255,0.24)",
+                      }}
+                    >
                       {getRelativeTime(article.pubDate || article.date || "")}
                     </span>
                   </div>
 
-                  {/* Article title — 2-line clamp */}
+                  {/* Article title */}
                   <h4
-                    className="group-hover:text-white transition-colors"
                     style={{
-                      fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
-                      fontSize: "1rem", lineHeight: 1.2, color: "rgba(255,255,255,0.75)",
-                      display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                      fontFamily: "'Barlow Condensed', sans-serif",
+                      fontWeight: 800,
+                      fontSize: "1.05rem",
+                      lineHeight: 1.12,
+                      textTransform: "uppercase",
+                      color: "rgba(255,255,255,0.76)",
+                      margin: 0,
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
                     }}
                   >
                     {article.title}
                   </h4>
                 </div>
-              </div>
-            </a>
-          ))}
+
+                {/* Hover arrow */}
+                <span
+                  style={{
+                    position: "absolute",
+                    right: "1rem",
+                    bottom: "0.8rem",
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: "0.55rem",
+                    color: "rgba(225,6,0,0.6)",
+                  }}
+                >
+                  ↗
+                </span>
+              </motion.a>
+            ))}
+          </div>
         </div>
       </div>
+
+      <style jsx>{`
+        @media (max-width: 850px) {
+          .news-layout {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .news-layout {
+            gap: 0.75rem !important;
+          }
+        }
+      `}</style>
     </section>
   );
 };
