@@ -1,37 +1,34 @@
 /**
  * components/home/DashboardSection.tsx
  *
- * FJuanDASH "Pit Wall" dashboard.
+ * FJuanDASH "Pit Wall" dashboard section.
  *
- * This component combines three key pieces of race intelligence:
+ * Responsibilities:
+ * - Display the current driver standings.
+ * - Visualize championship points with a subtle area chart.
+ * - Display the next scheduled race and countdown timer.
+ * - Display the prediction engine's top three podium probabilities.
+ * - Provide responsive layouts for desktop, tablet, and mobile.
+ * - Add Framer Motion entrance and hover animations.
  *
- * 1. Championship standings
- *    - Displays the top eight drivers.
- *    - Shows championship points.
- *    - Provides a visual points comparison.
+ * Design direction:
+ * - Dark motorsport-inspired interface.
+ * - Red/orange F1-style accent palette.
+ * - Technical grid overlays and telemetry-inspired graphics.
+ * - Dense information hierarchy without looking like a traditional admin
+ *   dashboard.
  *
- * 2. Next race
- *    - Displays the upcoming race and circuit.
- *    - Shows the country and locality.
- *    - Provides a live countdown to race start.
- *
- * 3. Prediction engine
- *    - Displays the top three predicted podium finishers.
- *    - Visualizes podium probabilities.
- *
- * Responsive layout:
- * - Desktop: two-column bento layout.
- * - Tablet: single-column layout.
- * - Mobile: compact spacing and typography.
- *
- * The component is client-side because the countdown requires
- * browser timing APIs and React state.
+ * Dependencies:
+ * - recharts
+ * - framer-motion
+ * - next/link
  */
 
 "use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { motion, type Variants } from "framer-motion";
 import {
   Area,
   AreaChart,
@@ -42,11 +39,11 @@ import {
 } from "recharts";
 
 /**
- * Data provided by the parent dashboard page.
+ * Props supplied by the home page.
  *
- * These are currently typed as `any` because the API response
- * models are defined outside this component. These should
- * eventually be replaced with shared TypeScript interfaces.
+ * `any` is intentionally retained here because the data comes from the
+ * existing F1 API layer and may contain slightly different shapes depending
+ * on the endpoint response.
  */
 interface DashboardSectionProps {
   standings: any[];
@@ -55,10 +52,11 @@ interface DashboardSectionProps {
 }
 
 /**
- * Centralized dashboard color tokens.
+ * Dashboard design tokens.
  *
- * Keeping the dashboard palette here ensures the charts,
- * UI elements, and CSS share the same visual language.
+ * Keeping these values centralized makes it easier to maintain the visual
+ * identity of the dashboard without scattering color values throughout
+ * the stylesheet.
  */
 const COLORS = {
   black: "#050202",
@@ -76,25 +74,79 @@ const COLORS = {
 };
 
 /**
- * Colors used for the three predicted podium positions.
- *
- * Index 0 = P1
- * Index 1 = P2
- * Index 2 = P3
+ * Podium colors used by the prediction chart and ranking labels.
  */
-const PODIUM_COLORS = ["#E6501B", "#C3110C", "#740A03"];
+const PODIUM_COLORS = [COLORS.orange, COLORS.primary, COLORS.red];
 
 /**
- * Live race countdown hook.
+ * Framer Motion variants for dashboard cards.
  *
- * Calculates the time remaining between the current time
- * and the supplied target date.
+ * `ease: "easeOut"` is intentionally used instead of a cubic-bezier array.
+ * This prevents TypeScript from inferring the easing array as `number[]`,
+ * which causes a `Variants` type incompatibility with some Framer Motion
+ * versions.
+ */
+const cardVariants: Variants = {
+  hidden: {
+    opacity: 0,
+    y: 36,
+    scale: 0.98,
+  },
+
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.65,
+      ease: "easeOut",
+    },
+  },
+};
+
+/**
+ * Variants for individual standings and prediction rows.
+ */
+const rowVariants: Variants = {
+  hidden: {
+    opacity: 0,
+    x: -18,
+  },
+
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: {
+      duration: 0.45,
+      ease: "easeOut",
+    },
+  },
+};
+
+/**
+ * Variants for the dashboard introduction.
+ */
+const introVariants: Variants = {
+  hidden: {
+    opacity: 0,
+    y: 24,
+  },
+
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.7,
+      ease: "easeOut",
+    },
+  },
+};
+
+/**
+ * Generates a live countdown between now and a target date.
  *
- * The countdown updates every second while the target is
- * still in the future.
- *
- * The interval is cleaned up when the component unmounts
- * or when the target date changes.
+ * The countdown updates every second and automatically cleans up its
+ * interval when the component unmounts or the target changes.
  */
 function useCountdown(target: Date | null) {
   const [time, setTime] = useState({
@@ -105,12 +157,17 @@ function useCountdown(target: Date | null) {
   });
 
   useEffect(() => {
-    if (!target) return;
+    if (!target) {
+      return;
+    }
 
     const update = () => {
       const difference = target.getTime() - Date.now();
 
-      // Prevent the countdown from displaying negative values.
+      /**
+       * Once the target has passed, keep the timer at zero rather than
+       * displaying negative values.
+       */
       if (difference <= 0) {
         setTime({
           days: 0,
@@ -122,23 +179,21 @@ function useCountdown(target: Date | null) {
         return;
       }
 
-      // Convert the remaining milliseconds into readable units.
       setTime({
         days: Math.floor(difference / 86400000),
+
         hours: Math.floor((difference % 86400000) / 3600000),
+
         minutes: Math.floor((difference % 3600000) / 60000),
+
         seconds: Math.floor((difference % 60000) / 1000),
       });
     };
 
-    // Run immediately so the UI has a value before the
-    // first one-second interval completes.
     update();
 
     const interval = setInterval(update, 1000);
 
-    // Clean up the interval when the component changes
-    // or is removed from the page.
     return () => clearInterval(interval);
   }, [target?.getTime()]);
 
@@ -147,9 +202,6 @@ function useCountdown(target: Date | null) {
 
 /**
  * Shared header used by all dashboard panels.
- *
- * Provides a consistent eyebrow, title, and optional
- * contextual action label.
  */
 function SectionHeader({
   eyebrow,
@@ -179,18 +231,24 @@ function SectionHeader({
 /**
  * Championship standings panel.
  *
- * Displays the current top eight drivers and compares
- * each driver's points against the championship leader.
+ * Displays:
+ * - Top eight drivers.
+ * - Driver position.
+ * - Driver name and constructor.
+ * - Relative points progress.
+ * - Championship points.
+ * - A subtle area chart behind the standings.
  */
 function StandingsPanel({ standings }: { standings: any[] }) {
-  // The dashboard intentionally limits the list to eight drivers.
   const drivers = standings.slice(0, 8);
 
-  // Used as the reference point for each driver's progress bar.
-  // Defaulting to 1 prevents division by zero.
   const leaderPoints = Number(drivers[0]?.points) || 1;
 
-  // Transform the API data into the format expected by Recharts.
+  /**
+   * Chart data intentionally only contains points.
+   * The chart acts as a visual background rather than a
+   * conventional data visualization.
+   */
   const chartData = drivers.map((driver: any) => ({
     points: Number(driver.points) || 0,
   }));
@@ -203,7 +261,7 @@ function StandingsPanel({ standings }: { standings: any[] }) {
         action="Top 8"
       />
 
-      {/* Decorative points chart positioned behind the standings list. */}
+      {/* Decorative telemetry-style chart */}
       <div className="standings-chart">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData}>
@@ -226,21 +284,37 @@ function StandingsPanel({ standings }: { standings: any[] }) {
               strokeWidth={1.5}
               fill="url(#standingsFill)"
               dot={false}
+              isAnimationActive
+              animationDuration={1200}
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Driver standings list. */}
       <div className="standings-list">
         {drivers.map((driver: any, index: number) => {
           const points = Number(driver.points) || 0;
 
-          // Calculate points relative to the championship leader.
           const percentage = (points / leaderPoints) * 100;
 
           return (
-            <div className="standing-row" key={driver.Driver?.driverId}>
+            <motion.div
+              className="standing-row"
+              key={
+                driver.Driver?.driverId ??
+                `${driver.Driver?.familyName}-${index}`
+              }
+              variants={rowVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{
+                once: true,
+                amount: 0.15,
+              }}
+              transition={{
+                delay: index * 0.045,
+              }}
+            >
               <div
                 className={`standing-position ${index < 3 ? "is-podium" : ""}`}
               >
@@ -258,9 +332,18 @@ function StandingsPanel({ standings }: { standings: any[] }) {
                 </div>
 
                 <div className="standing-progress">
-                  <span
-                    style={{
+                  <motion.span
+                    initial={{ width: 0 }}
+                    whileInView={{
                       width: `${percentage}%`,
+                    }}
+                    viewport={{
+                      once: true,
+                    }}
+                    transition={{
+                      duration: 0.8,
+                      delay: index * 0.06,
+                      ease: "easeOut",
                     }}
                   />
                 </div>
@@ -268,16 +351,17 @@ function StandingsPanel({ standings }: { standings: any[] }) {
 
               <div className="standing-points">
                 {points}
+
                 <small>PTS</small>
               </div>
-            </div>
+            </motion.div>
           );
         })}
       </div>
 
-      {/* Navigate to the complete driver standings page. */}
       <Link className="dashboard-link" href="/drivers">
         <span>View full standings</span>
+
         <span className="dashboard-arrow">↗</span>
       </Link>
     </div>
@@ -285,15 +369,10 @@ function StandingsPanel({ standings }: { standings: any[] }) {
 }
 
 /**
- * Upcoming race panel.
+ * Next race panel.
  *
- * Builds the target race date and feeds it into the countdown hook.
- *
- * The current implementation assumes the race begins at 15:00 UTC
- * because only the race date is being consumed here.
- *
- * If the API exposes an actual race start time, this should be
- * replaced with that value.
+ * Converts the API race date into a Date object and feeds it
+ * into the live countdown hook.
  */
 function NextRacePanel({ nextRace }: { nextRace: any }) {
   const raceDate = nextRace ? new Date(`${nextRace.date}T15:00:00Z`) : null;
@@ -319,7 +398,25 @@ function NextRacePanel({ nextRace }: { nextRace: any }) {
           </span>
         </div>
 
-        <h3>{nextRace?.raceName ?? "Season concluded"}</h3>
+        <motion.h3
+          initial={{
+            opacity: 0,
+            x: -20,
+          }}
+          whileInView={{
+            opacity: 1,
+            x: 0,
+          }}
+          viewport={{
+            once: true,
+          }}
+          transition={{
+            duration: 0.55,
+            ease: "easeOut",
+          }}
+        >
+          {nextRace?.raceName ?? "Season concluded"}
+        </motion.h3>
 
         <p className="race-circuit">
           {nextRace?.Circuit?.circuitName ?? "Circuit information unavailable"}
@@ -347,21 +444,40 @@ function NextRacePanel({ nextRace }: { nextRace: any }) {
                   value: countdown.seconds,
                   label: "Seconds",
                 },
-              ].map((item) => (
-                <div className="countdown-cell" key={item.label}>
+              ].map((item, index) => (
+                <motion.div
+                  className="countdown-cell"
+                  key={item.label}
+                  initial={{
+                    opacity: 0,
+                    y: 12,
+                  }}
+                  whileInView={{
+                    opacity: 1,
+                    y: 0,
+                  }}
+                  viewport={{
+                    once: true,
+                  }}
+                  transition={{
+                    duration: 0.4,
+                    delay: index * 0.08,
+                    ease: "easeOut",
+                  }}
+                >
                   <strong>{String(item.value).padStart(2, "0")}</strong>
 
                   <span>{item.label}</span>
-                </div>
+                </motion.div>
               ))}
             </div>
           </>
         )}
       </div>
 
-      {/* Navigate to the full race calendar. */}
       <Link className="dashboard-link" href="/calendar">
         <span>Explore race calendar</span>
+
         <span className="dashboard-arrow">↗</span>
       </Link>
     </div>
@@ -369,13 +485,10 @@ function NextRacePanel({ nextRace }: { nextRace: any }) {
 }
 
 /**
- * Prediction-engine panel.
+ * Prediction engine panel.
  *
- * Displays the top three predicted podium finishers and
- * their calculated podium probabilities.
- *
- * When no prediction data is available, the component
- * renders a dedicated fallback state instead of an empty chart.
+ * Displays the three drivers with the highest predicted
+ * podium probability for the upcoming race.
  */
 function PredictionPanel({
   prediction,
@@ -384,29 +497,41 @@ function PredictionPanel({
   prediction: any;
   nextRace: any;
 }) {
-  // Only the top three predictions are relevant to the podium.
   const drivers = prediction?.predictions?.slice(0, 3) ?? [];
 
-  // Graceful fallback for missing prediction data.
+  /**
+   * Graceful fallback when the prediction engine has
+   * not produced a result.
+   */
   if (!drivers.length) {
     return (
       <div className="prediction-panel">
         <SectionHeader
           eyebrow="03 / Prediction engine"
           title="Race prediction"
-          action="Unavailable"
+          action="Offline"
         />
 
         <div className="prediction-empty">
-          <span>Prediction unavailable</span>
+          <div>
+            <span>Prediction unavailable</span>
+
+            <small>Model data is not currently available.</small>
+          </div>
         </div>
+
+        <Link className="dashboard-link" href="/predict">
+          <span>Open prediction model</span>
+
+          <span className="dashboard-arrow">↗</span>
+        </Link>
       </div>
     );
   }
 
   /**
-   * Convert prediction results into the data structure
-   * required by Recharts.
+   * Chart data used for the podium probability
+   * visualization.
    */
   const chartData = drivers.map((driver: any, index: number) => ({
     name: driver.familyName,
@@ -423,11 +548,15 @@ function PredictionPanel({
       />
 
       <div className="prediction-content">
-        {/* Compact visualization of podium probabilities. */}
         <div className="prediction-chart">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} barCategoryGap="18%">
-              <Bar dataKey="probability" radius={0}>
+              <Bar
+                dataKey="probability"
+                radius={0}
+                isAnimationActive
+                animationDuration={900}
+              >
                 {chartData.map((entry: any, index: number) => (
                   <Cell
                     key={index}
@@ -440,10 +569,22 @@ function PredictionPanel({
           </ResponsiveContainer>
         </div>
 
-        {/* Detailed prediction results. */}
         <div className="prediction-list">
           {drivers.map((driver: any, index: number) => (
-            <div className="prediction-row" key={driver.driverId}>
+            <motion.div
+              className="prediction-row"
+              key={driver.driverId ?? `${driver.familyName}-${index}`}
+              variants={rowVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{
+                once: true,
+                amount: 0.2,
+              }}
+              transition={{
+                delay: index * 0.1,
+              }}
+            >
               <div
                 className="prediction-rank"
                 style={{
@@ -466,14 +607,14 @@ function PredictionPanel({
 
                 <span>probability</span>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
 
-      {/* Navigate to the full prediction model. */}
       <Link className="dashboard-link" href="/predict">
         <span>Open prediction model</span>
+
         <span className="dashboard-arrow">↗</span>
       </Link>
     </div>
@@ -481,11 +622,19 @@ function PredictionPanel({
 }
 
 /**
- * Main FJuanDASH dashboard section.
+ * Main dashboard section.
  *
- * The layout is intentionally kept separate from the individual
- * panel components so each panel can remain focused on its own
- * data and presentation logic.
+ * Desktop:
+ * - Large standings panel on the left.
+ * - Race panel on the upper right.
+ * - Prediction panel on the lower right.
+ *
+ * Tablet:
+ * - Single-column card layout.
+ *
+ * Mobile:
+ * - Compressed spacing and typography.
+ * - Preserves the dashboard's technical visual language.
  */
 export default function DashboardSection({
   standings,
@@ -494,76 +643,108 @@ export default function DashboardSection({
 }: DashboardSectionProps) {
   return (
     <section className="dashboard-section">
-      {/*
-       * Dashboard styles are colocated with the component.
-       *
-       * Desktop:
-       * - Two-column bento grid.
-       * - Standings span both rows.
-       *
-       * Tablet:
-       * - Panels collapse into one column.
-       *
-       * Mobile:
-       * - Reduced shell width and spacing.
-       * - Smaller typography and chart heights.
-       *
-       * Accessibility:
-       * - Reduced-motion media query disables non-essential
-       *   transitions for users who prefer reduced motion.
-       */}
       <style>{`
+        /*
+         * ============================================================
+         * Dashboard foundation
+         * ============================================================
+         */
+
         .dashboard-section {
           position: relative;
+          isolation: isolate;
           overflow: hidden;
           background:
             radial-gradient(
               circle at 8% 10%,
-              rgba(195,17,12,0.12),
+              rgba(195, 17, 12, 0.14),
               transparent 28%
             ),
             radial-gradient(
               circle at 92% 90%,
-              rgba(230,80,27,0.07),
+              rgba(230, 80, 27, 0.09),
               transparent 25%
             ),
             ${COLORS.black};
           color: ${COLORS.white};
         }
 
+        /*
+         * Technical background grid.
+         */
         .dashboard-section::before {
           content: "";
           position: absolute;
           inset: 0;
           pointer-events: none;
-          opacity: 0.25;
+          opacity: 0.32;
           background-image:
             linear-gradient(
-              rgba(230,80,27,0.025) 1px,
+              rgba(230, 80, 27, 0.035) 1px,
               transparent 1px
             ),
             linear-gradient(
               90deg,
-              rgba(230,80,27,0.025) 1px,
+              rgba(230, 80, 27, 0.035) 1px,
               transparent 1px
             );
           background-size: 48px 48px;
+          mask-image: linear-gradient(
+            to bottom,
+            black,
+            transparent 92%
+          );
+        }
+
+        /*
+         * Large decorative radial target behind the dashboard.
+         */
+        .dashboard-section::after {
+          content: "";
+          position: absolute;
+          top: 5%;
+          right: -12%;
+          width: 520px;
+          height: 520px;
+          border: 1px solid rgba(230, 80, 27, 0.08);
+          border-radius: 50%;
+          pointer-events: none;
+          box-shadow:
+            0 0 0 70px rgba(230, 80, 27, 0.018),
+            0 0 0 140px rgba(230, 80, 27, 0.012);
         }
 
         .dashboard-shell {
           position: relative;
           z-index: 1;
-          width: min(1380px, calc(100% - 48px));
+          width: min(
+            1380px,
+            calc(100% - 48px)
+          );
           margin: 0 auto;
-          padding: clamp(5rem, 9vw, 9rem) 0;
+          padding: clamp(
+            5rem,
+            9vw,
+            9rem
+          ) 0;
         }
+
+        /*
+         * ============================================================
+         * Introduction
+         * ============================================================
+         */
 
         .dashboard-intro {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 4rem;
           align-items: end;
-          margin-bottom: clamp(3rem, 6vw, 5.5rem);
+          margin-bottom: clamp(
+            3rem,
+            6vw,
+            5.5rem
+          );
         }
 
         .dashboard-intro-label {
@@ -571,7 +752,9 @@ export default function DashboardSection({
           align-items: center;
           gap: 12px;
           margin-bottom: 1.25rem;
-          font-family: "JetBrains Mono", monospace;
+          font-family:
+            "JetBrains Mono",
+            monospace;
           font-size: 0.58rem;
           font-weight: 600;
           letter-spacing: 0.2em;
@@ -584,13 +767,22 @@ export default function DashboardSection({
           width: 28px;
           height: 2px;
           background: ${COLORS.orange};
+          box-shadow:
+            0 0 12px
+            rgba(230, 80, 27, 0.45);
         }
 
         .dashboard-intro h1 {
           max-width: 720px;
           margin: 0;
-          font-family: "Russo One", sans-serif;
-          font-size: clamp(2.8rem, 7vw, 7rem);
+          font-family:
+            "Russo One",
+            sans-serif;
+          font-size: clamp(
+            2.8rem,
+            7vw,
+            7rem
+          );
           line-height: 0.88;
           letter-spacing: -0.055em;
           text-transform: uppercase;
@@ -598,32 +790,86 @@ export default function DashboardSection({
 
         .dashboard-intro h1 span {
           color: ${COLORS.primary};
+          text-shadow:
+            0 0 35px
+            rgba(195, 17, 12, 0.24);
         }
 
         .dashboard-intro-copy {
           max-width: 420px;
           margin-left: auto;
-          font-family: "Rajdhani", sans-serif;
-          font-size: clamp(0.95rem, 1.4vw, 1.1rem);
+          font-family:
+            "Rajdhani",
+            sans-serif;
+          font-size: clamp(
+            0.95rem,
+            1.4vw,
+            1.1rem
+          );
           line-height: 1.5;
           color: ${COLORS.muted};
         }
 
+        /*
+         * ============================================================
+         * Main bento grid
+         * ============================================================
+         */
+
         .dashboard-grid {
           display: grid;
-          grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
-          grid-template-rows: auto auto;
+          grid-template-columns:
+            minmax(0, 1.25fr)
+            minmax(360px, 0.75fr);
+          grid-template-rows:
+            minmax(0, 1fr)
+            minmax(0, 1fr);
           gap: 2px;
           background: ${COLORS.line};
+          box-shadow:
+            0 30px 100px
+            rgba(0, 0, 0, 0.45);
         }
 
         .dashboard-card {
           position: relative;
+          min-width: 0;
           overflow: hidden;
           background: ${COLORS.panel};
-          border: 1px solid rgba(230,80,27,0.08);
+          border: 1px solid
+            rgba(230, 80, 27, 0.08);
         }
 
+        /*
+         * Internal technical grid for every card.
+         */
+        .dashboard-card::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          opacity: 0.55;
+          background-image:
+            linear-gradient(
+              rgba(245, 241, 237, 0.025) 1px,
+              transparent 1px
+            ),
+            linear-gradient(
+              90deg,
+              rgba(245, 241, 237, 0.025) 1px,
+              transparent 1px
+            );
+          background-size: 32px 32px;
+          mask-image: linear-gradient(
+            to bottom,
+            black,
+            transparent 80%
+          );
+        }
+
+        /*
+         * Orange race-control accent line.
+         */
         .dashboard-card::after {
           content: "";
           position: absolute;
@@ -632,11 +878,21 @@ export default function DashboardSection({
           width: 72px;
           height: 3px;
           background: ${COLORS.orange};
+          box-shadow:
+            0 0 18px
+            rgba(230, 80, 27, 0.3);
+          z-index: 5;
         }
 
         .dashboard-standings {
           grid-row: 1 / 3;
         }
+
+        /*
+         * ============================================================
+         * Shared card header
+         * ============================================================
+         */
 
         .dashboard-header {
           position: relative;
@@ -645,8 +901,11 @@ export default function DashboardSection({
           align-items: flex-start;
           justify-content: space-between;
           gap: 1rem;
-          padding: 1.5rem 1.5rem 1.25rem;
-          border-bottom: 1px solid rgba(245,241,237,0.06);
+          padding: 1.5rem
+            1.5rem
+            1.25rem;
+          border-bottom: 1px solid
+            rgba(245, 241, 237, 0.06);
         }
 
         .dashboard-eyebrow {
@@ -654,7 +913,9 @@ export default function DashboardSection({
           align-items: center;
           gap: 7px;
           margin-bottom: 0.55rem;
-          font-family: "JetBrains Mono", monospace;
+          font-family:
+            "JetBrains Mono",
+            monospace;
           font-size: 0.5rem;
           font-weight: 600;
           letter-spacing: 0.16em;
@@ -666,12 +927,21 @@ export default function DashboardSection({
           width: 5px;
           height: 5px;
           background: ${COLORS.orange};
+          box-shadow:
+            0 0 8px
+            rgba(230, 80, 27, 0.6);
         }
 
         .dashboard-header h2 {
           margin: 0;
-          font-family: "Russo One", sans-serif;
-          font-size: clamp(1.2rem, 2vw, 1.65rem);
+          font-family:
+            "Russo One",
+            sans-serif;
+          font-size: clamp(
+            1.2rem,
+            2vw,
+            1.65rem
+          );
           line-height: 1;
           letter-spacing: -0.025em;
           text-transform: uppercase;
@@ -680,7 +950,9 @@ export default function DashboardSection({
         .dashboard-action {
           max-width: 150px;
           overflow: hidden;
-          font-family: "JetBrains Mono", monospace;
+          font-family:
+            "JetBrains Mono",
+            monospace;
           font-size: 0.48rem;
           letter-spacing: 0.12em;
           text-align: right;
@@ -698,12 +970,19 @@ export default function DashboardSection({
           flex-direction: column;
         }
 
+        /*
+         * ============================================================
+         * Standings
+         * ============================================================
+         */
+
         .standings-chart {
           position: absolute;
           inset: 75px 0 auto;
           height: 220px;
           opacity: 0.22;
           pointer-events: none;
+          z-index: 0;
         }
 
         .standings-list {
@@ -714,12 +993,16 @@ export default function DashboardSection({
 
         .standing-row {
           display: grid;
-          grid-template-columns: 46px minmax(0, 1fr) auto;
+          grid-template-columns:
+            46px
+            minmax(0, 1fr)
+            auto;
           gap: 1rem;
           align-items: center;
           min-height: 72px;
           padding: 0.7rem 1.5rem;
-          border-bottom: 1px solid rgba(245,241,237,0.045);
+          border-bottom: 1px solid
+            rgba(245, 241, 237, 0.045);
           transition:
             background 180ms ease,
             padding 180ms ease;
@@ -727,11 +1010,18 @@ export default function DashboardSection({
 
         .standing-row:hover {
           padding-left: 1.7rem;
-          background: rgba(195,17,12,0.06);
+          background:
+            linear-gradient(
+              90deg,
+              rgba(195, 17, 12, 0.1),
+              transparent
+            );
         }
 
         .standing-position {
-          font-family: "Russo One", sans-serif;
+          font-family:
+            "Russo One",
+            sans-serif;
           font-size: 0.85rem;
           color: ${COLORS.faint};
         }
@@ -739,6 +1029,9 @@ export default function DashboardSection({
         .standing-position.is-podium {
           color: ${COLORS.orange};
           font-size: 1rem;
+          text-shadow:
+            0 0 12px
+            rgba(230, 80, 27, 0.25);
         }
 
         .standing-driver {
@@ -748,8 +1041,14 @@ export default function DashboardSection({
         .standing-name {
           overflow: hidden;
           margin-bottom: 3px;
-          font-family: "Russo One", sans-serif;
-          font-size: clamp(0.8rem, 1.6vw, 1rem);
+          font-family:
+            "Russo One",
+            sans-serif;
+          font-size: clamp(
+            0.8rem,
+            1.6vw,
+            1rem
+          );
           letter-spacing: -0.02em;
           text-transform: uppercase;
           text-overflow: ellipsis;
@@ -763,7 +1062,9 @@ export default function DashboardSection({
         .standing-team {
           overflow: hidden;
           margin-bottom: 8px;
-          font-family: "JetBrains Mono", monospace;
+          font-family:
+            "JetBrains Mono",
+            monospace;
           font-size: 0.45rem;
           letter-spacing: 0.08em;
           text-transform: uppercase;
@@ -775,7 +1076,8 @@ export default function DashboardSection({
         .standing-progress {
           height: 2px;
           overflow: hidden;
-          background: rgba(245,241,237,0.06);
+          background:
+            rgba(245, 241, 237, 0.06);
         }
 
         .standing-progress span {
@@ -786,26 +1088,45 @@ export default function DashboardSection({
             ${COLORS.red},
             ${COLORS.orange}
           );
+          box-shadow:
+            0 0 8px
+            rgba(230, 80, 27, 0.3);
         }
 
         .standing-points {
           display: flex;
           align-items: flex-end;
           gap: 5px;
-          font-family: "Russo One", sans-serif;
-          font-size: clamp(1rem, 2vw, 1.35rem);
+          font-family:
+            "Russo One",
+            sans-serif;
+          font-size: clamp(
+            1rem,
+            2vw,
+            1.35rem
+          );
           line-height: 1;
         }
 
         .standing-points small {
           margin-bottom: 1px;
-          font-family: "JetBrains Mono", monospace;
+          font-family:
+            "JetBrains Mono",
+            monospace;
           font-size: 0.38rem;
           letter-spacing: 0.08em;
           color: ${COLORS.faint};
         }
 
+        /*
+         * ============================================================
+         * Race panel
+         * ============================================================
+         */
+
         .race-content {
+          position: relative;
+          z-index: 1;
           flex: 1;
           padding: 2rem 1.5rem;
         }
@@ -815,7 +1136,9 @@ export default function DashboardSection({
           align-items: center;
           gap: 8px;
           margin-bottom: 1rem;
-          font-family: "JetBrains Mono", monospace;
+          font-family:
+            "JetBrains Mono",
+            monospace;
           font-size: 0.47rem;
           letter-spacing: 0.12em;
           text-transform: uppercase;
@@ -826,13 +1149,22 @@ export default function DashboardSection({
           width: 3px;
           height: 3px;
           background: ${COLORS.faint};
+          box-shadow:
+            0 0 6px
+            rgba(230, 80, 27, 0.4);
         }
 
         .race-content h3 {
           max-width: 550px;
           margin: 0;
-          font-family: "Russo One", sans-serif;
-          font-size: clamp(1.7rem, 4vw, 3rem);
+          font-family:
+            "Russo One",
+            sans-serif;
+          font-size: clamp(
+            1.7rem,
+            4vw,
+            3rem
+          );
           line-height: 0.9;
           letter-spacing: -0.04em;
           text-transform: uppercase;
@@ -840,14 +1172,18 @@ export default function DashboardSection({
 
         .race-circuit {
           margin: 0.75rem 0 2rem;
-          font-family: "Rajdhani", sans-serif;
+          font-family:
+            "Rajdhani",
+            sans-serif;
           font-size: 0.9rem;
           color: ${COLORS.muted};
         }
 
         .countdown-label {
           margin-bottom: 0.6rem;
-          font-family: "JetBrains Mono", monospace;
+          font-family:
+            "JetBrains Mono",
+            monospace;
           font-size: 0.45rem;
           letter-spacing: 0.15em;
           text-transform: uppercase;
@@ -856,9 +1192,11 @@ export default function DashboardSection({
 
         .countdown {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns:
+            repeat(4, 1fr);
           gap: 1px;
-          background: rgba(230,80,27,0.1);
+          background:
+            rgba(230, 80, 27, 0.1);
         }
 
         .countdown-cell {
@@ -870,8 +1208,14 @@ export default function DashboardSection({
 
         .countdown-cell strong {
           display: block;
-          font-family: "Russo One", sans-serif;
-          font-size: clamp(1rem, 3vw, 1.7rem);
+          font-family:
+            "Russo One",
+            sans-serif;
+          font-size: clamp(
+            1rem,
+            3vw,
+            1.7rem
+          );
           line-height: 1;
           font-variant-numeric: tabular-nums;
         }
@@ -879,14 +1223,24 @@ export default function DashboardSection({
         .countdown-cell span {
           display: block;
           margin-top: 5px;
-          font-family: "JetBrains Mono", monospace;
+          font-family:
+            "JetBrains Mono",
+            monospace;
           font-size: 0.38rem;
           letter-spacing: 0.1em;
           text-transform: uppercase;
           color: ${COLORS.faint};
         }
 
+        /*
+         * ============================================================
+         * Prediction panel
+         * ============================================================
+         */
+
         .prediction-content {
+          position: relative;
+          z-index: 1;
           flex: 1;
           padding: 1.5rem;
         }
@@ -904,27 +1258,40 @@ export default function DashboardSection({
 
         .prediction-row {
           display: grid;
-          grid-template-columns: 42px minmax(0, 1fr) auto;
+          grid-template-columns:
+            42px
+            minmax(0, 1fr)
+            auto;
           gap: 0.75rem;
           align-items: center;
           min-height: 58px;
           padding: 0.65rem 0.75rem;
-          background: rgba(245,241,237,0.025);
-          border-left: 2px solid ${COLORS.red};
-          transition: background 180ms ease;
+          background:
+            rgba(245, 241, 237, 0.025);
+          border-left: 2px solid
+            ${COLORS.red};
+          transition:
+            background 180ms ease,
+            transform 180ms ease;
         }
 
         .prediction-row:first-child {
-          background: rgba(230,80,27,0.06);
-          border-left-color: ${COLORS.orange};
+          background:
+            rgba(230, 80, 27, 0.06);
+          border-left-color:
+            ${COLORS.orange};
         }
 
         .prediction-row:hover {
-          background: rgba(230,80,27,0.09);
+          background:
+            rgba(230, 80, 27, 0.09);
+          transform: translateX(3px);
         }
 
         .prediction-rank {
-          font-family: "Russo One", sans-serif;
+          font-family:
+            "Russo One",
+            sans-serif;
           font-size: 0.85rem;
         }
 
@@ -935,8 +1302,14 @@ export default function DashboardSection({
         .prediction-driver strong {
           display: block;
           overflow: hidden;
-          font-family: "Russo One", sans-serif;
-          font-size: clamp(0.7rem, 1.5vw, 0.9rem);
+          font-family:
+            "Russo One",
+            sans-serif;
+          font-size: clamp(
+            0.7rem,
+            1.5vw,
+            0.9rem
+          );
           text-overflow: ellipsis;
           text-transform: uppercase;
           white-space: nowrap;
@@ -946,7 +1319,9 @@ export default function DashboardSection({
           display: block;
           overflow: hidden;
           margin-top: 3px;
-          font-family: "JetBrains Mono", monospace;
+          font-family:
+            "JetBrains Mono",
+            monospace;
           font-size: 0.4rem;
           letter-spacing: 0.08em;
           text-overflow: ellipsis;
@@ -961,14 +1336,18 @@ export default function DashboardSection({
 
         .prediction-probability strong {
           display: block;
-          font-family: "Russo One", sans-serif;
+          font-family:
+            "Russo One",
+            sans-serif;
           font-size: 0.95rem;
         }
 
         .prediction-probability span {
           display: block;
           margin-top: 2px;
-          font-family: "JetBrains Mono", monospace;
+          font-family:
+            "JetBrains Mono",
+            monospace;
           font-size: 0.35rem;
           letter-spacing: 0.08em;
           text-transform: uppercase;
@@ -976,26 +1355,60 @@ export default function DashboardSection({
         }
 
         .prediction-empty {
+          position: relative;
+          z-index: 1;
           display: flex;
           flex: 1;
           align-items: center;
           justify-content: center;
           min-height: 240px;
-          font-family: "JetBrains Mono", monospace;
+          padding: 2rem;
+          font-family:
+            "JetBrains Mono",
+            monospace;
           font-size: 0.5rem;
           letter-spacing: 0.12em;
+          text-align: center;
           text-transform: uppercase;
           color: ${COLORS.faint};
         }
 
+        .prediction-empty div {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .prediction-empty small {
+          font-size: 0.4rem;
+          letter-spacing: 0.08em;
+          color: rgba(
+            245,
+            241,
+            237,
+            0.25
+          );
+        }
+
+        /*
+         * ============================================================
+         * Footer links
+         * ============================================================
+         */
+
         .dashboard-link {
+          position: relative;
+          z-index: 3;
           display: flex;
           align-items: center;
           justify-content: space-between;
           min-height: 52px;
           padding: 0 1.5rem;
-          border-top: 1px solid rgba(245,241,237,0.06);
-          font-family: "JetBrains Mono", monospace;
+          border-top: 1px solid
+            rgba(245, 241, 237, 0.06);
+          font-family:
+            "JetBrains Mono",
+            monospace;
           font-size: 0.45rem;
           font-weight: 600;
           letter-spacing: 0.14em;
@@ -1009,13 +1422,69 @@ export default function DashboardSection({
 
         .dashboard-link:hover {
           color: ${COLORS.white};
-          background: rgba(195,17,12,0.08);
+          background:
+            rgba(195, 17, 12, 0.08);
         }
 
         .dashboard-arrow {
           font-size: 0.85rem;
           color: ${COLORS.orange};
+          transition:
+            transform 180ms ease;
         }
+
+        .dashboard-link:hover
+          .dashboard-arrow {
+          transform:
+            translate(3px, -3px);
+        }
+
+        /*
+         * ============================================================
+         * Desktop visual details
+         * ============================================================
+         */
+
+        @media (min-width: 901px) {
+          .dashboard-card:nth-child(2)::before {
+            background-size: 24px 24px;
+          }
+
+          .dashboard-card:nth-child(3)::before {
+            background-size: 24px 24px;
+          }
+
+          .race-content::after {
+            content: "";
+            position: absolute;
+            right: 2rem;
+            bottom: 2rem;
+            width: 110px;
+            height: 110px;
+            border: 1px solid
+              rgba(230, 80, 27, 0.08);
+            border-radius: 50%;
+            pointer-events: none;
+          }
+
+          .race-content::before {
+            content: "";
+            position: absolute;
+            right: 57px;
+            bottom: 2rem;
+            width: 1px;
+            height: 110px;
+            background:
+              rgba(230, 80, 27, 0.08);
+            pointer-events: none;
+          }
+        }
+
+        /*
+         * ============================================================
+         * Tablet
+         * ============================================================
+         */
 
         @media (max-width: 900px) {
           .dashboard-intro {
@@ -1035,11 +1504,24 @@ export default function DashboardSection({
           .dashboard-standings {
             grid-row: auto;
           }
+
+          .standings-chart {
+            height: 180px;
+          }
         }
+
+        /*
+         * ============================================================
+         * Mobile
+         * ============================================================
+         */
 
         @media (max-width: 640px) {
           .dashboard-shell {
-            width: min(100% - 28px, 1380px);
+            width: min(
+              100% - 28px,
+              1380px
+            );
             padding: 4.5rem 0;
           }
 
@@ -1048,11 +1530,19 @@ export default function DashboardSection({
           }
 
           .dashboard-intro h1 {
-            font-size: clamp(2.6rem, 15vw, 5rem);
+            font-size: clamp(
+              2.6rem,
+              15vw,
+              5rem
+            );
           }
 
           .dashboard-intro-copy {
             font-size: 0.9rem;
+          }
+
+          .dashboard-grid {
+            gap: 1px;
           }
 
           .dashboard-header {
@@ -1060,7 +1550,10 @@ export default function DashboardSection({
           }
 
           .standing-row {
-            grid-template-columns: 32px minmax(0, 1fr) auto;
+            grid-template-columns:
+              32px
+              minmax(0, 1fr)
+              auto;
             gap: 0.65rem;
             min-height: 66px;
             padding: 0.65rem 1rem;
@@ -1080,7 +1573,11 @@ export default function DashboardSection({
           }
 
           .race-content h3 {
-            font-size: clamp(1.6rem, 9vw, 2.4rem);
+            font-size: clamp(
+              1.6rem,
+              9vw,
+              2.4rem
+            );
           }
 
           .countdown-cell {
@@ -1096,26 +1593,55 @@ export default function DashboardSection({
           }
 
           .prediction-row {
-            grid-template-columns: 35px minmax(0, 1fr) auto;
+            grid-template-columns:
+              35px
+              minmax(0, 1fr)
+              auto;
             min-height: 54px;
           }
 
           .dashboard-link {
             padding: 0 1rem;
           }
+
+          .dashboard-section::after {
+            width: 300px;
+            height: 300px;
+          }
         }
+
+        /*
+         * ============================================================
+         * Reduced motion accessibility
+         * ============================================================
+         */
 
         @media (prefers-reduced-motion: reduce) {
           .standing-row,
           .prediction-row,
-          .dashboard-link {
+          .dashboard-link,
+          .dashboard-arrow {
             transition: none;
+          }
+
+          .dashboard-section::after {
+            display: none;
           }
         }
       `}</style>
 
       <div className="dashboard-shell">
-        <div className="dashboard-intro">
+        {/* Intro content */}
+        <motion.div
+          className="dashboard-intro"
+          variants={introVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{
+            once: true,
+            amount: 0.25,
+          }}
+        >
           <div>
             <div className="dashboard-intro-label">FJuanDASH / Live data</div>
 
@@ -1131,35 +1657,67 @@ export default function DashboardSection({
             Everything that matters before the lights go out, presented in one
             place.
           </p>
-        </div>
+        </motion.div>
 
+        {/* Main dashboard grid */}
         <div className="dashboard-grid">
-          {/*
-           * Standings are the primary dashboard panel.
-           *
-           * On desktop this panel spans both rows of the
-           * bento grid. On smaller screens it becomes a
-           * normal single-column card.
-           */}
-          <div className="dashboard-card dashboard-standings">
+          {/* Championship standings */}
+          <motion.div
+            className="dashboard-card dashboard-standings"
+            variants={cardVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{
+              once: true,
+              amount: 0.12,
+            }}
+          >
             {standings?.length ? (
               <StandingsPanel standings={standings} />
             ) : (
               <div className="prediction-empty">
-                <span>Standings unavailable</span>
+                <div>
+                  <span>Standings unavailable</span>
+
+                  <small>Championship data is currently unavailable.</small>
+                </div>
               </div>
             )}
-          </div>
+          </motion.div>
 
-          {/* Upcoming race information and countdown. */}
-          <div className="dashboard-card">
+          {/* Next race */}
+          <motion.div
+            className="dashboard-card"
+            variants={cardVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{
+              once: true,
+              amount: 0.12,
+            }}
+            transition={{
+              delay: 0.12,
+            }}
+          >
             <NextRacePanel nextRace={nextRace} />
-          </div>
+          </motion.div>
 
-          {/* Prediction-engine podium analysis. */}
-          <div className="dashboard-card">
+          {/* Prediction engine */}
+          <motion.div
+            className="dashboard-card"
+            variants={cardVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{
+              once: true,
+              amount: 0.12,
+            }}
+            transition={{
+              delay: 0.2,
+            }}
+          >
             <PredictionPanel prediction={prediction} nextRace={nextRace} />
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>
