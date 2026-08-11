@@ -1,9 +1,18 @@
+/**
+ * components/live/DriverSelector.tsx
+ *
+ * Grid of driver buttons, each accented with that driver's real team
+ * color (team_colour comes straight from the OpenF1 API) rather than the
+ * brand palette — needed so drivers stay recognizable at a glance, same
+ * reasoning as TEAM_COLORS in LastRaceSection.
+ */
 "use client";
 
 import { Driver, teamColor } from "./types";
+import { RED, RGB } from "@/lib/theme/palette";
 
 interface Props {
-  drivers:  Driver[];
+  drivers: Driver[];
   selected: number | null;
   onSelect: (n: number) => void;
 }
@@ -12,9 +21,9 @@ export default function DriverSelector({ drivers, selected, onSelect }: Props) {
   return (
     <div
       style={{
-        background: "#060606",
-        border: "1px solid rgba(255,255,255,0.07)",
-        borderTop: "3px solid #E10600",
+        background: `rgba(${RGB.paper},0.02)`,
+        border: `1px solid rgba(${RGB.paper},0.07)`,
+        borderTop: `3px solid ${RED}`,
         padding: "1.25rem",
       }}
     >
@@ -44,7 +53,7 @@ export default function DriverSelector({ drivers, selected, onSelect }: Props) {
           fontWeight: 600,
           letterSpacing: "0.14em",
           textTransform: "uppercase",
-          color: "rgba(255,255,255,0.15)",
+          color: `rgba(${RGB.paper},0.15)`,
         }}
       >
         {drivers.length} drivers — click to load telemetry
@@ -67,7 +76,7 @@ function DriverButton({
   color: string;
   onSelect: (n: number) => void;
 }) {
-  const sideBorder = `1px solid ${isSelected ? color : "rgba(255,255,255,0.07)"}`;
+  const sideBorder = `1px solid ${isSelected ? color : `rgba(${RGB.paper},0.07)`}`;
 
   return (
     <button
@@ -77,11 +86,11 @@ function DriverButton({
         flexDirection: "column",
         alignItems: "flex-start",
         padding: "0.75rem 0.85rem",
-        borderTop:    sideBorder,
-        borderRight:  sideBorder,
+        borderTop: sideBorder,
+        borderRight: sideBorder,
         borderBottom: sideBorder,
-        borderLeft:   `3px solid ${color}`,
-        background:   isSelected ? `${color}18` : "rgba(255,255,255,0.02)",
+        borderLeft: `3px solid ${color}`,
+        background: isSelected ? `${color}18` : `rgba(${RGB.paper},0.02)`,
         cursor: "pointer",
         textAlign: "left",
         position: "relative",
@@ -90,18 +99,18 @@ function DriverButton({
       onMouseEnter={(e) => {
         if (isSelected) return;
         const el = e.currentTarget;
-        el.style.background       = `${color}0d`;
-        el.style.borderTopColor    = `${color}55`;
-        el.style.borderRightColor  = `${color}55`;
+        el.style.background = `${color}0d`;
+        el.style.borderTopColor = `${color}55`;
+        el.style.borderRightColor = `${color}55`;
         el.style.borderBottomColor = `${color}55`;
       }}
       onMouseLeave={(e) => {
         if (isSelected) return;
         const el = e.currentTarget;
-        el.style.background       = "rgba(255,255,255,0.02)";
-        el.style.borderTopColor    = "rgba(255,255,255,0.07)";
-        el.style.borderRightColor  = "rgba(255,255,255,0.07)";
-        el.style.borderBottomColor = "rgba(255,255,255,0.07)";
+        el.style.background = `rgba(${RGB.paper},0.02)`;
+        el.style.borderTopColor = `rgba(${RGB.paper},0.07)`;
+        el.style.borderRightColor = `rgba(${RGB.paper},0.07)`;
+        el.style.borderBottomColor = `rgba(${RGB.paper},0.07)`;
       }}
     >
       <div
@@ -109,7 +118,7 @@ function DriverButton({
           fontFamily: "'Russo One', sans-serif",
           fontSize: "0.95rem",
           textTransform: "uppercase",
-          color: isSelected ? color : "rgba(255,255,255,0.85)",
+          color: isSelected ? color : `rgba(${RGB.paper},0.85)`,
           letterSpacing: "0.02em",
           lineHeight: 1,
           marginBottom: "4px",
@@ -124,7 +133,7 @@ function DriverButton({
           fontWeight: 600,
           letterSpacing: "0.1em",
           textTransform: "uppercase",
-          color: isSelected ? `${color}99` : "rgba(255,255,255,0.2)",
+          color: isSelected ? `${color}99` : `rgba(${RGB.paper},0.2)`,
           lineHeight: 1.3,
           marginBottom: "2px",
         }}
@@ -137,7 +146,7 @@ function DriverButton({
           fontSize: "0.48rem",
           fontWeight: 700,
           letterSpacing: "0.12em",
-          color: "rgba(255,255,255,0.15)",
+          color: `rgba(${RGB.paper},0.15)`,
         }}
       >
         #{d.driver_number}
