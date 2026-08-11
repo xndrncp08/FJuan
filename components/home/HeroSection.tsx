@@ -1,34 +1,26 @@
 /**
- * components/home/HeroSection.tsx — "Pit Wall" redesign, animated pass
+ * components/home/HeroSection.tsx
  *
  * Full-screen cinematic header (100dvh) with an orchestrated boot-sequence
- * entrance: badge → wordmark (letter reveal) → subtitle → stats → CTAs → ticker.
+ * entrance: badge -> wordmark (letter reveal) -> subtitle -> stats -> CTAs -> ticker.
  *
- * Palette (exact):
- *   ink    #280905  — base
- *   maroon #740A03  — recessed panels / ticker bg
- *   red    #C3110C  — primary signal
- *   ember  #E6501B  — secondary signal
+ * Colors come from lib/theme/palette.ts, shared with LastRaceSection and
+ * NewsSection so the whole page reads as one continuous surface. This
+ * section's background is solid INK, which is also where the shared
+ * SECTION_BACKGROUND gradient (used below the hero) starts — that's what
+ * makes the transition into the next section seamless, so there's no
+ * border or divider line here.
  *
- * New in this pass:
- *  - Framer Motion boot sequence (staggered reveal)
- *  - Ignition pulse ring behind the wordmark
- *  - Count-up stat chips (20 / 24 / 76)
- *  - Ember flicker on the "U"
- *  - Mouse-parallax on circuit SVG + waveform
- *  - CTA hover/tap micro-interactions
+ * Visual layers, back to front: noise grain, circuit-outline SVG (parallax),
+ * fine grid, mouse-tracked glow, heat bloom, scanline sweep, telemetry
+ * waveform (parallax), content, LIVE ticker.
  */
 "use client";
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { motion, animate } from "framer-motion";
-
-const INK = "#280905";
-const MAROON = "#740A03";
-const RED = "#C3110C";
-const EMBER = "#E6501B";
-const PAPER = "#F5E9E4";
+import { INK, RED, EMBER, PAPER, RGB } from "../../lib/theme/palette";
 
 const TICKER = [
   "2026 SEASON LIVE",
@@ -43,6 +35,7 @@ const TICKER = [
 
 const WORDMARK = ["F", "J", "U", "A", "N"];
 
+/** Generates an SVG path string for a wandering telemetry-style line. */
 function buildWave(
   pts: number,
   w: number,
@@ -78,8 +71,11 @@ function useCountUp(target: number, delay = 0, duration = 1.1) {
   return value;
 }
 
-// ── Motion variants for the boot sequence ─────────────────────────
-const stageDelay = 0.22; // gap between each stage
+// Motion variants for the boot sequence. Each stage is offset by
+// `stageDelay` from the previous one so the page reveals itself in order:
+// badge, then wordmark, then subtitle, then stats, then CTAs, then ticker.
+const stageDelay = 0.22;
+
 const badgeVariant = {
   hidden: { opacity: 0, y: -10 },
   show: {
@@ -147,11 +143,13 @@ export default function HeroSection() {
   useEffect(() => {
     setMounted(true);
 
-    const gi = setInterval(() => {
+    // Brief skew/double-exposure glitch burst, repeating every 7s.
+    const glitchInterval = setInterval(() => {
       setGlitch(true);
       setTimeout(() => setGlitch(false), 110);
     }, 7000);
 
+    // Drives the telemetry waveform's motion.
     const animateWave = () => {
       setPhase((p) => p + 0.018);
       rafRef.current = requestAnimationFrame(animateWave);
@@ -159,11 +157,13 @@ export default function HeroSection() {
     rafRef.current = requestAnimationFrame(animateWave);
 
     return () => {
-      clearInterval(gi);
+      clearInterval(glitchInterval);
       cancelAnimationFrame(rafRef.current);
     };
   }, []);
 
+  // Tracks cursor position within the section, normalized 0-1, for the
+  // mouse-glow and parallax effects below.
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
@@ -187,7 +187,7 @@ export default function HeroSection() {
   const rounds = useCountUp(24, 4.15 * stageDelay);
   const seasons = useCountUp(76, 4.3 * stageDelay);
 
-  // Parallax offsets — subtle, opposite to mouse for a "depth" feel
+  // Background layers drift opposite the cursor for a subtle depth effect.
   const parX = (mouse.x - 0.5) * -16;
   const parY = (mouse.y - 0.5) * -10;
 
@@ -202,10 +202,9 @@ export default function HeroSection() {
         display: "flex",
         flexDirection: "column",
         background: INK,
-        borderBottom: `1px solid rgba(230,80,27,0.12)`,
       }}
     >
-      {/* ── 1. Noise grain ──────────────────────────────────────── */}
+      {/* Noise grain, for texture on the flat background. */}
       <div
         style={{
           position: "absolute",
@@ -219,7 +218,9 @@ export default function HeroSection() {
         }}
       />
 
-      {/* ── 2. Abstract circuit SVG backdrop (parallax) ─────────── */}
+      {/* Abstract circuit outline with sector markers, DRS zones, and a
+          speed-trap flag. Purely decorative, low opacity. Drifts slightly
+          with the cursor for depth. */}
       <div
         style={{
           position: "absolute",
@@ -261,7 +262,7 @@ export default function HeroSection() {
           <text
             x="40"
             y="258"
-            fill="rgba(245,233,228,0.5)"
+            fill={`rgba(${RGB.paper},0.5)`}
             fontSize="8"
             fontFamily="monospace"
             letterSpacing="0.5"
@@ -273,7 +274,7 @@ export default function HeroSection() {
           <text
             x="424"
             y="206"
-            fill="rgba(245,233,228,0.3)"
+            fill={`rgba(${RGB.paper},0.3)`}
             fontSize="7"
             fontFamily="monospace"
           >
@@ -282,7 +283,7 @@ export default function HeroSection() {
           <text
             x="685"
             y="72"
-            fill="rgba(245,233,228,0.3)"
+            fill={`rgba(${RGB.paper},0.3)`}
             fontSize="7"
             fontFamily="monospace"
           >
@@ -342,38 +343,40 @@ export default function HeroSection() {
         </svg>
       </div>
 
-      {/* ── 3. Fine grid ────────────────────────────────────────── */}
+      {/* Fine grid, barely visible, gives the flat background structure. */}
       <div
         style={{
           position: "absolute",
           inset: 0,
           zIndex: 1,
           pointerEvents: "none",
-          backgroundImage: `linear-gradient(rgba(245,233,228,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(245,233,228,0.02) 1px, transparent 1px)`,
+          backgroundImage: `linear-gradient(rgba(${RGB.paper},0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(${RGB.paper},0.02) 1px, transparent 1px)`,
           backgroundSize: "40px 40px",
         }}
       />
 
-      {/* ── 4. Mouse glow (ember, warm) ─────────────────────────── */}
+      {/* Warm glow that follows the cursor. */}
       <div
         style={{
           position: "absolute",
           inset: 0,
           zIndex: 2,
           pointerEvents: "none",
-          background: `radial-gradient(760px circle at ${mouse.x * 100}% ${mouse.y * 100}%, rgba(230,80,27,0.10) 0%, transparent 55%)`,
+          background: `radial-gradient(760px circle at ${mouse.x * 100}% ${mouse.y * 100}%, rgba(${RGB.ember},0.10) 0%, transparent 55%)`,
           transition: "background 0.1s linear",
         }}
       />
 
-      {/* ── 5. Heat bloom rising from the bottom ────────────────── */}
+      {/* Heat bloom rising from the bottom, like a brake disc glowing —
+          this is also what visually hands off into the next section, since
+          it fades toward the same INK the section below opens on. */}
       <div
         style={{
           position: "absolute",
           inset: 0,
           zIndex: 1,
           pointerEvents: "none",
-          background: `radial-gradient(ellipse 90% 65% at 50% 118%, rgba(230,80,27,0.30) 0%, rgba(195,17,12,0.16) 32%, transparent 65%)`,
+          background: `radial-gradient(ellipse 90% 65% at 50% 118%, rgba(${RGB.ember},0.30) 0%, rgba(${RGB.red},0.16) 32%, transparent 65%)`,
         }}
       />
       <div
@@ -382,11 +385,11 @@ export default function HeroSection() {
           inset: 0,
           zIndex: 1,
           pointerEvents: "none",
-          background: `radial-gradient(ellipse 80% 60% at 50% -15%, rgba(195,17,12,0.14) 0%, transparent 60%)`,
+          background: `radial-gradient(ellipse 80% 60% at 50% -15%, rgba(${RGB.red},0.14) 0%, transparent 60%)`,
         }}
       />
 
-      {/* ── 6. Scan line ────────────────────────────────────────── */}
+      {/* Slow horizontal scanline sweep. */}
       <div
         style={{
           position: "absolute",
@@ -402,13 +405,14 @@ export default function HeroSection() {
             left: 0,
             right: 0,
             height: "80px",
-            background: `linear-gradient(180deg, transparent 0%, rgba(195,17,12,0.03) 45%, rgba(195,17,12,0.06) 50%, rgba(195,17,12,0.03) 55%, transparent 100%)`,
+            background: `linear-gradient(180deg, transparent 0%, rgba(${RGB.red},0.03) 45%, rgba(${RGB.red},0.06) 50%, rgba(${RGB.red},0.03) 55%, transparent 100%)`,
             animation: "heroScan 12s linear infinite",
           }}
         />
       </div>
 
-      {/* ── 7. Animated telemetry waveforms (parallax) ──────────── */}
+      {/* Two animated telemetry traces (speed, throttle), also drifting
+          with the cursor. */}
       {mounted && (
         <div
           style={{
@@ -458,7 +462,7 @@ export default function HeroSection() {
         </div>
       )}
 
-      {/* ── Main content — centered, full-bleed wordmark ────────── */}
+      {/* Main content: centered column, full-bleed wordmark. */}
       <div
         style={{
           position: "relative",
@@ -490,7 +494,7 @@ export default function HeroSection() {
               fontSize: "0.6rem",
               letterSpacing: "0.3em",
               textTransform: "uppercase",
-              color: "rgba(245,233,228,0.45)",
+              color: `rgba(${RGB.paper},0.45)`,
             }}
           >
             2026 · Formula 1 Analytics
@@ -498,9 +502,9 @@ export default function HeroSection() {
           <div style={{ width: "2px", height: "18px", background: RED }} />
         </motion.div>
 
-        {/* Wordmark — spans the viewport width, letter-by-letter reveal */}
         <div style={{ position: "relative", width: "100%" }}>
-          {/* Ignition pulse ring, fires once behind the wordmark */}
+          {/* Ignition pulse — a single ring that expands and fades behind
+              the wordmark as it appears, like the display powering on. */}
           <motion.div
             aria-hidden
             initial={{ scale: 0, opacity: 0.85 }}
@@ -517,7 +521,7 @@ export default function HeroSection() {
               width: "10px",
               height: "10px",
               borderRadius: "9999px",
-              background: `radial-gradient(circle, rgba(230,80,27,0.9) 0%, rgba(195,17,12,0.45) 45%, transparent 72%)`,
+              background: `radial-gradient(circle, rgba(${RGB.ember},0.9) 0%, rgba(${RGB.red},0.45) 45%, transparent 72%)`,
               translateX: "-50%",
               translateY: "-50%",
               zIndex: 0,
@@ -542,9 +546,12 @@ export default function HeroSection() {
               width: "100%",
               transform: glitch ? "skewX(-2deg) translateX(3px)" : "none",
               transition: glitch ? "none" : "transform 0.08s ease",
-              textShadow: `0 0 90px rgba(230,80,27,0.35)`,
+              textShadow: `0 0 90px rgba(${RGB.ember},0.35)`,
             }}
           >
+            {/* Each letter animates in on its own delay (staggerChildren
+                on the parent). The "U" additionally gets a slow, looping
+                ember glow once it's settled. */}
             {WORDMARK.map((char, i) =>
               char === "U" ? (
                 <motion.span
@@ -555,9 +562,9 @@ export default function HeroSection() {
                     mounted
                       ? {
                           textShadow: [
-                            "0 0 18px rgba(230,80,27,0.35)",
-                            "0 0 34px rgba(230,80,27,0.7)",
-                            "0 0 18px rgba(230,80,27,0.35)",
+                            `0 0 18px rgba(${RGB.ember},0.35)`,
+                            `0 0 34px rgba(${RGB.ember},0.7)`,
+                            `0 0 18px rgba(${RGB.ember},0.35)`,
                           ],
                         }
                       : {}
@@ -585,6 +592,8 @@ export default function HeroSection() {
             )}
           </motion.h1>
 
+          {/* Glitch double-exposure: a red duplicate, clipped to a thin
+              horizontal band, shown only during the brief glitch state. */}
           {glitch && (
             <h1
               aria-hidden
@@ -626,7 +635,7 @@ export default function HeroSection() {
             style={{
               height: "1px",
               width: "28px",
-              background: `rgba(195,17,12,0.5)`,
+              background: `rgba(${RGB.red},0.5)`,
             }}
           />
           <span
@@ -635,7 +644,7 @@ export default function HeroSection() {
               fontSize: "0.55rem",
               letterSpacing: "0.22em",
               textTransform: "uppercase",
-              color: "rgba(245,233,228,0.35)",
+              color: `rgba(${RGB.paper},0.35)`,
             }}
           >
             Race Data · Telemetry · Prediction
@@ -644,12 +653,11 @@ export default function HeroSection() {
             style={{
               height: "1px",
               width: "28px",
-              background: `rgba(195,17,12,0.5)`,
+              background: `rgba(${RGB.red},0.5)`,
             }}
           />
         </motion.div>
 
-        {/* Data chips + CTAs */}
         <div
           style={{
             display: "flex",
@@ -666,8 +674,8 @@ export default function HeroSection() {
             style={{
               display: "flex",
               gap: "1px",
-              border: `1px solid rgba(245,233,228,0.08)`,
-              background: "rgba(245,233,228,0.02)",
+              border: `1px solid rgba(${RGB.paper},0.08)`,
+              background: `rgba(${RGB.paper},0.02)`,
             }}
           >
             {[
@@ -679,7 +687,7 @@ export default function HeroSection() {
                 key={i}
                 style={{
                   padding: "0.6rem 1.1rem",
-                  background: "rgba(20,6,4,0.6)",
+                  background: `rgba(${RGB.ink},0.6)`,
                   borderTop:
                     i === 0 ? `2px solid ${RED}` : "2px solid transparent",
                   textAlign: "center",
@@ -702,7 +710,7 @@ export default function HeroSection() {
                     fontSize: "0.42rem",
                     letterSpacing: "0.1em",
                     textTransform: "uppercase",
-                    color: "rgba(245,233,228,0.3)",
+                    color: `rgba(${RGB.paper},0.3)`,
                     marginTop: "3px",
                   }}
                 >
@@ -734,22 +742,22 @@ export default function HeroSection() {
                   whileHover={{
                     scale: 1.045,
                     boxShadow: primary
-                      ? `0 0 22px rgba(195,17,12,0.55)`
-                      : `0 0 16px rgba(230,80,27,0.3)`,
+                      ? `0 0 22px rgba(${RGB.red},0.55)`
+                      : `0 0 16px rgba(${RGB.ember},0.3)`,
                   }}
                   whileTap={{ scale: 0.96 }}
                   transition={{ duration: 0.18 }}
                   style={{
                     padding: "0.6rem 1.3rem",
                     background: primary ? RED : "transparent",
-                    border: `1px solid ${primary ? RED : "rgba(245,233,228,0.14)"}`,
+                    border: `1px solid ${primary ? RED : `rgba(${RGB.paper},0.14)`}`,
                     cursor: "pointer",
                     fontFamily: "'Rajdhani', sans-serif",
                     fontWeight: 700,
                     fontSize: "0.72rem",
                     letterSpacing: "0.1em",
                     textTransform: "uppercase",
-                    color: primary ? PAPER : "rgba(245,233,228,0.5)",
+                    color: primary ? PAPER : `rgba(${RGB.paper},0.5)`,
                     display: "flex",
                     alignItems: "center",
                     gap: "0.35rem",
@@ -761,7 +769,7 @@ export default function HeroSection() {
                   onMouseLeave={(e) => {
                     if (!primary)
                       (e.currentTarget as HTMLElement).style.color =
-                        "rgba(245,233,228,0.5)";
+                        `rgba(${RGB.paper},0.5)`;
                   }}
                 >
                   {label}
@@ -783,7 +791,7 @@ export default function HeroSection() {
         </div>
       </div>
 
-      {/* ── LIVE ticker — pinned to the bottom edge of the viewport ── */}
+      {/* LIVE ticker, pinned to the bottom edge of the viewport. */}
       <motion.div
         initial="hidden"
         animate={mounted ? "show" : "hidden"}
@@ -791,8 +799,7 @@ export default function HeroSection() {
         style={{
           position: "relative",
           zIndex: 10,
-          borderTop: `1px solid rgba(230,80,27,0.14)`,
-          background: `rgba(116,10,3,0.5)`,
+          background: `rgba(${RGB.maroon},0.5)`,
           backdropFilter: "blur(2px)",
           overflow: "hidden",
           height: "28px",
@@ -854,7 +861,7 @@ export default function HeroSection() {
                   fontSize: "0.52rem",
                   letterSpacing: "0.14em",
                   padding: "0 2.5rem",
-                  color: "rgba(245,233,228,0.4)",
+                  color: `rgba(${RGB.paper},0.4)`,
                 }}
               >
                 {item}
@@ -866,18 +873,9 @@ export default function HeroSection() {
       </motion.div>
 
       <style>{`
-        @keyframes heroScan {
-          from { top: -80px; }
-          to   { top: 100%; }
-        }
-        @keyframes liveDot {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50%      { opacity: 0.3; transform: scale(0.6); }
-        }
-        @keyframes tickerScroll {
-          from { transform: translateX(0); }
-          to   { transform: translateX(-50%); }
-        }
+        @keyframes heroScan { from { top: -80px; } to { top: 100%; } }
+        @keyframes liveDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.3; transform: scale(0.6); } }
+        @keyframes tickerScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
         @media (prefers-reduced-motion: reduce) {
           * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
         }

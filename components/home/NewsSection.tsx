@@ -1,23 +1,29 @@
+/**
+ * components/home/NewsSection.tsx
+ *
+ * Editorial news grid: one featured story plus four secondary links.
+ * Sits below LastRaceSection and shares the same SECTION_BACKGROUND
+ * gradient (lib/theme/palette.ts), so the two sections read as one
+ * continuous surface with no visible seam or divider between them.
+ */
 "use client";
 
 import { motion } from "framer-motion";
+import { RED, PAPER, RGB, SECTION_BACKGROUND } from "../../lib/theme/palette";
 
+/** Formats an ISO date as "Today", "Yesterday", "Nd ago", or "Mon D". */
 function getRelativeTime(dateString: string): string {
   if (!dateString) return "";
 
   const date = new Date(dateString);
   const now = new Date();
-
   const diffDays = Math.floor((now.getTime() - date.getTime()) / 86_400_000);
 
   if (diffDays === 0) return "Today";
   if (diffDays === 1) return "Yesterday";
   if (diffDays < 7) return `${diffDays}d ago`;
 
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 const NewsSection = ({ news }: { news: any[] }) => {
@@ -32,11 +38,11 @@ const NewsSection = ({ news }: { news: any[] }) => {
         position: "relative",
         overflow: "hidden",
         padding: "clamp(5rem, 10vw, 9rem) 0",
-        background:
-          "linear-gradient(180deg, #101113 0%, #151619 52%, #111214 100%)",
+        background: SECTION_BACKGROUND,
       }}
     >
-      {/* Red atmosphere shared with the sections above */}
+      {/* Ambient glow, continuing the warm-red atmosphere from the section
+          above. */}
       <div
         style={{
           position: "absolute",
@@ -44,21 +50,18 @@ const NewsSection = ({ news }: { news: any[] }) => {
           right: "-10%",
           width: "55%",
           height: "70%",
-          background:
-            "radial-gradient(circle, rgba(225,6,0,0.1) 0%, rgba(225,6,0,0.025) 40%, transparent 72%)",
+          background: `radial-gradient(circle, rgba(${RGB.red},0.1) 0%, rgba(${RGB.red},0.025) 40%, transparent 72%)`,
           pointerEvents: "none",
         }}
       />
 
-      {/* Subtle grid fades toward the edges */}
       <div
         style={{
           position: "absolute",
           inset: 0,
           opacity: 0.25,
           pointerEvents: "none",
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)",
+          backgroundImage: `linear-gradient(rgba(${RGB.paper},0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(${RGB.paper},0.025) 1px, transparent 1px)`,
           backgroundSize: "80px 80px",
           maskImage:
             "linear-gradient(to bottom, transparent, black 25%, black 75%, transparent)",
@@ -67,7 +70,7 @@ const NewsSection = ({ news }: { news: any[] }) => {
         }}
       />
 
-      {/* Ghost typography */}
+      {/* Oversized outlined "NEWS" watermark, purely decorative. */}
       <div
         aria-hidden="true"
         style={{
@@ -78,7 +81,7 @@ const NewsSection = ({ news }: { news: any[] }) => {
           fontSize: "clamp(8rem, 22vw, 22rem)",
           lineHeight: 0.7,
           color: "transparent",
-          WebkitTextStroke: "1px rgba(255,255,255,0.025)",
+          WebkitTextStroke: `1px rgba(${RGB.paper},0.025)`,
           letterSpacing: "-0.08em",
           pointerEvents: "none",
           userSelect: "none",
@@ -96,7 +99,7 @@ const NewsSection = ({ news }: { news: any[] }) => {
           zIndex: 1,
         }}
       >
-        {/* Header */}
+        {/* Header: eyebrow, title, description, "More News" link. */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -124,18 +127,17 @@ const NewsSection = ({ news }: { news: any[] }) => {
                   width: "7px",
                   height: "7px",
                   borderRadius: "50%",
-                  background: "#E10600",
-                  boxShadow: "0 0 14px rgba(225,6,0,0.65)",
+                  background: RED,
+                  boxShadow: `0 0 14px rgba(${RGB.red},0.65)`,
                 }}
               />
-
               <span
                 style={{
                   fontFamily: "'JetBrains Mono', monospace",
                   fontSize: "0.46rem",
                   letterSpacing: "0.24em",
                   textTransform: "uppercase",
-                  color: "#E10600",
+                  color: RED,
                 }}
               >
                 Intelligence Feed
@@ -149,7 +151,7 @@ const NewsSection = ({ news }: { news: any[] }) => {
                 lineHeight: 0.86,
                 letterSpacing: "-0.05em",
                 textTransform: "uppercase",
-                color: "white",
+                color: PAPER,
                 margin: 0,
               }}
             >
@@ -163,7 +165,7 @@ const NewsSection = ({ news }: { news: any[] }) => {
                 fontFamily: "'Rajdhani', sans-serif",
                 fontSize: "0.9rem",
                 lineHeight: 1.6,
-                color: "rgba(255,255,255,0.38)",
+                color: `rgba(${RGB.paper},0.38)`,
               }}
             >
               The latest stories, paddock updates, and developments from around
@@ -180,9 +182,9 @@ const NewsSection = ({ news }: { news: any[] }) => {
               alignItems: "center",
               gap: "9px",
               padding: "0.7rem 1rem",
-              background: "rgba(255,255,255,0.045)",
-              border: "1px solid rgba(255,255,255,0.09)",
-              color: "rgba(255,255,255,0.5)",
+              background: `rgba(${RGB.paper},0.045)`,
+              border: `1px solid rgba(${RGB.paper},0.09)`,
+              color: `rgba(${RGB.paper},0.5)`,
               textDecoration: "none",
               fontFamily: "'Rajdhani', sans-serif",
               fontWeight: 700,
@@ -194,15 +196,15 @@ const NewsSection = ({ news }: { news: any[] }) => {
             }}
             onMouseEnter={(e) => {
               const el = e.currentTarget;
-              el.style.background = "rgba(225,6,0,0.1)";
-              el.style.borderColor = "rgba(225,6,0,0.4)";
-              el.style.color = "white";
+              el.style.background = `rgba(${RGB.red},0.1)`;
+              el.style.borderColor = `rgba(${RGB.red},0.4)`;
+              el.style.color = PAPER;
             }}
             onMouseLeave={(e) => {
               const el = e.currentTarget;
-              el.style.background = "rgba(255,255,255,0.045)";
-              el.style.borderColor = "rgba(255,255,255,0.09)";
-              el.style.color = "rgba(255,255,255,0.5)";
+              el.style.background = `rgba(${RGB.paper},0.045)`;
+              el.style.borderColor = `rgba(${RGB.paper},0.09)`;
+              el.style.color = `rgba(${RGB.paper},0.5)`;
             }}
           >
             More News
@@ -218,7 +220,7 @@ const NewsSection = ({ news }: { news: any[] }) => {
           </a>
         </motion.div>
 
-        {/* Main editorial layout */}
+        {/* Featured story (left) + four secondary links (right). */}
         <div
           style={{
             display: "grid",
@@ -227,7 +229,6 @@ const NewsSection = ({ news }: { news: any[] }) => {
           }}
           className="news-layout"
         >
-          {/* Featured story */}
           {featured && (
             <motion.a
               href={featured.link}
@@ -246,14 +247,12 @@ const NewsSection = ({ news }: { news: any[] }) => {
                 flexDirection: "column",
                 justifyContent: "space-between",
                 overflow: "hidden",
-                background:
-                  "linear-gradient(145deg, rgba(255,255,255,0.075), rgba(255,255,255,0.025) 60%, rgba(225,6,0,0.045))",
-                border: "1px solid rgba(255,255,255,0.09)",
+                background: `linear-gradient(145deg, rgba(${RGB.paper},0.075), rgba(${RGB.paper},0.025) 60%, rgba(${RGB.red},0.045))`,
+                border: `1px solid rgba(${RGB.paper},0.09)`,
                 textDecoration: "none",
-                boxShadow: "0 30px 90px rgba(0,0,0,0.22)",
+                boxShadow: `0 30px 90px rgba(${RGB.ink},0.4)`,
               }}
             >
-              {/* Featured story red glow */}
               <div
                 style={{
                   position: "absolute",
@@ -261,13 +260,10 @@ const NewsSection = ({ news }: { news: any[] }) => {
                   top: "-25%",
                   width: "75%",
                   height: "75%",
-                  background:
-                    "radial-gradient(circle, rgba(225,6,0,0.16), transparent 68%)",
+                  background: `radial-gradient(circle, rgba(${RGB.red},0.16), transparent 68%)`,
                   pointerEvents: "none",
                 }}
               />
-
-              {/* Featured story technical lines */}
               <div
                 style={{
                   position: "absolute",
@@ -275,15 +271,13 @@ const NewsSection = ({ news }: { news: any[] }) => {
                   top: "30%",
                   width: "55%",
                   height: "1px",
-                  background:
-                    "linear-gradient(90deg, transparent, rgba(225,6,0,0.3), transparent)",
+                  background: `linear-gradient(90deg, transparent, rgba(${RGB.red},0.3), transparent)`,
                   transform: "rotate(-22deg)",
                   pointerEvents: "none",
                 }}
               />
 
               <div style={{ position: "relative", zIndex: 1 }}>
-                {/* Source */}
                 <div
                   style={{
                     display: "flex",
@@ -297,36 +291,33 @@ const NewsSection = ({ news }: { news: any[] }) => {
                       width: "6px",
                       height: "6px",
                       borderRadius: "50%",
-                      background: "#E10600",
-                      boxShadow: "0 0 12px rgba(225,6,0,0.7)",
+                      background: RED,
+                      boxShadow: `0 0 12px rgba(${RGB.red},0.7)`,
                     }}
                   />
-
                   <span
                     style={{
                       fontFamily: "'JetBrains Mono', monospace",
                       fontSize: "0.44rem",
                       letterSpacing: "0.18em",
                       textTransform: "uppercase",
-                      color: "#E10600",
+                      color: RED,
                     }}
                   >
                     {featured.source}
                   </span>
-
                   <span
                     style={{
                       marginLeft: "auto",
                       fontFamily: "'JetBrains Mono', monospace",
                       fontSize: "0.42rem",
-                      color: "rgba(255,255,255,0.28)",
+                      color: `rgba(${RGB.paper},0.28)`,
                     }}
                   >
                     {getRelativeTime(featured.pubDate || featured.date || "")}
                   </span>
                 </div>
 
-                {/* Featured title */}
                 <h3
                   style={{
                     fontFamily: "'Russo One', sans-serif",
@@ -334,7 +325,7 @@ const NewsSection = ({ news }: { news: any[] }) => {
                     lineHeight: 0.96,
                     letterSpacing: "-0.035em",
                     textTransform: "uppercase",
-                    color: "white",
+                    color: PAPER,
                     margin: 0,
                     maxWidth: "720px",
                   }}
@@ -344,14 +335,13 @@ const NewsSection = ({ news }: { news: any[] }) => {
               </div>
 
               <div style={{ position: "relative", zIndex: 1 }}>
-                {/* Featured excerpt */}
                 <p
                   style={{
                     maxWidth: "620px",
                     fontFamily: "'Rajdhani', sans-serif",
                     fontSize: "0.95rem",
                     lineHeight: 1.65,
-                    color: "rgba(255,255,255,0.42)",
+                    color: `rgba(${RGB.paper},0.42)`,
                     margin: "2rem 0",
                     display: "-webkit-box",
                     WebkitLineClamp: 3,
@@ -362,7 +352,6 @@ const NewsSection = ({ news }: { news: any[] }) => {
                   {featured.description}
                 </p>
 
-                {/* Read action */}
                 <div
                   style={{
                     display: "inline-flex",
@@ -373,7 +362,7 @@ const NewsSection = ({ news }: { news: any[] }) => {
                     fontSize: "0.68rem",
                     letterSpacing: "0.16em",
                     textTransform: "uppercase",
-                    color: "rgba(255,255,255,0.65)",
+                    color: `rgba(${RGB.paper},0.65)`,
                   }}
                 >
                   Read Article
@@ -384,8 +373,8 @@ const NewsSection = ({ news }: { news: any[] }) => {
                       justifyContent: "center",
                       width: "25px",
                       height: "25px",
-                      background: "#E10600",
-                      color: "white",
+                      background: RED,
+                      color: PAPER,
                     }}
                   >
                     →
@@ -395,13 +384,8 @@ const NewsSection = ({ news }: { news: any[] }) => {
             </motion.a>
           )}
 
-          {/* Secondary stories */}
           <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "1rem",
-            }}
+            style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
           >
             {secondary.map((article, index) => (
               <motion.a
@@ -412,10 +396,7 @@ const NewsSection = ({ news }: { news: any[] }) => {
                 initial={{ opacity: 0, x: 25 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, amount: 0.15 }}
-                transition={{
-                  duration: 0.55,
-                  delay: index * 0.08,
-                }}
+                transition={{ duration: 0.55, delay: index * 0.08 }}
                 whileHover={{ x: 5 }}
                 style={{
                   position: "relative",
@@ -425,30 +406,26 @@ const NewsSection = ({ news }: { news: any[] }) => {
                   display: "flex",
                   gap: "1rem",
                   overflow: "hidden",
-                  background:
-                    "linear-gradient(120deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018))",
-                  border: "1px solid rgba(255,255,255,0.075)",
+                  background: `linear-gradient(120deg, rgba(${RGB.paper},0.055), rgba(${RGB.paper},0.018))`,
+                  border: `1px solid rgba(${RGB.paper},0.075)`,
                   textDecoration: "none",
                   transition: "background 0.2s ease",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background =
-                    "linear-gradient(120deg, rgba(225,6,0,0.08), rgba(255,255,255,0.025))";
-                  e.currentTarget.style.borderColor = "rgba(225,6,0,0.25)";
+                  e.currentTarget.style.background = `linear-gradient(120deg, rgba(${RGB.red},0.08), rgba(${RGB.paper},0.025))`;
+                  e.currentTarget.style.borderColor = `rgba(${RGB.red},0.25)`;
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background =
-                    "linear-gradient(120deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018))";
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.075)";
+                  e.currentTarget.style.background = `linear-gradient(120deg, rgba(${RGB.paper},0.055), rgba(${RGB.paper},0.018))`;
+                  e.currentTarget.style.borderColor = `rgba(${RGB.paper},0.075)`;
                 }}
               >
-                {/* Article number */}
                 <span
                   style={{
                     fontFamily: "'Russo One', sans-serif",
                     fontSize: "1.5rem",
                     lineHeight: 1,
-                    color: "rgba(255,255,255,0.12)",
+                    color: `rgba(${RGB.paper},0.12)`,
                     letterSpacing: "-0.04em",
                   }}
                 >
@@ -464,7 +441,6 @@ const NewsSection = ({ news }: { news: any[] }) => {
                     flex: 1,
                   }}
                 >
-                  {/* Article metadata */}
                   <div
                     style={{
                       display: "flex",
@@ -479,25 +455,23 @@ const NewsSection = ({ news }: { news: any[] }) => {
                         fontSize: "0.4rem",
                         letterSpacing: "0.14em",
                         textTransform: "uppercase",
-                        color: "#E10600",
+                        color: RED,
                       }}
                     >
                       {article.source}
                     </span>
-
                     <span
                       style={{
                         marginLeft: "auto",
                         fontFamily: "'JetBrains Mono', monospace",
                         fontSize: "0.4rem",
-                        color: "rgba(255,255,255,0.24)",
+                        color: `rgba(${RGB.paper},0.24)`,
                       }}
                     >
                       {getRelativeTime(article.pubDate || article.date || "")}
                     </span>
                   </div>
 
-                  {/* Article title */}
                   <h4
                     style={{
                       fontFamily: "'Barlow Condensed', sans-serif",
@@ -505,7 +479,7 @@ const NewsSection = ({ news }: { news: any[] }) => {
                       fontSize: "1.05rem",
                       lineHeight: 1.12,
                       textTransform: "uppercase",
-                      color: "rgba(255,255,255,0.76)",
+                      color: `rgba(${RGB.paper},0.76)`,
                       margin: 0,
                       display: "-webkit-box",
                       WebkitLineClamp: 2,
@@ -517,7 +491,6 @@ const NewsSection = ({ news }: { news: any[] }) => {
                   </h4>
                 </div>
 
-                {/* Hover arrow */}
                 <span
                   style={{
                     position: "absolute",
@@ -525,7 +498,7 @@ const NewsSection = ({ news }: { news: any[] }) => {
                     bottom: "0.8rem",
                     fontFamily: "'JetBrains Mono', monospace",
                     fontSize: "0.55rem",
-                    color: "rgba(225,6,0,0.6)",
+                    color: `rgba(${RGB.red},0.6)`,
                   }}
                 >
                   ↗
@@ -542,7 +515,6 @@ const NewsSection = ({ news }: { news: any[] }) => {
             grid-template-columns: 1fr !important;
           }
         }
-
         @media (max-width: 640px) {
           .news-layout {
             gap: 0.75rem !important;

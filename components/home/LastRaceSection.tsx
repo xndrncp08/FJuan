@@ -1,14 +1,29 @@
+/**
+ * components/home/LastRaceSection.tsx
+ *
+ * Podium recap for the most recently completed race. Sits directly below
+ * HeroSection and uses the shared SECTION_BACKGROUND gradient (see
+ * lib/theme/palette.ts) so its top edge matches the ink color the hero
+ * ends on — no border is needed to separate them, the color hand-off does
+ * that on its own.
+ *
+ * Two color families are intentionally kept outside the brand palette:
+ *  - RANK_COLORS (gold/silver/bronze) are a motorsport-wide convention for
+ *    1st/2nd/3rd, not a site-specific choice.
+ *  - TEAM_COLORS are each team's real livery color, used so the small team
+ *    indicator dot is recognizable at a glance.
+ */
 "use client";
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { RED, PAPER, RGB, SECTION_BACKGROUND } from "../../lib/theme/palette";
 
 interface LastRaceSectionProps {
   lastRace: any;
 }
 
 const RANK_COLORS = ["#FFD700", "#BFC3C8", "#CD7F32"];
-
 const RANK_LABELS = ["WINNER", "SECOND", "THIRD"];
 
 const TEAM_COLORS: Record<string, string> = {
@@ -28,9 +43,7 @@ export default function LastRaceSection({ lastRace }: LastRaceSectionProps) {
   if (!lastRace || !lastRace.Results) return null;
 
   const podium = lastRace.Results.slice(0, 3);
-
   const raceDate = new Date(`${lastRace.date}T00:00:00`);
-
   const formattedDate = raceDate.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -43,11 +56,11 @@ export default function LastRaceSection({ lastRace }: LastRaceSectionProps) {
         position: "relative",
         overflow: "hidden",
         padding: "clamp(5rem, 10vw, 9rem) 0",
-        background:
-          "linear-gradient(180deg, #111214 0%, #151619 48%, #101113 100%)",
+        background: SECTION_BACKGROUND,
       }}
     >
-      {/* Large ambient glow connecting this section to the hero */}
+      {/* Ambient glow, positioned to pick up where the hero's heat bloom
+          leaves off. */}
       <div
         style={{
           position: "absolute",
@@ -55,13 +68,10 @@ export default function LastRaceSection({ lastRace }: LastRaceSectionProps) {
           left: "-10%",
           width: "55%",
           height: "70%",
-          background:
-            "radial-gradient(circle, rgba(225,6,0,0.13) 0%, rgba(225,6,0,0.04) 38%, transparent 72%)",
+          background: `radial-gradient(circle, rgba(${RGB.red},0.13) 0%, rgba(${RGB.red},0.04) 38%, transparent 72%)`,
           pointerEvents: "none",
         }}
       />
-
-      {/* Secondary atmospheric glow */}
       <div
         style={{
           position: "absolute",
@@ -69,21 +79,20 @@ export default function LastRaceSection({ lastRace }: LastRaceSectionProps) {
           bottom: "-25%",
           width: "55%",
           height: "70%",
-          background:
-            "radial-gradient(circle, rgba(225,6,0,0.07) 0%, transparent 70%)",
+          background: `radial-gradient(circle, rgba(${RGB.red},0.07) 0%, transparent 70%)`,
           pointerEvents: "none",
         }}
       />
 
-      {/* Fine technical grid */}
+      {/* Fine grid, fading toward the top/bottom edges so it doesn't create
+          a hard line against the sections above/below. */}
       <div
         style={{
           position: "absolute",
           inset: 0,
           pointerEvents: "none",
           opacity: 0.35,
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)",
+          backgroundImage: `linear-gradient(rgba(${RGB.paper},0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(${RGB.paper},0.025) 1px, transparent 1px)`,
           backgroundSize: "72px 72px",
           maskImage:
             "linear-gradient(to bottom, transparent, black 20%, black 75%, transparent)",
@@ -92,7 +101,7 @@ export default function LastRaceSection({ lastRace }: LastRaceSectionProps) {
         }}
       />
 
-      {/* Oversized background race number */}
+      {/* Oversized outlined round number, purely decorative. */}
       <div
         aria-hidden="true"
         style={{
@@ -103,7 +112,7 @@ export default function LastRaceSection({ lastRace }: LastRaceSectionProps) {
           fontSize: "clamp(9rem, 25vw, 28rem)",
           lineHeight: 0.75,
           color: "transparent",
-          WebkitTextStroke: "1px rgba(255,255,255,0.035)",
+          WebkitTextStroke: `1px rgba(${RGB.paper},0.035)`,
           letterSpacing: "-0.08em",
           userSelect: "none",
           pointerEvents: "none",
@@ -121,7 +130,7 @@ export default function LastRaceSection({ lastRace }: LastRaceSectionProps) {
           zIndex: 1,
         }}
       >
-        {/* Section eyebrow */}
+        {/* Eyebrow: live indicator dot + label + round/date. */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -135,49 +144,41 @@ export default function LastRaceSection({ lastRace }: LastRaceSectionProps) {
             marginBottom: "1.25rem",
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-            }}
-          >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <span
               style={{
                 width: "7px",
                 height: "7px",
                 borderRadius: "50%",
-                background: "#E10600",
-                boxShadow: "0 0 16px rgba(225,6,0,0.7)",
+                background: RED,
+                boxShadow: `0 0 16px rgba(${RGB.red},0.7)`,
               }}
             />
-
             <span
               style={{
                 fontFamily: "'JetBrains Mono', monospace",
                 fontSize: "0.48rem",
                 letterSpacing: "0.24em",
                 textTransform: "uppercase",
-                color: "#E10600",
+                color: RED,
               }}
             >
               Latest Classification
             </span>
           </div>
-
           <span
             style={{
               fontFamily: "'JetBrains Mono', monospace",
               fontSize: "0.46rem",
               letterSpacing: "0.12em",
-              color: "rgba(255,255,255,0.35)",
+              color: `rgba(${RGB.paper},0.35)`,
             }}
           >
             RND {String(lastRace.round).padStart(2, "0")} / {formattedDate}
           </span>
         </motion.div>
 
-        {/* Race title */}
+        {/* Race title + location, with a link to the full calendar. */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -200,14 +201,13 @@ export default function LastRaceSection({ lastRace }: LastRaceSectionProps) {
                 lineHeight: 0.88,
                 letterSpacing: "-0.045em",
                 textTransform: "uppercase",
-                color: "white",
+                color: PAPER,
                 margin: 0,
                 maxWidth: "850px",
               }}
             >
               {lastRace.raceName}
             </h2>
-
             <div
               style={{
                 display: "flex",
@@ -220,19 +220,18 @@ export default function LastRaceSection({ lastRace }: LastRaceSectionProps) {
                 style={{
                   width: "28px",
                   height: "2px",
-                  background: "#E10600",
-                  boxShadow: "0 0 14px rgba(225,6,0,0.4)",
+                  background: RED,
+                  boxShadow: `0 0 14px rgba(${RGB.red},0.4)`,
                 }}
               />
-
               <span
                 style={{
                   fontFamily: "'Rajdhani', sans-serif",
-                  fontSize: "0.82rem",
                   fontWeight: 600,
+                  fontSize: "0.82rem",
                   letterSpacing: "0.14em",
                   textTransform: "uppercase",
-                  color: "rgba(255,255,255,0.42)",
+                  color: `rgba(${RGB.paper},0.42)`,
                 }}
               >
                 {lastRace.Circuit?.Location?.locality},{" "}
@@ -248,9 +247,9 @@ export default function LastRaceSection({ lastRace }: LastRaceSectionProps) {
               alignItems: "center",
               gap: "9px",
               padding: "0.7rem 1rem",
-              color: "rgba(255,255,255,0.55)",
-              background: "rgba(255,255,255,0.045)",
-              border: "1px solid rgba(255,255,255,0.09)",
+              color: `rgba(${RGB.paper},0.55)`,
+              background: `rgba(${RGB.paper},0.045)`,
+              border: `1px solid rgba(${RGB.paper},0.09)`,
               textDecoration: "none",
               fontFamily: "'Rajdhani', sans-serif",
               fontWeight: 700,
@@ -261,15 +260,15 @@ export default function LastRaceSection({ lastRace }: LastRaceSectionProps) {
             }}
             onMouseEnter={(e) => {
               const el = e.currentTarget;
-              el.style.background = "rgba(225,6,0,0.1)";
-              el.style.borderColor = "rgba(225,6,0,0.4)";
-              el.style.color = "white";
+              el.style.background = `rgba(${RGB.red},0.1)`;
+              el.style.borderColor = `rgba(${RGB.red},0.4)`;
+              el.style.color = PAPER;
             }}
             onMouseLeave={(e) => {
               const el = e.currentTarget;
-              el.style.background = "rgba(255,255,255,0.045)";
-              el.style.borderColor = "rgba(255,255,255,0.09)";
-              el.style.color = "rgba(255,255,255,0.55)";
+              el.style.background = `rgba(${RGB.paper},0.045)`;
+              el.style.borderColor = `rgba(${RGB.paper},0.09)`;
+              el.style.color = `rgba(${RGB.paper},0.55)`;
             }}
           >
             Full Results
@@ -285,7 +284,6 @@ export default function LastRaceSection({ lastRace }: LastRaceSectionProps) {
           </Link>
         </motion.div>
 
-        {/* Podium */}
         <div
           style={{
             display: "grid",
@@ -295,19 +293,15 @@ export default function LastRaceSection({ lastRace }: LastRaceSectionProps) {
           }}
           className="last-race-podium"
         >
-          {podium.map((result: any, index: number) => {
-            const rank = index + 1;
-
-            return (
-              <PodiumCard
-                key={result.Driver?.driverId ?? index}
-                result={result}
-                rank={rank}
-                isWinner={rank === 1}
-                index={index}
-              />
-            );
-          })}
+          {podium.map((result: any, index: number) => (
+            <PodiumCard
+              key={result.Driver?.driverId ?? index}
+              result={result}
+              rank={index + 1}
+              isWinner={index === 0}
+              index={index}
+            />
+          ))}
         </div>
       </div>
 
@@ -334,11 +328,8 @@ function PodiumCard({
   index: number;
 }) {
   const rankColor = RANK_COLORS[rank - 1];
-
-  const teamColor = TEAM_COLORS[result.Constructor?.constructorId] ?? "#E10600";
-
+  const teamColor = TEAM_COLORS[result.Constructor?.constructorId] ?? RED;
   const driver = result.Driver;
-
   const time = result.Time?.time ?? result.status ?? "—";
 
   return (
@@ -351,27 +342,24 @@ function PodiumCard({
         delay: index * 0.1,
         ease: [0.16, 1, 0.3, 1],
       }}
-      whileHover={{
-        y: -8,
-        transition: { duration: 0.25 },
-      }}
+      whileHover={{ y: -8, transition: { duration: 0.25 } }}
       style={{
         position: "relative",
         minHeight: isWinner ? "390px" : "340px",
         padding: isWinner ? "2rem" : "1.5rem",
         overflow: "hidden",
+        // Winner keeps a gold tint (medal color) blended with the site's red;
+        // second/third use a plain warm-paper tint instead of the old
+        // neutral gray so they read as part of the same page.
         background: isWinner
-          ? "linear-gradient(145deg, rgba(255,215,0,0.09), rgba(255,255,255,0.035) 45%, rgba(225,6,0,0.04))"
-          : "linear-gradient(145deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018))",
-        border: `1px solid ${
-          isWinner ? "rgba(255,215,0,0.22)" : "rgba(255,255,255,0.09)"
-        }`,
+          ? `linear-gradient(145deg, rgba(255,215,0,0.09), rgba(${RGB.paper},0.035) 45%, rgba(${RGB.red},0.05))`
+          : `linear-gradient(145deg, rgba(${RGB.paper},0.055), rgba(${RGB.paper},0.018))`,
+        border: `1px solid ${isWinner ? "rgba(255,215,0,0.22)" : `rgba(${RGB.paper},0.09)`}`,
         boxShadow: isWinner
-          ? "0 30px 80px rgba(0,0,0,0.25), inset 0 1px rgba(255,255,255,0.08)"
-          : "0 20px 60px rgba(0,0,0,0.2)",
+          ? `0 30px 80px rgba(${RGB.ink},0.4), inset 0 1px rgba(${RGB.paper},0.08)`
+          : `0 20px 60px rgba(${RGB.ink},0.35)`,
       }}
     >
-      {/* Card ambient glow */}
       <div
         style={{
           position: "absolute",
@@ -384,8 +372,6 @@ function PodiumCard({
           pointerEvents: "none",
         }}
       />
-
-      {/* Decorative diagonal speed line */}
       <div
         style={{
           position: "absolute",
@@ -399,7 +385,6 @@ function PodiumCard({
         }}
       />
 
-      {/* Position indicator */}
       <div
         style={{
           position: "relative",
@@ -422,7 +407,6 @@ function PodiumCard({
           >
             {rank}
           </div>
-
           <div
             style={{
               marginTop: "8px",
@@ -436,12 +420,11 @@ function PodiumCard({
             {RANK_LABELS[rank - 1]}
           </div>
         </div>
-
         <span
           style={{
             fontFamily: "'JetBrains Mono', monospace",
             fontSize: "0.42rem",
-            color: "rgba(255,255,255,0.2)",
+            color: `rgba(${RGB.paper},0.2)`,
             letterSpacing: "0.12em",
           }}
         >
@@ -449,7 +432,6 @@ function PodiumCard({
         </span>
       </div>
 
-      {/* Driver identity */}
       <div style={{ position: "relative", marginBottom: "1.75rem" }}>
         <div
           style={{
@@ -458,12 +440,11 @@ function PodiumCard({
             lineHeight: 1,
             letterSpacing: "-0.025em",
             textTransform: "uppercase",
-            color: "white",
+            color: PAPER,
           }}
         >
           {driver.givenName}
         </div>
-
         <div
           style={{
             fontFamily: "'Russo One', sans-serif",
@@ -477,7 +458,6 @@ function PodiumCard({
         >
           {driver.familyName}
         </div>
-
         <div
           style={{
             display: "flex",
@@ -495,7 +475,6 @@ function PodiumCard({
               boxShadow: `0 0 10px ${teamColor}66`,
             }}
           />
-
           <span
             style={{
               fontFamily: "'Rajdhani', sans-serif",
@@ -511,7 +490,6 @@ function PodiumCard({
         </div>
       </div>
 
-      {/* Race statistics */}
       <div
         style={{
           position: "absolute",
@@ -520,7 +498,7 @@ function PodiumCard({
           bottom: isWinner ? "2rem" : "1.5rem",
           display: "grid",
           gridTemplateColumns: "1.5fr 1fr 1fr",
-          background: "rgba(0,0,0,0.16)",
+          background: `rgba(${RGB.ink},0.35)`,
         }}
       >
         {[
@@ -530,28 +508,24 @@ function PodiumCard({
         ].map((stat) => (
           <div
             key={stat.label}
-            style={{
-              padding: "0.7rem 0.55rem",
-              minWidth: 0,
-            }}
+            style={{ padding: "0.7rem 0.55rem", minWidth: 0 }}
           >
             <div
               style={{
                 fontFamily: "'JetBrains Mono', monospace",
                 fontSize: "0.35rem",
                 letterSpacing: "0.12em",
-                color: "rgba(255,255,255,0.25)",
+                color: `rgba(${RGB.paper},0.25)`,
                 marginBottom: "5px",
               }}
             >
               {stat.label}
             </div>
-
             <div
               style={{
                 fontFamily: "'Russo One', sans-serif",
                 fontSize: "0.72rem",
-                color: "rgba(255,255,255,0.85)",
+                color: `rgba(${RGB.paper},0.85)`,
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
