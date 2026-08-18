@@ -800,7 +800,7 @@ export async function POST(req: NextRequest) {
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: "openai/gpt-oss-120b",
+          model: "llama-3.3-70b-versatile", // was "openai/gpt-oss-120b"
           max_tokens: 500,
           stream: true,
           messages: [
