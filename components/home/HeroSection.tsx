@@ -20,7 +20,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { motion, animate } from "framer-motion";
-import { INK, RED, EMBER, PAPER, RGB } from "../../lib/theme/palette";
+import { INK, RED, EMBER, PAPER, RGB } from "@/lib/theme/palette";
 
 const TICKER = [
   "2026 SEASON LIVE",
@@ -872,7 +872,7 @@ export default function HeroSection() {
         </div>
       </motion.div>
 
-      <style>{`
+      <style suppressHydrationWarning>{`
         @keyframes heroScan { from { top: -80px; } to { top: 100%; } }
         @keyframes liveDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.3; transform: scale(0.6); } }
         @keyframes tickerScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }

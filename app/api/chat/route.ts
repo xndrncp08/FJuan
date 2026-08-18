@@ -16,7 +16,7 @@
  * knowledgeable F1 fan rather than a stereotypical AI character.
  *
  * Model:
- *   llama-3.3-70b-versatile
+ * - openai/gpt-oss-120b (Groq)
  */
 
 import { NextRequest } from "next/server";
@@ -100,8 +100,9 @@ function buildSystemPrompt(prediction: any): string {
 
   /**
    * Weather only differentiates drivers when wet-weather logic is active.
-   * This prevents the model from inventing wet-weather narratives on dry
-   * weekends.
+   *
+   * This prevents the model from inventing wet-weather narratives on
+   * dry weekends.
    */
   const weather = prediction.weather;
 
@@ -144,16 +145,42 @@ Speak naturally and conversationally.
 
 Use English as the default language.
 
-Occasional Spanish or Filipino expressions are acceptable when they naturally
-fit the conversation, but they are optional.
+Bisaya, Tagalog, and Spanish words or short expressions are allowed when
+they naturally fit the moment — a genuine reaction, a bit of emphasis, a
+quick aside — the way a multilingual F1 fan actually talks. This is not a
+language quota to fill in every message.
 
-Never force slang into a response.
+Natural, occasional examples:
+
+Bisaya:
+- "Grabe" for real surprise at a result.
+- "Lagi" to agree with or confirm a point.
+- "Pareha ra" when two things are basically equivalent.
+
+Tagalog:
+- "Sobra" for emphasis ("sobra ang gap niya sa qualifying").
+- "Grabe talaga" for a genuinely standout result.
+- "Ganon talaga" when acknowledging something expected but still notable.
+
+Spanish:
+- "Vaya" for surprise.
+- "Ojo" when flagging something worth watching.
+- "Claro" to agree.
+
+Bad:
+"Grabe, sobra, vaya, ese driver is just built different!"
+
+Better:
+"Grabe, that qualifying lap was on another level — 0.4s clear of P2."
+
+The second one uses one expression, naturally, and still leads with the
+actual analysis. The first is a slang pileup that reads as trying too hard.
 
 Do not:
-- Stack slang together.
-- Add slang simply to appear entertaining.
-- Use exaggerated Spanglish.
-- Repeatedly call the user "ese", "wey", "pare", or similar terms.
+- Stack multiple languages or slang words together in one sentence.
+- Switch languages just to appear more entertaining or "relatable."
+- Use exaggerated Taglish, Bislish, or Spanglish.
+- Repeatedly call the user "ese", "wey", "pare", "bro", "sis", or similar terms.
 - Force jokes into otherwise serious answers.
 - Use emojis as a substitute for personality.
 - Repeatedly use catchphrases.
@@ -309,7 +336,7 @@ Cloud and infrastructure:
 - Render
 
 AI and LLM experience:
-- Groq / Llama
+- Groq API
 - Anthropic API
 - Ollama
 - Prompt engineering
@@ -323,7 +350,7 @@ Xander owns the frontend platform end to end.
 He built the component architecture, data-fetching system, and custom
 dark-theme design system.
 
-He integrated Groq's Llama 3 to generate AI-driven race insights and built
+He integrated Groq to generate AI-driven race insights and built
 Nacho Bot to reason over prediction data.
 
 The platform uses a weighted prediction engine with softmax probability
@@ -675,7 +702,7 @@ RESPONSE RULES
 - If uncertainty matters, explain it briefly instead of pretending certainty.
 - Never mock the user.
 - Never be dismissive.
-- Never force slang.
+- Never force slang or language-switching.
 - Never force humor.
 - Never use unnecessary emojis.
 - Avoid filler such as "Absolutely!", "Great question!", or
@@ -688,10 +715,17 @@ during a race weekend: informed, relaxed, direct, and useful.
 }
 
 /**
+ * Small helper used to pause between retries.
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
  * Handles POST /api/chat.
  *
- * The Groq response is streamed directly back to the client using
- * Server-Sent Events so the frontend can render the answer progressively.
+ * Sends Nacho Bot conversations to Groq and streams the generated
+ * response back to the client using Server-Sent Events.
  */
 export async function POST(req: NextRequest) {
   const apiKey = process.env.GROQ_API_KEY;
@@ -748,38 +782,143 @@ export async function POST(req: NextRequest) {
   }
 
   /**
-   * The system prompt contains the current prediction context.
-   * Conversation history is appended afterward so the model can
-   * maintain continuity with the user.
+   * Groq exposes an OpenAI-compatible chat completion endpoint.
+   *
+   * Streaming is enabled so the response can be forwarded directly
+   * to the client as Server-Sent Events.
    */
-  const groqRes = await fetch(
-    "https://api.groq.com/openai/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        max_tokens: 500,
-        stream: true,
-        messages: [
-          {
-            role: "system",
-            content: buildSystemPrompt(prediction),
+  const MAX_RETRIES = 2;
+
+  let groqRes: Response | null = null;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "openai/gpt-oss-120b",
+          max_tokens: 500,
+          stream: true,
+          messages: [
+            {
+              role: "system",
+              content: buildSystemPrompt(prediction),
+            },
+            ...messages,
+          ],
+        }),
+      });
+    } catch (error) {
+      console.error("[/api/chat] Groq request failed:", error);
+
+      return new Response(
+        JSON.stringify({
+          error: "Unable to connect to Groq.",
+        }),
+        {
+          status: 502,
+          headers: {
+            "Content-Type": "application/json",
           },
-          ...messages,
-        ],
+        },
+      );
+    }
+
+    /**
+     * Successful response.
+     */
+    if (groqRes.ok) {
+      break;
+    }
+
+    const errorText = await groqRes.text();
+
+    console.error(`[/api/chat] Groq ${groqRes.status}:`, errorText);
+
+    /**
+     * Retry temporary rate-limit responses.
+     */
+    if (groqRes.status === 429) {
+      if (attempt < MAX_RETRIES) {
+        await sleep(1000 * (attempt + 1));
+        continue;
+      }
+
+      return new Response(
+        JSON.stringify({
+          error:
+            "Nacho Bot is temporarily unavailable because the Groq API is rate limited. Please try again shortly.",
+        }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "Retry-After": "30",
+          },
+        },
+      );
+    }
+
+    /**
+     * Invalid or missing API key.
+     */
+    if (groqRes.status === 401) {
+      return new Response(
+        JSON.stringify({
+          error: "Groq authentication failed. Check GROQ_API_KEY.",
+        }),
+        {
+          status: 502,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+    }
+
+    /**
+     * Groq API key/account quota or billing issue.
+     */
+    if (groqRes.status === 403) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "Groq rejected the request. Check your API key, account access, and Groq API limits.",
+        }),
+        {
+          status: 502,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+    }
+
+    /**
+     * Any other Groq API error.
+     */
+    return new Response(
+      JSON.stringify({
+        error: "Groq request failed.",
       }),
-    },
-  );
+      {
+        status: 502,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    );
+  }
 
-  if (!groqRes.ok) {
-    const error = await groqRes.text();
-
-    console.error("[/api/chat] Groq error:", error);
-
+  /**
+   * Safety check in case the request exits the retry loop without
+   * receiving a valid response.
+   */
+  if (!groqRes || !groqRes.ok) {
     return new Response(
       JSON.stringify({
         error: "Groq request failed.",
@@ -795,6 +934,10 @@ export async function POST(req: NextRequest) {
 
   /**
    * Forward Groq's SSE stream directly to the client.
+   *
+   * Groq's OpenAI-compatible endpoint uses the standard streaming
+   * chat-completion format, so the response body can be passed through
+   * without manually parsing each chunk.
    */
   return new Response(groqRes.body, {
     headers: {

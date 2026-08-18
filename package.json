@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@google/genai": "^2.16.0",
     "@radix-ui/react-select": "^2.1.2",
     "@tanstack/react-query": "^5.17.19",
     "class-variance-authority": "^0.7.0",

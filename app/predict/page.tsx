@@ -11,6 +11,7 @@
 import { generateRacePrediction } from "@/lib/types/prediction/engine";
 import PredictionClient from "@/components/prediction/PredictionClient";
 import { RacePrediction } from "@/lib/types/prediction";
+import { INK } from "@/lib/theme/palette";
 
 const BASE_URL = "https://api.jolpi.ca/ergast/f1";
 
@@ -35,8 +36,7 @@ async function getNextRaceForPrediction(): Promise<{
     const today = new Date();
 
     const next =
-      races.find((r) => new Date(r.date) >= today) ??
-      races[races.length - 1];
+      races.find((r) => new Date(r.date) >= today) ?? races[races.length - 1];
 
     if (!next) return null;
 
@@ -75,7 +75,7 @@ export default async function PredictPage() {
         nextRace.circuitId,
         nextRace.circuitName,
         nextRace.raceDate,
-        10
+        10,
       );
     } else {
       error = "No upcoming race found on the calendar.";
@@ -86,7 +86,7 @@ export default async function PredictPage() {
   }
 
   return (
-    <main className="min-h-screen" style={{ background: "#060606" }}>
+    <main className="min-h-screen" style={{ background: INK }}>
       <PredictionClient initialPrediction={prediction} initialError={error} />
     </main>
   );
