@@ -781,7 +781,14 @@ async function generateInsight(
         },
         body: JSON.stringify({
           model: "openai/gpt-oss-120b",
-          max_tokens: 80,
+          max_completion_tokens: 80,
+          temperature: 1,
+          top_p: 1,
+          // Single-sentence, ≤22-word output doesn't need heavy reasoning —
+          // "low" keeps this cheap since it runs up to
+          // INSIGHT_CONCURRENCY_LIMIT times concurrently per prediction,
+          // out of the same 8,000 TPM free-tier pool as the chat route.
+          reasoning_effort: "low",
           messages: [
             {
               role: "system",

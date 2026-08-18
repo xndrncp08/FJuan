@@ -722,6 +722,21 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
+ * Caps how many prior conversation turns are sent to Groq on each request.
+ *
+ * Without this, a long-running chat keeps growing the input token cost of
+ * every subsequent request — the full history gets resent every time.
+ * Keeping only the most recent turns bounds that cost regardless of how
+ * long the conversation has been running.
+ */
+const MAX_HISTORY_MESSAGES = 8;
+
+function capHistory(messages: any[]): any[] {
+  if (messages.length <= MAX_HISTORY_MESSAGES) return messages;
+  return messages.slice(messages.length - MAX_HISTORY_MESSAGES);
+}
+
+/**
  * Handles POST /api/chat.
  *
  * Sends Nacho Bot conversations to Groq and streams the generated
@@ -800,15 +815,23 @@ export async function POST(req: NextRequest) {
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile", // was "openai/gpt-oss-120b"
-          max_tokens: 500,
+          model: "openai/gpt-oss-120b",
+          max_completion_tokens: 500,
+          temperature: 1,
+          top_p: 1,
+          // GPT-OSS is a reasoning-capable model family. "low" keeps
+          // reasoning-token overhead down, which matters directly for
+          // staying under the free-tier 8,000 TPM cap — Nacho Bot's
+          // replies are meant to be terse (2-4 sentences) anyway, so
+          // heavier reasoning effort buys little here.
+          reasoning_effort: "low",
           stream: true,
           messages: [
             {
               role: "system",
               content: buildSystemPrompt(prediction),
             },
-            ...messages,
+            ...capHistory(messages),
           ],
         }),
       });
