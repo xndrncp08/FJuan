@@ -1,5 +1,5 @@
 /**
- * components/home/Footer.tsx
+ * components/layout/Footer.tsx
  *
  * FJUAN global footer.
  *

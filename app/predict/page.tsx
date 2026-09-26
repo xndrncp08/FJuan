@@ -8,7 +8,7 @@
  * spinner on first paint (data is ready when HTML arrives).
  */
 
-import { generateRacePrediction } from "@/lib/types/prediction/engine";
+import { generateRacePrediction } from "@/lib/prediction/engine";
 import PredictionClient from "@/components/prediction/PredictionClient";
 import { RacePrediction } from "@/lib/types/prediction";
 import { INK } from "@/lib/theme/palette";

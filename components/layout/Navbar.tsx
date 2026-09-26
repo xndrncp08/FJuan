@@ -1,5 +1,5 @@
 /**
- * components/home/Navbar.tsx
+ * components/layout/Navbar.tsx
  *
  * FJUAN command navigation.
  *

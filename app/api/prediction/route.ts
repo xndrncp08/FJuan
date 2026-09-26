@@ -15,7 +15,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { generateRacePrediction } from "@/lib/types/prediction/engine";
+import { generateRacePrediction } from "@/lib/prediction/engine";
 
 const BASE_URL = "https://api.jolpi.ca/ergast/f1";
 

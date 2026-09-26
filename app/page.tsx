@@ -1,7 +1,7 @@
 import { getF1News } from "@/lib/api/news-fetcher";
 import { getCurrentStandings } from "@/lib/api/fetchers";
 import { getNextRace, getLastRace } from "@/lib/api/jolpica";
-import { generateRacePrediction } from "@/lib/types/prediction/engine";
+import { generateRacePrediction } from "@/lib/prediction/engine";
 import HeroSection from "@/components/home/HeroSection";
 import DashboardSection from "@/components/home/DashboardSection";
 import LastRaceSection from "@/components/home/LastRaceSection";

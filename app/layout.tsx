@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
-import Navbar from "@/components/home/Navbar";
-import Footer from "@/components/home/Footer";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
 import PageTransition from "@/components/PageTransition";
 import PredictionChat from "@/components/prediction/PredictionChat";
 import { getNextRace } from "@/lib/api/jolpica";
-import { generateRacePrediction } from "@/lib/types/prediction/engine";
+import { generateRacePrediction } from "@/lib/prediction/engine";
 
 export const metadata: Metadata = {
   title: "FJuanDASH — Formula 1 Statistics & Analytics",
