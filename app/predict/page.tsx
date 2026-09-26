@@ -11,37 +11,15 @@
 import { generateRacePrediction } from "@/lib/prediction/engine";
 import PredictionClient from "@/components/prediction/PredictionClient";
 import { RacePrediction } from "@/lib/types/prediction";
-import { INK } from "@/lib/theme/palette";
+import { getNextRace } from "@/lib/api/jolpica";
 
-const BASE_URL = "https://api.jolpi.ca/ergast/f1";
-
-/** Finds the next upcoming race for the current season */
-async function getNextRaceForPrediction(): Promise<{
-  season: string;
-  round: string;
-  raceName: string;
-  circuitId: string;
-  circuitName: string;
-  raceDate: string;
-} | null> {
+/** Next race on the calendar (shared "is it past yet" logic lives in jolpica.ts). */
+async function getNextRaceForPrediction() {
   try {
-    const currentYear = new Date().getFullYear();
-    const season = currentYear.toString();
-
-    const res = await fetch(`${BASE_URL}/${season}.json?limit=100`, {
-      next: { revalidate: 600 },
-    });
-    const data = await res.json();
-    const races: any[] = data?.MRData?.RaceTable?.Races ?? [];
-    const today = new Date();
-
-    const next =
-      races.find((r) => new Date(r.date) >= today) ?? races[races.length - 1];
-
+    const next = await getNextRace();
     if (!next) return null;
-
     return {
-      season,
+      season: next.season ?? new Date().getFullYear().toString(),
       round: next.round,
       raceName: next.raceName,
       circuitId: next.Circuit.circuitId,
@@ -55,7 +33,7 @@ async function getNextRaceForPrediction(): Promise<{
 
 // Next.js page metadata
 export const metadata = {
-  title: "Race Prediction | FJUAN",
+  title: "Race prediction",
   description:
     "AI-powered race winner prediction for the next Formula 1 Grand Prix, based on form, standings, circuit history, and qualifying pace.",
 };
@@ -86,8 +64,6 @@ export default async function PredictPage() {
   }
 
   return (
-    <main className="min-h-screen" style={{ background: INK }}>
-      <PredictionClient initialPrediction={prediction} initialError={error} />
-    </main>
+    <PredictionClient initialPrediction={prediction} initialError={error} />
   );
 }

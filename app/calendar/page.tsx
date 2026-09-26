@@ -1,58 +1,68 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { getRaceSchedule } from "@/lib/api/jolpica";
-import CalendarHero from "@/components/calendar/CalendarHero";
-import SeasonSelector from "@/components/calendar/SeasonSelector";
-import RaceGrid from "@/components/calendar/RaceGrid";
+import RaceGrid, { SeasonProgress } from "@/components/calendar/RaceGrid";
+import { PageHeader, Section } from "@/components/ui/Section";
+import { SeasonPicker } from "@/components/ui/SeasonPicker";
+import { Skeleton } from "@/components/ui/States";
 
 export default function CalendarPage() {
   const currentYear = new Date().getFullYear();
-  const [season, setSeason]   = useState(currentYear.toString());
-  const [races, setRaces]     = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [season, setSeason] = useState(currentYear.toString());
+  const [races, setRaces] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchRaces() {
-      setIsLoading(true);
-      try {
-        const data = await getRaceSchedule(season);
-        setRaces(data || []);
-      } catch {
-        setRaces([]);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchRaces();
+    let cancelled = false;
+    setLoading(true);
+    getRaceSchedule(season)
+      .then((data) => !cancelled && setRaces(data || []))
+      .catch(() => !cancelled && setRaces([]))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
   }, [season]);
 
+  const countries = new Set(races.map((r) => r.Circuit?.Location?.country)).size;
+
   return (
-    <main className="min-h-screen" style={{ background: "#060606" }}>
-      <CalendarHero season={season} />
-      <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "2rem clamp(1.25rem,4vw,1.5rem)" }}>
-        <SeasonSelector season={season} onSeasonChange={setSeason} />
-        {isLoading ? (
-          <div style={{
-            display: "flex", flexDirection: "column",
-            alignItems: "center", justifyContent: "center",
-            padding: "8rem 2rem", gap: "1rem",
-          }}>
-            <div style={{
-              width: "32px", height: "32px", borderRadius: "50%",
-              border: "2px solid rgba(225,6,0,0.2)",
-              borderTop: "2px solid #E10600",
-              animation: "spin 0.8s linear infinite",
-            }} />
-            <span className="data-readout" style={{ fontSize: "0.55rem" }}>
-              Loading schedule...
-            </span>
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    <>
+      <PageHeader
+        eyebrow={`${season} season`}
+        title="Race Calendar"
+        watermark={season}
+        description={
+          loading || !races.length
+            ? "Every race weekend, with results for the ones already run."
+            : `${races.length} races in ${countries} countries. Tap a finished round for results, or an upcoming one for the circuit.`
+        }
+      >
+        <div className="space-y-6">
+          <SeasonPicker value={season} onChange={setSeason} />
+          {season === String(currentYear) && <SeasonProgress races={loading ? [] : races} />}
+        </div>
+      </PageHeader>
+
+      <Section className="pt-0 sm:pt-0">
+        {loading ? (
+          <div className="space-y-8" role="status" aria-busy="true" aria-label="Loading schedule">
+            {[0, 1].map((i) => (
+              <div key={i}>
+                <Skeleton className="mb-3 h-6 w-28" />
+                <div className="card space-y-3 p-4">
+                  {[0, 1, 2].map((j) => (
+                    <Skeleton key={j} className="h-14" />
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
-          <RaceGrid races={races} season={season} currentYear={currentYear} />
+          <RaceGrid races={races} season={season} />
         )}
-      </div>
-    </main>
+      </Section>
+    </>
   );
 }

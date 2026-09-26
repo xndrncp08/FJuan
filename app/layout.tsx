@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { JetBrains_Mono, Rajdhani, Russo_One } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import Navbar from "@/components/layout/Navbar";
@@ -8,17 +9,32 @@ import PredictionChat from "@/components/prediction/PredictionChat";
 import { getNextRace } from "@/lib/api/jolpica";
 import { generateRacePrediction } from "@/lib/prediction/engine";
 
+// Brand type: Russo One for display, Rajdhani for UI, JetBrains Mono for
+// timing data. Self-hosted by next/font so they always load (no FOUT from a
+// third-party stylesheet) and exposed as CSS variables for globals.css.
+const display = Russo_One({ weight: "400", subsets: ["latin"], variable: "--font-display", display: "swap" });
+const ui = Rajdhani({ weight: ["500", "600", "700"], subsets: ["latin"], variable: "--font-ui", display: "swap" });
+const mono = JetBrains_Mono({ weight: ["400", "500", "700"], subsets: ["latin"], variable: "--font-data", display: "swap" });
+
 export const metadata: Metadata = {
-  title: "FJuanDASH — Formula 1 Statistics & Analytics",
+  title: { default: "FJUAN — Formula 1 Statistics & Analytics", template: "%s · FJUAN" },
   description:
     "Real-time Formula 1 driver statistics, live telemetry, race calendar, and historical data analysis",
   keywords: ["F1", "Formula 1", "statistics", "telemetry", "racing", "drivers", "standings"],
-  authors: [{ name: "F1 Stats" }],
+  authors: [{ name: "Xander Rancap" }],
   openGraph: {
-    title: "F1DASH — Formula 1 Statistics & Analytics",
+    title: "FJUAN — Formula 1 Statistics & Analytics",
     description: "Comprehensive Formula 1 statistics and analytics",
     type: "website",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#140605",
+  colorScheme: "dark",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 // ─── Get prediction directly — no internal HTTP fetch ────────────────────────
@@ -51,7 +67,7 @@ export default async function RootLayout({
   const prediction = await getNextRacePrediction();
 
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className={`dark ${display.variable} ${ui.variable} ${mono.variable}`}>
       <body>
         <Providers>
           <Navbar />

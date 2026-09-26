@@ -1,12 +1,5 @@
-export { CompareHero } from "./CompareHero";
-export { DriverSelector } from "./DriverSelector";
-export { DriverBanner } from "./DriverBanner";
-export { StatBattleRow } from "./StatBattleRow";
+export { DriverPicker } from "./DriverPicker";
+export { HeadToHead } from "./HeadToHead";
 export { StatsBattle } from "./StatsBattle";
 export { ChartsSection } from "./ChartsSection";
-export { SeasonPerformanceChart } from "./SeasonPerformanceChart";
-export { PerformanceRadarChart } from "./PerformanceRadarChart";
-export { PointsProgressionChart } from "./PointsProgressionChart";
-export { WinRateTrendChart } from "./WinRateTrendChart";
-export { Skeleton } from "./Skeleton";
-export { TEAM_COLORS, D1_COLOR, D2_COLOR } from "./constants";
+export { A_COLOR, B_COLOR } from "./constants";

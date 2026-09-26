@@ -1,180 +1,151 @@
 /** @type {import('tailwindcss').Config} */
+
+// Every color resolves to a CSS custom property defined in app/globals.css,
+// stored as bare "r g b" channels so Tailwind's /opacity modifiers work.
+const token = (name) => `rgb(var(--${name}) / <alpha-value>)`;
+
 module.exports = {
   darkMode: ["class"],
-  content: [
-    './pages/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}',
-    './app/**/*.{ts,tsx}',
-    './src/**/*.{ts,tsx}',
-  ],
+  content: ["./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}"],
   theme: {
-    container: {
-      center: true,
-      padding: "2rem",
-      screens: {
-        "2xl": "1400px",
-      },
-    },
     extend: {
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+        canvas: token("canvas"),
+        surface: {
+          DEFAULT: token("surface-1"),
+          1: token("surface-1"),
+          2: token("surface-2"),
+          3: token("surface-3"),
         },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
+        paper: token("paper"),
+        label: {
+          DEFAULT: token("paper"),
+          1: token("paper"),
+          // Secondary tiers are paper at fixed alphas — see --label-* in globals.css.
+          2: "var(--label-2)",
+          3: "var(--label-3)",
+          4: "var(--label-4)",
         },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
+        hairline: "var(--hairline)",
+        separator: "var(--separator)",
+        fill: {
+          DEFAULT: "var(--fill-1)",
+          1: "var(--fill-1)",
+          2: "var(--fill-2)",
+          3: "var(--fill-3)",
         },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-        // F1 Specific Colors
-        'f1': {
-          'red': '#E10600',
-          'dark': '#15151E',
-          'carbon': '#0a0a0a',
-          'neon-blue': '#06b6d4',
-          'neon-pink': '#ec4899',
-          'neon-green': '#10b981',
-        },
-        // Team Colors
-        'redbull': '#3671C6',
-        'ferrari': '#E8002D',
-        'mercedes': '#27F4D2',
-        'mclaren': '#FF8000',
-        'aston': '#229971',
-        'alpine': '#FF87BC',
-        'williams': '#64C4FF',
-        'haas': '#B6BABD',
-        'rb': '#6692FF',
-        'sauber': '#52E252',
+        accent: token("accent"),
+        tint: token("tint"),
+        ember: token("ember"),
+        ink: token("ink"),
+        maroon: token("maroon"),
+        success: token("success"),
+        warning: token("warning"),
+        info: token("info"),
+        gold: token("gold"),
+        silver: token("silver"),
+        bronze: token("bronze"),
+        // F1 timing convention: purple = fastest.
+        purple: token("purple"),
+
+        // shadcn-style aliases consumed by components/ui/select.tsx
+        border: "var(--hairline)",
+        input: "var(--hairline)",
+        ring: token("tint"),
+        background: token("canvas"),
+        foreground: token("paper"),
+        popover: { DEFAULT: token("surface-3"), foreground: token("paper") },
+        muted: { DEFAULT: token("surface-2"), foreground: "var(--label-3)" },
       },
+      fontFamily: {
+        display: ["var(--font-display)", "Impact", "sans-serif"],
+        sans: ["var(--font-ui)", "system-ui", "sans-serif"],
+        mono: ["var(--font-data)", "ui-monospace", "monospace"],
+      },
+      // UI tiers (Rajdhani). Rajdhani runs small, so sizes sit ~1px above
+      // Apple's ramp to read at the same optical size. Display tiers (Russo
+      // One, uppercase) are defined as components in the plugin below.
+      fontSize: {
+        headline: ["1.1875rem", { lineHeight: "1.25", letterSpacing: "0.01em", fontWeight: "700" }],
+        body: ["1.0625rem", { lineHeight: "1.5", letterSpacing: "0.005em" }],
+        callout: ["1.0625rem", { lineHeight: "1.4", letterSpacing: "0.005em" }],
+        subhead: ["1rem", { lineHeight: "1.4", letterSpacing: "0.01em" }],
+        footnote: ["0.9375rem", { lineHeight: "1.35", letterSpacing: "0.01em" }],
+        caption: ["0.8125rem", { lineHeight: "1.3", letterSpacing: "0.04em" }],
+      },
+      // Square, like the timing screens this borrows from. `full` stays round
+      // for dots and the chat button.
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        none: "0",
+        xs: "0",
+        sm: "0",
+        DEFAULT: "0",
+        md: "0",
+        lg: "0",
+        xl: "0",
+        full: "9999px",
       },
-      backdropBlur: {
-        xs: '2px',
+      boxShadow: {
+        card: "0 0 0 1px var(--hairline), 0 1px 0 0 rgba(255,255,255,0.035) inset, 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.45)",
+        raised: "0 0 0 1px var(--separator), 0 1px 0 0 rgba(255,255,255,0.05) inset, 0 2px 4px rgba(0,0,0,0.3), 0 20px 40px -16px rgba(0,0,0,0.6)",
+        popover: "0 0 0 1px var(--separator), 0 12px 32px rgba(0,0,0,0.5), 0 32px 64px -24px rgba(0,0,0,0.6)",
+        "accent-glow": "0 8px 24px -8px rgb(var(--accent) / 0.6)",
+      },
+      maxWidth: {
+        content: "1200px",
+        prose: "68ch",
+      },
+      transitionTimingFunction: {
+        // Critically damped feel: fast out, gentle settle, no overshoot.
+        out: "cubic-bezier(0.22, 1, 0.36, 1)",
+        spring: "cubic-bezier(0.32, 0.72, 0, 1)",
       },
       keyframes: {
-        "accordion-down": {
-          from: { height: 0 },
-          to: { height: "var(--radix-accordion-content-height)" },
+        "fade-up": {
+          from: { opacity: "0", transform: "translateY(8px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
         },
-        "accordion-up": {
-          from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: 0 },
+        "fade-in": { from: { opacity: "0" }, to: { opacity: "1" } },
+        "scale-in": {
+          from: { opacity: "0", transform: "scale(0.97)" },
+          to: { opacity: "1", transform: "scale(1)" },
         },
-        'pulse-neon': {
-          '0%, 100%': { opacity: 1 },
-          '50%': { opacity: 0.5 },
-        },
-        'slide-in': {
-          '0%': { transform: 'translateX(-100%)' },
-          '100%': { transform: 'translateX(0)' },
-        },
-        'blob': {
-          '0%': { transform: 'translate(0px, 0px) scale(1)' },
-          '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
-          '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
-          '100%': { transform: 'translate(0px, 0px) scale(1)' },
-        },
-        'slide': {
-          '0%': { transform: 'translateX(-100%)' },
-          '100%': { transform: 'translateX(100%)' },
-        },
-        'fadeIn': {
-          '0%': { opacity: '0', transform: 'translateY(20px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
-        },
-        'slideInUp': {
-          '0%': { opacity: '0', transform: 'translateY(30px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
-        },
-        'scaleIn': {
-          '0%': { opacity: '0', transform: 'scale(0.95)' },
-          '100%': { opacity: '1', transform: 'scale(1)' },
-        },
-        'shimmer': {
-          '0%': { backgroundPosition: '-1000px 0' },
-          '100%': { backgroundPosition: '1000px 0' },
-        },
-        'float': {
-          '0%, 100%': { transform: 'translateY(0px)' },
-          '50%': { transform: 'translateY(-10px)' },
-        },
-        'glow': {
-          '0%, 100%': { boxShadow: '0 0 20px rgba(239, 68, 68, 0.3)' },
-          '50%': { boxShadow: '0 0 40px rgba(239, 68, 68, 0.6)' },
-        },
-        'spin': {
-          '0%': { transform: 'rotate(0deg)' },
-          '100%': { transform: 'rotate(360deg)' },
+        shimmer: { from: { backgroundPosition: "200% 0" }, to: { backgroundPosition: "-200% 0" } },
+        "live-pulse": {
+          "0%, 100%": { boxShadow: "0 0 0 0 rgb(var(--accent) / 0.55)" },
+          "70%": { boxShadow: "0 0 0 6px rgb(var(--accent) / 0)" },
         },
       },
       animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
-        "pulse-neon": "pulse-neon 2s ease-in-out infinite",
-        "slide-in": "slide-in 0.3s ease-out",
-        'blob': 'blob 7s infinite',
-        'slide': 'slide 3s linear infinite',
-        'fade-in': 'fadeIn 0.8s ease-in',
-        'slide-in-up': 'slideInUp 0.5s ease-out',
-        'scale-in': 'scaleIn 0.4s ease-out',
-        'shimmer': 'shimmer 2s linear infinite',
-        'float': 'float 3s ease-in-out infinite',
-        'glow': 'glow 2s ease-in-out infinite',
-        'spin': 'spin 0.8s linear infinite',
-      },
-      fontFamily: {
-        'formula': ['formula1', 'system-ui', 'sans-serif'],
-      },
-      boxShadow: {
-        'glass': '0 8px 32px 0 rgba(255, 255, 255, 0.05)',
-        'glass-lg': '0 12px 48px 0 rgba(255, 255, 255, 0.08)',
-        'glow-red': '0 0 20px rgba(239, 68, 68, 0.4)',
-        'glow-red-lg': '0 0 40px rgba(239, 68, 68, 0.6)',
+        "fade-up": "fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "fade-in": "fade-in 0.3s ease-out both",
+        "scale-in": "scale-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both",
+        shimmer: "shimmer 1.6s linear infinite",
+        "live-pulse": "live-pulse 2s ease-out infinite",
       },
     },
   },
   plugins: [
     require("tailwindcss-animate"),
-    function({ addUtilities }) {
-      addUtilities({
-        '.animation-delay-1000': {
-          'animation-delay': '1s',
-        },
-        '.animation-delay-2000': {
-          'animation-delay': '2s',
-        },
-        '.animation-delay-4000': {
-          'animation-delay': '4s',
-        },
-      })
+    // Display type: Russo One, uppercase, tight. Size, leading and tracking
+    // travel together so every heading on the site comes from this ramp.
+    function ({ addComponents }) {
+      const display = (size, lineHeight, letterSpacing) => ({
+        fontFamily: "var(--font-display), Impact, sans-serif",
+        fontWeight: "400",
+        textTransform: "uppercase",
+        fontSize: size,
+        lineHeight,
+        letterSpacing,
+      });
+      addComponents({
+        ".text-display": display("clamp(2.75rem, 7vw, 5.25rem)", "0.92", "-0.02em"),
+        ".text-title-1": display("clamp(2.1rem, 4.6vw, 3.4rem)", "0.95", "-0.015em"),
+        ".text-title-2": display("clamp(1.45rem, 2.6vw, 1.9rem)", "1", "-0.01em"),
+        ".text-title-3": display("1.1875rem", "1.1", "0"),
+        ".text-stat-lg": { ...display("clamp(2.25rem, 4.2vw, 3rem)", "1", "-0.02em"), textTransform: "none" },
+        ".text-stat": { ...display("1.75rem", "1", "-0.02em"), textTransform: "none" },
+      });
     },
   ],
-}
+};

@@ -1,259 +1,58 @@
 /**
  * components/live/TelemetryPanel.tsx
  *
- * Live car telemetry: speed/RPM/throttle/brake gauges, gear indicator, DRS
- * status. Each gauge intentionally uses a different hue (not just brand
- * red/ember) so all four traces stay distinguishable at a glance — the
- * same reasoning that keeps team livery colors and podium medal colors
- * outside the brand palette elsewhere in the app.
+ * The latest car-data sample: speed, RPM, throttle, brake as meters, plus
+ * gear and DRS. Each channel keeps its own hue so they stay distinct.
  */
+
 import { CarTelemetry } from "./types";
-import { RED, RGB } from "@/lib/theme/palette";
+import { EMBER, INFO, SUCCESS, WARNING } from "@/lib/theme/palette";
+import { cn } from "@/lib/utils/cn";
 
-interface Props {
-  car: CarTelemetry | null;
-}
+export default function TelemetryPanel({ car }: { car: CarTelemetry | null }) {
+  if (!car) return <p className="py-6 text-center text-subhead text-label-3">No car data recorded for this session.</p>;
 
-export default function TelemetryPanel({ car }: Props) {
-  if (!car) {
-    return (
-      <div
-        style={{
-          fontFamily: "'Rajdhani', sans-serif",
-          fontSize: "0.6rem",
-          fontWeight: 600,
-          letterSpacing: "0.08em",
-          color: `rgba(${RGB.paper},0.15)`,
-          padding: "0.5rem 0",
-        }}
-      >
-        No telemetry data available for this session.
-      </div>
-    );
-  }
-
-  const gauges = [
-    {
-      label: "Speed",
-      value: String(car.speed),
-      unit: "km/h",
-      pct: Math.min(car.speed / 380, 1),
-      color: RED,
-      max: "380",
-    },
-    {
-      label: "RPM",
-      value: car.rpm?.toLocaleString() ?? "0",
-      unit: "rpm",
-      pct: Math.min(car.rpm / 15000, 1),
-      color: "#3b82f6",
-      max: "15000",
-    },
-    {
-      label: "Throttle",
-      value: String(car.throttle),
-      unit: "%",
-      pct: car.throttle / 100,
-      color: "#27F4D2",
-      max: "100",
-    },
-    {
-      label: "Brake",
-      value: String(car.brake),
-      unit: "%",
-      pct: car.brake / 100,
-      color: "#FF8000",
-      max: "100",
-    },
+  const meters = [
+    { label: "Speed", value: car.speed, unit: "km/h", pct: car.speed / 380, color: EMBER },
+    { label: "RPM", value: car.rpm?.toLocaleString() ?? "0", unit: "", pct: (car.rpm ?? 0) / 15000, color: INFO },
+    { label: "Throttle", value: car.throttle, unit: "%", pct: car.throttle / 100, color: SUCCESS },
+    { label: "Brake", value: car.brake, unit: "%", pct: car.brake / 100, color: WARNING },
   ];
+  const drsOpen = car.drs > 10;
 
   return (
     <div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "2px",
-          marginBottom: "2px",
-        }}
-      >
-        {gauges.map((g) => (
-          <div
-            key={g.label}
-            style={{
-              background: `rgba(${RGB.paper},0.02)`,
-              border: `1px solid rgba(${RGB.paper},0.07)`,
-              padding: "0.85rem 1rem",
-            }}
-          >
-            <div
-              style={{
-                fontFamily: "'Rajdhani', sans-serif",
-                fontSize: "0.46rem",
-                fontWeight: 700,
-                letterSpacing: "0.16em",
-                textTransform: "uppercase",
-                color: `rgba(${RGB.paper},0.25)`,
-                marginBottom: "0.35rem",
-              }}
-            >
-              {g.label}
-            </div>
-            <div
-              style={{
-                fontFamily: "'Russo One', sans-serif",
-                fontSize: "1.5rem",
-                color: `rgb(${RGB.paper})`,
-                lineHeight: 1,
-                letterSpacing: "-0.02em",
-                marginBottom: "0.1rem",
-              }}
-            >
-              {g.value}
-              <span
-                style={{
-                  fontFamily: "'Rajdhani', sans-serif",
-                  fontSize: "0.52rem",
-                  color: `rgba(${RGB.paper},0.2)`,
-                  marginLeft: "4px",
-                  fontWeight: 600,
-                }}
-              >
-                {g.unit}
+      <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+        {meters.map((m) => (
+          <div key={m.label}>
+            <div className="flex items-baseline justify-between">
+              <span className="text-footnote text-label-3">{m.label}</span>
+              <span className="font-mono tabular text-headline text-paper">
+                {m.value}
+                {m.unit && <span className="ml-0.5 text-caption font-normal text-label-3">{m.unit}</span>}
               </span>
             </div>
-            <div
-              style={{
-                height: "3px",
-                background: `rgba(${RGB.paper},0.06)`,
-                marginTop: "0.5rem",
-              }}
-            >
-              <div
-                style={{
-                  height: "100%",
-                  width: `${g.pct * 100}%`,
-                  background: g.color,
-                  boxShadow: `0 0 6px ${g.color}60`,
-                  transition: "width 0.3s ease",
-                }}
-              />
-            </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginTop: "2px",
-                fontFamily: "'Rajdhani', sans-serif",
-                fontSize: "0.4rem",
-                color: `rgba(${RGB.paper},0.12)`,
-                letterSpacing: "0.04em",
-              }}
-            >
-              <span>0</span>
-              <span>{g.max}</span>
+            <div className="mt-2 h-1.5 overflow-hidden bg-fill-1" aria-hidden>
+              <div className="h-full" style={{ width: `${Math.min(1, Math.max(0, m.pct)) * 100}%`, background: m.color }} />
             </div>
           </div>
         ))}
       </div>
 
-      <div
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px" }}
-      >
-        <div
-          style={{
-            background: `rgba(${RGB.paper},0.02)`,
-            border: `1px solid rgba(${RGB.paper},0.07)`,
-            padding: "0.75rem 1rem",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <div>
-            <div
-              style={{
-                fontFamily: "'Rajdhani', sans-serif",
-                fontSize: "0.46rem",
-                fontWeight: 700,
-                letterSpacing: "0.16em",
-                textTransform: "uppercase",
-                color: `rgba(${RGB.paper},0.25)`,
-                marginBottom: "0.25rem",
-              }}
-            >
-              Gear
-            </div>
-            <div
-              style={{
-                fontFamily: "'Russo One', sans-serif",
-                fontSize: "2rem",
-                color: `rgb(${RGB.paper})`,
-                lineHeight: 1,
-              }}
-            >
-              {car.n_gear || "N"}
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: "2px", alignItems: "flex-end" }}>
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((g) => (
-              <div
-                key={g}
-                style={{
-                  width: "3px",
-                  height: `${g * 4}px`,
-                  background:
-                    g <= (car.n_gear || 0) ? RED : `rgba(${RGB.paper},0.06)`,
-                  transition: "background 0.2s",
-                }}
-              />
-            ))}
-          </div>
+      <div className="mt-6 flex items-center gap-4 border-t border-hairline pt-5">
+        <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-md bg-fill-1">
+          <span className="font-mono tabular text-title-2 font-bold leading-none text-paper">{car.n_gear || "N"}</span>
+          <span className="mt-0.5 text-caption text-label-3">Gear</span>
         </div>
-        <div
-          style={{
-            background: `rgba(${RGB.paper},0.02)`,
-            border: `1px solid rgba(${RGB.paper},0.07)`,
-            padding: "0.75rem 1rem",
-          }}
-        >
-          <div
-            style={{
-              fontFamily: "'Rajdhani', sans-serif",
-              fontSize: "0.46rem",
-              fontWeight: 700,
-              letterSpacing: "0.16em",
-              textTransform: "uppercase",
-              color: `rgba(${RGB.paper},0.25)`,
-              marginBottom: "0.25rem",
-            }}
-          >
-            DRS
-          </div>
-          <div
-            style={{
-              fontFamily: "'Russo One', sans-serif",
-              fontSize: "1rem",
-              letterSpacing: "0.04em",
-              color: car.drs > 10 ? "#4ade80" : `rgba(${RGB.paper},0.2)`,
-            }}
-          >
-            {car.drs > 10 ? "OPEN" : "CLOSED"}
-          </div>
-          {car.drs > 10 && (
-            <div
-              style={{
-                marginTop: "0.4rem",
-                height: "2px",
-                background: "#4ade80",
-                boxShadow: "0 0 6px #4ade80",
-                animation: "drsFlash 1s ease-in-out infinite",
-              }}
-            />
-          )}
+        <div className="flex flex-1 gap-1" aria-hidden>
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((g) => (
+            <span key={g} className={cn("h-2 flex-1", g <= (car.n_gear || 0) ? "bg-ember" : "bg-fill-2")} />
+          ))}
         </div>
+        <span className={cn(" px-3 py-1 text-caption font-bold", drsOpen ? "bg-success/15 text-success" : "bg-fill-2 text-label-3")}>
+          DRS {drsOpen ? "open" : "closed"}
+        </span>
       </div>
-      <style>{`@keyframes drsFlash { 0%,100%{opacity:1} 50%{opacity:0.4} }`}</style>
     </div>
   );
 }

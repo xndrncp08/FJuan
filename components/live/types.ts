@@ -70,11 +70,17 @@ export function formatLapTime(seconds: number | null): string {
   return mins > 0 ? `${mins}:${secs}` : `${secs}s`;
 }
 
-export function teamColor(hex: string | undefined): string {
-  if (!hex) return "#E10600";
-  return hex.startsWith("#") ? hex : `#${hex}`;
-}
+export { teamColor } from "@/lib/theme/teams";
 
 export function safeArray<T>(val: any): T[] {
   return Array.isArray(val) ? val : [];
+}
+
+/** OpenF1 names come as "Lando NORRIS"; show them as "Lando Norris". */
+export function displayName(fullName: string | undefined): string {
+  if (!fullName) return "";
+  return fullName
+    .split(" ")
+    .map((w) => (w === w.toUpperCase() && w.length > 1 ? w[0] + w.slice(1).toLowerCase() : w))
+    .join(" ");
 }

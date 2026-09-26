@@ -1,550 +1,383 @@
 /* =============================================================================
    FJUAN — Global Stylesheet
-   Design System: Dark F1-themed interface with Russo One + Rajdhani + JetBrains Mono
-   Primary accent: #E10600 (F1 Red)
-   Base background: #060606
-   ============================================================================= */
 
-@import url("https://fonts.googleapis.com/css2?family=Russo+One&family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Barlow+Condensed:wght@400;500;600;700;800;900&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&display=swap");
+   Design language: F1 broadcast graphics, with Apple-grade clarity.
+   Brand: heat palette (ink / maroon / red / ember), Russo One display type,
+   Rajdhani UI, JetBrains Mono timing data, square panels, red accent bars,
+   uppercase telemetry labels, dot-grid and speed-line textures.
+   Clarity: one type ramp, four text tiers that all pass WCAG AA, real
+   buttons and links, visible focus, instant press feedback, no layout that
+   depends on hover, and reduced-motion/transparency/contrast respected.
+
+   Most styling lives in Tailwind classes on components. This file holds the
+   tokens, base element styles, and a handful of component primitives that
+   are awkward to express as utilities (materials, focus, scroll edges).
+   ============================================================================= */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ─── CSS Design Tokens ──────────────────────────────────────────────────── */
+/* ─── Tokens ──────────────────────────────────────────────────────────────── */
 @layer base {
   :root {
-    /* Shadcn-compatible semantic color tokens (HSL) */
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 5%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 5%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 100% 44%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 10%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 10%;
-    --muted-foreground: 0 0% 55%;
-    --accent: 0 0% 10%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 11%;
-    --input: 0 0% 10%;
-    --ring: 0 100% 44%;
-    --radius: 0rem;
+    color-scheme: dark;
 
-    /* ── Raw design constants ── */
-    --f1-red: #e10600;
-    --f1-red-hover: #c50500;
-    --f1-red-glow: rgba(225, 6, 0, 0.18);
-    --f1-red-subtle: rgba(225, 6, 0, 0.06);
-    --f1-red-border: rgba(225, 6, 0, 0.35);
-    --f1-ink: #280905;
-    --f1-maroon: #740a03;
-    --f1-red: #c3110c;
-    --f1-ember: #e6501b;
+    /* Channels ("r g b") so Tailwind opacity modifiers work — keep in sync
+       with lib/theme/palette.ts */
+    --canvas: 20 6 5; /* #140605 */
+    --surface-1: 31 14 11; /* #1F0E0B */
+    --surface-2: 42 22 18; /* #2A1612 */
+    --surface-3: 54 30 25; /* #361E19 */
+    --paper: 245 233 228; /* #F5E9E4 */
+    --ink: 40 9 5;
+    --maroon: 116 10 3;
+    --accent: 195 17 12; /* RED  #C3110C — fills */
+    --ember: 230 80 27; /* EMBER #E6501B — data emphasis */
+    --tint: 255 122 82; /* #FF7A52 — accent as readable text */
+    --success: 52 210 123;
+    --warning: 255 197 61;
+    --info: 108 196 255;
+    --gold: 232 195 90;
+    --silver: 201 205 211;
+    --bronze: 201 138 91;
+    --purple: 180 140 255;
 
-    --bg-base: #060606;
-    --bg-surface: #111111;
-    --bg-surface-2: #161616;
-    --bg-panel: #0d0d0d;
-    --bg-deep: #080808;
+    /* Text tiers — paper at fixed alpha */
+    --label-2: rgb(var(--paper) / 0.72);
+    --label-3: rgb(var(--paper) / 0.54);
+    --label-4: rgb(var(--paper) / 0.32);
 
-    --border-subtle: rgba(255, 255, 255, 0.05);
-    --border-default: rgba(255, 255, 255, 0.07);
-    --border-medium: rgba(255, 255, 255, 0.1);
+    /* Lines and fills */
+    --hairline: rgb(var(--paper) / 0.08);
+    --separator: rgb(var(--paper) / 0.13);
+    --fill-1: rgb(var(--paper) / 0.05);
+    --fill-2: rgb(var(--paper) / 0.08);
+    --fill-3: rgb(var(--paper) / 0.12);
 
-    --text-primary: rgba(255, 255, 255, 0.95);
-    --text-secondary: rgba(255, 255, 255, 0.55);
-    --text-muted: rgba(255, 255, 255, 0.3);
-    --text-faint: rgba(255, 255, 255, 0.18);
+    /* Materials (translucent chrome) */
+    --material-bar: rgb(var(--canvas) / 0.72);
+    --material-thick: rgb(28 12 10 / 0.86);
 
-    /* Consistent vertical / horizontal spacing */
-    --section-pad-y: clamp(3rem, 5vw, 5rem);
-    --content-pad-x: clamp(1.25rem, 4vw, 1.5rem);
-    --content-max-w: 1280px;
+    /* --font-display / --font-ui / --font-data are set by next/font in app/layout.tsx */
+
+    --nav-h: 64px;
+    --gutter: clamp(1rem, 4vw, 2rem);
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   }
 }
 
-/* ─── Base Reset ─────────────────────────────────────────────────────────── */
+/* ─── Base ────────────────────────────────────────────────────────────────── */
 @layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    background-color: var(--bg-base);
-    color: var(--text-primary);
-    font-family: "Rajdhani", sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+  *,
+  *::before,
+  *::after {
+    border-color: var(--hairline);
   }
 
   html {
-    scroll-behavior: smooth;
-  }
-}
-
-/* ─── Typography Utilities ───────────────────────────────────────────────── */
-@layer utilities {
-  .font-display {
-    font-family: "Russo One", sans-serif;
-  }
-  .font-condensed {
-    font-family: "Barlow Condensed", sans-serif;
-  }
-  .font-mono-f1 {
-    font-family: "JetBrains Mono", monospace;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    scroll-padding-top: calc(var(--nav-h) + 16px);
   }
 
-  /* Red overline label used above section headings */
-  .label-overline {
-    font-family: "Rajdhani", sans-serif;
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--f1-red);
-  }
-
-  /* Large display section heading */
-  .section-title {
-    font-family: "Russo One", sans-serif;
-    font-size: clamp(2rem, 5vw, 3.5rem);
-    line-height: 0.95;
-    text-transform: uppercase;
-    color: white;
-  }
-
-  /* Prominent numeric stat */
-  .stat-value {
-    font-family: "Russo One", sans-serif;
-    font-size: 2.5rem;
-    line-height: 1;
-    color: white;
-  }
-
-  /* Tiny label beneath a stat value */
-  .stat-label {
-    font-family: "Rajdhani", sans-serif;
-    font-weight: 600;
-    font-size: 0.68rem;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--text-faint);
-    margin-top: 0.25rem;
-  }
-
-  /* Monospace data readout for timestamps / IDs / metadata */
-  .data-readout {
-    font-family: "JetBrains Mono", monospace;
+  body {
+    min-height: 100dvh;
+    background-color: rgb(var(--canvas));
+    color: rgb(var(--paper));
+    font-family: var(--font-ui), system-ui, sans-serif;
     font-weight: 500;
-    font-size: 0.72rem;
-    color: var(--text-muted);
-    letter-spacing: 0.05em;
+    font-size: 1.0625rem;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    overflow-x: clip;
   }
 
-  /* Tabular number display */
-  .num-display {
-    font-family: "Russo One", sans-serif;
+  /* Numbers line up in columns everywhere — this is a data product. */
+  table,
+  .tabular {
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.02em;
-  }
-}
-
-/* ─── Surface / Background ───────────────────────────────────────────────── */
-@layer utilities {
-  .surface {
-    background-color: var(--bg-surface);
-    border: 1px solid var(--border-default);
-  }
-  .surface-2 {
-    background-color: var(--bg-surface-2);
-    border: 1px solid var(--border-default);
-  }
-  .panel {
-    background-color: var(--bg-panel);
-    border: 1px solid var(--border-default);
   }
 
-  .hero-bg {
-    background:
-      radial-gradient(
-        ellipse 100% 80% at 50% -5%,
-        var(--f1-red-glow) 0%,
-        transparent 60%
-      ),
-      var(--bg-base);
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
   }
 
-  .carbon-bg {
-    background-color: #080808;
-    background-image:
-      repeating-linear-gradient(
-        45deg,
-        transparent,
-        transparent 1px,
-        rgba(255, 255, 255, 0.013) 1px,
-        rgba(255, 255, 255, 0.013) 2px
-      ),
-      repeating-linear-gradient(
-        -45deg,
-        transparent,
-        transparent 1px,
-        rgba(255, 255, 255, 0.013) 1px,
-        rgba(255, 255, 255, 0.013) 2px
-      );
-    background-size: 4px 4px;
+  ::selection {
+    background: rgb(var(--accent) / 0.55);
+    color: rgb(var(--paper));
   }
 
-  .glow-red {
-    box-shadow:
-      0 0 40px var(--f1-red-glow),
-      0 0 80px rgba(225, 6, 0, 0.05);
-  }
-
-  .hr-accent {
-    border: none;
-    height: 1px;
-    background: linear-gradient(
-      90deg,
-      var(--f1-red) 0%,
-      rgba(225, 6, 0, 0.15) 30%,
-      transparent 60%
-    );
-  }
-}
-
-/* ─── Buttons ────────────────────────────────────────────────────────────── */
-@layer utilities {
-  /* Primary: solid red — main CTA */
-  .btn-primary {
-    background: var(--f1-red);
-    border: 1px solid transparent;
-    padding: 0.75rem 1.75rem;
-    font-family: "Barlow Condensed", sans-serif;
-    font-weight: 700;
-    font-size: 0.875rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: white;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition:
-      background 0.15s ease,
-      box-shadow 0.15s ease;
-    border-radius: 0;
-  }
-  .btn-primary:hover {
-    background: var(--f1-red-hover);
-    box-shadow: 0 0 24px rgba(225, 6, 0, 0.35);
-  }
-  .btn-primary:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
-
-  /* Ghost: transparent with border — secondary action */
-  .btn-ghost {
-    background: transparent;
-    border: 1px solid var(--border-medium);
-    padding: 0.75rem 1.75rem;
-    font-family: "Barlow Condensed", sans-serif;
-    font-weight: 700;
-    font-size: 0.875rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition:
-      color 0.15s ease,
-      border-color 0.15s ease,
-      background 0.15s ease;
-    border-radius: 0;
-  }
-  .btn-ghost:hover {
-    color: white;
-    border-color: rgba(255, 255, 255, 0.22);
-    background: rgba(255, 255, 255, 0.04);
-  }
-  .btn-ghost:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
-
-  /* Nav-back: breadcrumb / back navigation link */
-  .nav-back {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-family: "Rajdhani", sans-serif;
-    font-weight: 600;
-    font-size: 0.75rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--text-muted);
+  a {
+    color: inherit;
     text-decoration: none;
-    transition: color 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
   }
-  .nav-back:hover {
-    color: rgba(255, 255, 255, 0.65);
+
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* One focus treatment for everything, keyboard only. */
+  :focus-visible {
+    outline: 2px solid rgb(var(--tint));
+    outline-offset: 2px;
+  }
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  input,
+  select,
+  textarea {
+    font: inherit;
+    /* 16px minimum stops iOS Safari zooming the page on focus. */
+    font-size: max(16px, 1em);
   }
 }
 
-/* ─── Card & Row Interactions ────────────────────────────────────────────── */
-@layer utilities {
-  .card-hover {
-    transition:
-      border-color 0.2s ease,
-      transform 0.2s ease,
-      box-shadow 0.2s ease;
-  }
-  .card-hover:hover {
-    border-color: var(--f1-red-border) !important;
-    transform: translateY(-2px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+/* ─── Component primitives ────────────────────────────────────────────────── */
+@layer components {
+  .container-page {
+    width: 100%;
+    max-width: calc(1200px + var(--gutter) * 2);
+    margin-inline: auto;
+    padding-inline: var(--gutter);
   }
 
-  .card-hover-enhanced {
-    transition:
-      border-color 0.25s ease,
-      transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
-      box-shadow 0.25s ease;
+  /* Translucent chrome: content scrolls underneath. */
+  .material-bar {
+    background: var(--material-bar);
+    -webkit-backdrop-filter: blur(24px) saturate(170%);
+    backdrop-filter: blur(24px) saturate(170%);
   }
-  .card-hover-enhanced:hover {
-    transform: translateY(-3px);
-    box-shadow:
-      0 16px 48px rgba(0, 0, 0, 0.6),
-      0 0 0 1px rgba(225, 6, 0, 0.2);
-  }
-
-  /* Scanline swipe effect on hover */
-  .card-scanline {
-    position: relative;
-    overflow: hidden;
-  }
-  .card-scanline::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(225, 6, 0, 0.6),
-      transparent
-    );
-    top: -2px;
-    opacity: 0;
-    pointer-events: none;
-  }
-  .card-scanline:hover::after {
-    animation: scanline-pass 0.6s ease-out forwards;
+  .material-thick {
+    background: var(--material-thick);
+    -webkit-backdrop-filter: blur(40px) saturate(160%);
+    backdrop-filter: blur(40px) saturate(160%);
   }
 
-  .data-row {
-    transition: background 0.1s ease;
-  }
-  .data-row:hover {
-    background: rgba(255, 255, 255, 0.025) !important;
-  }
-}
-
-/* ─── Live Indicators ────────────────────────────────────────────────────── */
-@layer utilities {
-  .live-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--f1-red);
-    animation: pulse-live 1.5s ease-in-out infinite;
-    display: inline-block;
-    flex-shrink: 0;
-  }
-
-  .animate-border-glow {
-    animation: border-glow-pulse 3s ease-in-out infinite;
-  }
-
-  .scan-effect {
-    position: relative;
-    overflow: hidden;
-  }
-  .scan-effect::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(225, 6, 0, 0.4),
-      transparent
-    );
-    animation: scan-line 2s ease-in-out infinite;
-    pointer-events: none;
-  }
-}
-
-/* ─── Loading / Skeleton ─────────────────────────────────────────────────── */
-@layer utilities {
-  .skeleton {
-    background: linear-gradient(90deg, #111 25%, #191919 50%, #111 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
-  }
-
-  /* Reusable centered loading state container */
-  .loading-state {
-    display: flex;
-    flex-direction: column;
+  /* Red bar + uppercase overline above a title — the broadcast lower-third. */
+  .eyebrow {
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    padding: 6rem 0;
+    gap: 0.6rem;
+    font-family: var(--font-ui), sans-serif;
+    font-size: 0.8125rem;
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgb(var(--tint));
+  }
+  .eyebrow::before {
+    content: "";
+    width: 18px;
+    height: 2px;
+    flex-shrink: 0;
+    background: rgb(var(--accent));
+  }
+
+  /* Uppercase tracked label (table headers, stat labels, tabs). */
+  .label-caps {
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  /* ── Broadcast textures ─────────────────────────────────────────────── */
+  .tex-dots {
+    background-image: radial-gradient(circle, rgb(var(--paper) / 0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .tex-grid {
+    background-image:
+      linear-gradient(rgb(var(--paper) / 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--paper) / 0.025) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  .tex-scan {
+    background-image: repeating-linear-gradient(0deg, transparent 0 2px, rgba(0, 0, 0, 0.07) 2px 4px);
+  }
+  .speed-line {
+    position: absolute;
+    left: -10%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(var(--accent) / 0.45) 35%, rgb(var(--paper) / 0.12) 75%, transparent);
+    animation: speed-line 4.5s linear infinite;
+    pointer-events: none;
+  }
+  /* Ghost outline text behind headers: driver numbers, circuit names. */
+  .watermark {
+    font-family: var(--font-display), sans-serif;
+    line-height: 0.8;
+    color: transparent;
+    -webkit-text-stroke: 1px rgb(var(--paper) / 0.05);
+    text-transform: uppercase;
+    white-space: nowrap;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /* Press feedback lives on pointer-down and is instant. */
+  .pressable {
+    transition:
+      transform 0.16s var(--ease-out),
+      background-color 0.2s var(--ease-out),
+      border-color 0.2s var(--ease-out),
+      color 0.2s var(--ease-out),
+      box-shadow 0.2s var(--ease-out),
+      opacity 0.2s var(--ease-out);
+    touch-action: manipulation;
+  }
+  .pressable:active {
+    transform: scale(0.97);
+    transition-duration: 0.08s;
+  }
+
+  /* Panels: square, hairline-bordered, lit from above. */
+  .card {
+    position: relative;
+    background: linear-gradient(180deg, rgb(var(--surface-1)) 0%, rgb(var(--surface-1) / 0.92) 100%);
+    border: 1px solid var(--hairline);
+    box-shadow: 0 1px 0 0 rgb(var(--paper) / 0.04) inset, 0 12px 32px -18px rgba(0, 0, 0, 0.7);
+  }
+  /* Red top edge for featured panels. */
+  .card-accent::before {
+    content: "";
+    position: absolute;
+    inset: -1px -1px auto -1px;
+    height: 2px;
+    background: rgb(var(--accent));
+  }
+  .card-interactive {
+    transition:
+      background-color 0.2s var(--ease-out),
+      border-color 0.2s var(--ease-out),
+      transform 0.16s var(--ease-out);
+  }
+  @media (hover: hover) {
+    .card-interactive:hover {
+      background: rgb(var(--surface-2));
+      border-color: rgb(var(--accent) / 0.55);
+    }
+  }
+  .card-interactive:active {
+    transform: scale(0.99);
+    transition-duration: 0.08s;
+  }
+
+  /* Table-like list rows */
+  .row-interactive {
+    transition: background-color 0.15s var(--ease-out);
+  }
+  @media (hover: hover) {
+    .row-interactive:hover {
+      background: var(--fill-1);
+    }
+  }
+  .row-interactive:active {
+    background: var(--fill-2);
+  }
+
+  /* Horizontal scrollers that bleed to the viewport edge on mobile. */
+  .scroller {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+  .scroller::-webkit-scrollbar {
+    display: none;
+  }
+  .scroller > * {
+    scroll-snap-align: start;
+  }
+
+  /* Soft fade where content meets an edge, instead of a hard divider. */
+  .fade-edges-x {
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+  }
+
+  .skeleton {
+    background: linear-gradient(90deg, var(--fill-1) 25%, var(--fill-2) 50%, var(--fill-1) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+
+  /* F1's circuit maps are dark lines on transparent — flip lightness for a
+     dark surface while hue-rotate keeps the sector colors recognisable. */
+  .circuit-map {
+    filter: invert(1) hue-rotate(180deg) saturate(0.9);
+  }
+
+  .live-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    flex-shrink: 0;
+    border-radius: 9999px;
+    background: rgb(var(--accent));
+    animation: live-pulse 2s ease-out infinite;
+  }
+
+  /* Hide scrollbars on overflow containers that scroll by gesture. */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 }
 
-/* ─── Layout Helpers ─────────────────────────────────────────────────────── */
-@layer utilities {
-  .content-container {
-    max-width: var(--content-max-w);
-    margin: 0 auto;
-    padding-left: var(--content-pad-x);
-    padding-right: var(--content-pad-x);
-  }
+/* ─── Recharts: inherit the system instead of its defaults ────────────────── */
+.recharts-text,
+.recharts-cartesian-axis-tick-value {
+  fill: var(--label-3);
+  font-size: 11px;
+  font-family: var(--font-data), monospace;
+}
+.recharts-cartesian-grid line {
+  stroke: rgb(var(--paper) / 0.07);
+}
+.recharts-tooltip-wrapper {
+  outline: none;
+}
+.recharts-default-tooltip {
+  background: rgb(var(--surface-3)) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: 0 0 0 1px var(--separator), 0 12px 32px rgba(0, 0, 0, 0.5);
+  padding: 10px 12px !important;
+  font-size: 13px;
+}
+.recharts-surface:focus,
+.recharts-wrapper:focus {
+  outline: none;
 }
 
-/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
-@layer utilities {
-  ::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-  }
-  ::-webkit-scrollbar-track {
-    background: #080808;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: rgba(225, 6, 0, 0.35);
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--f1-red);
-  }
+/* ─── Page transition ─────────────────────────────────────────────────────── */
+/* fill-mode "backwards", not "both": a transform left behind after the
+   animation would become the containing block for position: fixed children. */
+.page-enter {
+  animation: fade-up 0.4s var(--ease-out) backwards;
 }
 
-/* ─── Keyframes ──────────────────────────────────────────────────────────── */
-@keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}
-
-@keyframes marquee {
+/* ─── Keyframes (shared with inline animation strings) ─────────────────────── */
+@keyframes fade-up {
   from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
-}
-
-@keyframes page-enter {
-  /*
-    filter: blur() removed — it creates a new containing block that breaks
-    position: fixed on descendants (Nacho Bot FAB + panel).
-    opacity + translateY gives the same feel without the side-effect.
-  */
-  0% {
     opacity: 0;
-    transform: translateY(18px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-@keyframes border-glow-pulse {
-  0%,
-  100% {
-    border-color: rgba(225, 6, 0, 0.15);
-  }
-  50% {
-    border-color: rgba(225, 6, 0, 0.45);
-  }
-}
-@keyframes scan-line {
-  0% {
-    transform: translateY(0);
-    opacity: 0.5;
-  }
-  100% {
-    transform: translateY(300px);
-    opacity: 0;
-  }
-}
-@keyframes scanline-pass {
-  0% {
-    top: -2px;
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  90% {
-    opacity: 0.6;
-  }
-  100% {
-    top: 100%;
-    opacity: 0;
-  }
-}
-@keyframes ticker-scroll {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
-}
-@keyframes number-rise {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-@keyframes pulse-live {
-  0%,
-  100% {
-    opacity: 1;
-    box-shadow: 0 0 0 0 rgba(225, 6, 0, 0.5);
-  }
-  50% {
-    opacity: 0.5;
-    box-shadow: 0 0 0 4px rgba(225, 6, 0, 0);
-  }
-}
-@keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -559,110 +392,76 @@
     opacity: 1;
   }
 }
-@keyframes spin-ring {
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+@keyframes live-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(var(--accent) / 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgb(var(--accent) / 0);
+  }
+}
+@keyframes speed-line {
+  from {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  15%,
+  85% {
+    opacity: 1;
+  }
+  to {
+    transform: translateX(130vw);
+    opacity: 0;
+  }
+}
+@keyframes spin {
   to {
     transform: rotate(360deg);
   }
 }
 
-/* ─── Animation Classes ──────────────────────────────────────────────────── */
-.animate-slide-up {
-  animation: slide-up 0.5s ease-out both;
-}
-.animate-fade-in {
-  animation: fade-in 0.4s ease-out both;
-}
-.animate-number {
-  animation: number-rise 0.4s ease-out both;
+/* ─── Accessibility preferences ───────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .pressable:active,
+  .card-interactive:active {
+    transform: none;
+  }
+  .speed-line {
+    display: none;
+  }
 }
 
-.delay-100 {
-  animation-delay: 0.1s;
-}
-.delay-200 {
-  animation-delay: 0.2s;
-}
-.delay-300 {
-  animation-delay: 0.3s;
-}
-.delay-400 {
-  animation-delay: 0.4s;
-}
-.delay-500 {
-  animation-delay: 0.5s;
+@media (prefers-reduced-transparency: reduce) {
+  .material-bar,
+  .material-thick {
+    background: rgb(var(--surface-1));
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 
-.stagger-children > *:nth-child(1) {
-  animation-delay: 0.05s;
-}
-.stagger-children > *:nth-child(2) {
-  animation-delay: 0.1s;
-}
-.stagger-children > *:nth-child(3) {
-  animation-delay: 0.15s;
-}
-.stagger-children > *:nth-child(4) {
-  animation-delay: 0.2s;
-}
-.stagger-children > *:nth-child(5) {
-  animation-delay: 0.25s;
-}
-.stagger-children > *:nth-child(6) {
-  animation-delay: 0.3s;
-}
-
-.page-transition-wrapper {
-  animation: page-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-/* ─── Ticker ─────────────────────────────────────────────────────────────── */
-.ticker-track {
-  display: flex;
-  animation: ticker-scroll 28s linear infinite;
-  width: max-content;
-}
-.ticker-track:hover {
-  animation-play-state: paused;
-}
-
-/* ─── Responsive ─────────────────────────────────────────────────────────── */
-@media (max-width: 640px) {
-  .live-two-col {
-    grid-template-columns: 1fr !important;
-  }
-  .session-search-row {
-    flex-direction: column !important;
-  }
-  .driver-grid {
-    gap: 0.35rem !important;
-  }
-  .lap-times-row {
-    padding: 0.45rem 0.75rem !important;
-  }
-  .teams-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .calendar-hide-mobile {
-    display: none !important;
-  }
-  .track-detail-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .compare-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .hero-content {
-    padding: 1.5rem !important;
-  }
-}
-@media (max-width: 768px) {
-  .live-data-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .countdown-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-  .features-grid {
-    grid-template-columns: 1fr !important;
+@media (prefers-contrast: more) {
+  :root {
+    --label-2: rgb(var(--paper) / 0.86);
+    --label-3: rgb(var(--paper) / 0.72);
+    --hairline: rgb(var(--paper) / 0.2);
+    --separator: rgb(var(--paper) / 0.28);
   }
 }

@@ -1,142 +1,61 @@
-/**
- * components/compare/PerformanceRadarChart.tsx
- *
- * RadarChart — plots normalised career metrics for both drivers on the same axes.
- * Metrics: Win Rate, Podium Rate, Points/Race, Pole Rate, Avg Finish (inverted).
- */
 "use client";
 
-import {
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts";
-import { DriverStats } from "@/lib/types/driver";
-import { D1_COLOR } from "./constants";
+import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tooltip } from "recharts";
+import type { DriverStats } from "@/lib/types/driver";
+import { ChartTooltip } from "@/components/ui/chart";
+import { A_COLOR, B_COLOR } from "./constants";
 
-interface Props {
-  d1: DriverStats;
-  d2: DriverStats;
+// Each axis is scaled between the two drivers, so the shape shows who is
+// stronger where rather than absolute values (those are in the tooltip).
+function scale(v: number, lo: number, hi: number) {
+  if (hi === lo) return 50;
+  return Math.round(((v - lo) / (hi - lo)) * 100);
 }
 
-function normalize(val: number, min: number, max: number): number {
-  if (max === min) return 50;
-  return Math.round(((val - min) / (max - min)) * 100);
-}
-
-function CustomTooltip({ active, payload }: any) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div style={{
-      background: "rgba(8,8,8,0.97)",
-      border: "1px solid rgba(255,255,255,0.08)",
-      padding: "0.6rem 0.85rem",
-    }}>
-      {payload.map((p: any, i: number) => (
-        <div key={i} style={{
-          fontFamily: "'Russo One', sans-serif",
-          fontSize: "0.7rem",
-          color: p.stroke,
-          marginBottom: "2px",
-        }}>
-          {p.name}: {p.value}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export function PerformanceRadarChart({ d1, d2 }: Props) {
-  // Normalise each metric relative to each other
+export function PerformanceRadarChart({ a, b }: { a: DriverStats; b: DriverStats }) {
   const metrics = [
-    {
-      subject: "Win Rate",
-      d1raw: d1.winRate,
-      d2raw: d2.winRate,
-    },
-    {
-      subject: "Podium %",
-      d1raw: d1.podiumRate,
-      d2raw: d2.podiumRate,
-    },
-    {
-      subject: "Pts/Race",
-      d1raw: d1.pointsPerRace,
-      d2raw: d2.pointsPerRace,
-    },
-    {
-      subject: "Pole Rate",
-      d1raw: d1.totalPoles / Math.max(1, d1.totalRaces) * 100,
-      d2raw: d2.totalPoles / Math.max(1, d2.totalRaces) * 100,
-    },
-    {
-      subject: "Avg Finish",
-      // lower is better — invert
-      d1raw: d1.avgFinishPosition ? 25 - d1.avgFinishPosition : 0,
-      d2raw: d2.avgFinishPosition ? 25 - d2.avgFinishPosition : 0,
-    },
-    {
-      subject: "Reliability",
-      // lower DNF rate = better
-      d1raw: 100 - (d1.retirementRate ?? 0),
-      d2raw: 100 - (d2.retirementRate ?? 0),
-    },
+    { subject: "Win rate", a: a.winRate, b: b.winRate, unit: "%" },
+    { subject: "Podium rate", a: a.podiumRate, b: b.podiumRate, unit: "%" },
+    { subject: "Pts / race", a: a.pointsPerRace, b: b.pointsPerRace, unit: "" },
+    { subject: "Pole rate", a: (a.totalPoles / Math.max(1, a.totalRaces)) * 100, b: (b.totalPoles / Math.max(1, b.totalRaces)) * 100, unit: "%" },
+    { subject: "Avg finish", a: a.avgFinishPosition ? 25 - a.avgFinishPosition : 0, b: b.avgFinishPosition ? 25 - b.avgFinishPosition : 0, unit: "", raw: [a.avgFinishPosition, b.avgFinishPosition] },
+    { subject: "Reliability", a: 100 - (a.retirementRate ?? 0), b: 100 - (b.retirementRate ?? 0), unit: "%" },
   ];
 
   const data = metrics.map((m) => {
-    const min = Math.min(m.d1raw, m.d2raw);
-    const max = Math.max(m.d1raw, m.d2raw);
+    const lo = Math.min(m.a, m.b) * 0.8;
+    const hi = Math.max(m.a, m.b) * 1.1;
     return {
       subject: m.subject,
-      d1: normalize(m.d1raw, min * 0.8, max * 1.1),
-      d2: normalize(m.d2raw, min * 0.8, max * 1.1),
-      d1raw: m.d1raw,
-      d2raw: m.d2raw,
+      a: scale(m.a, lo, hi),
+      b: scale(m.b, lo, hi),
+      aRaw: m.raw ? m.raw[0] : m.a,
+      bRaw: m.raw ? m.raw[1] : m.b,
+      unit: m.unit,
     };
   });
 
-  const d1Name = d1.driver.familyName;
-  const d2Name = d2.driver.familyName;
-
   return (
-    <ResponsiveContainer width="100%" height={280}>
-      <RadarChart data={data} margin={{ top: 16, right: 32, bottom: 16, left: 32 }}>
-        <PolarGrid
-          stroke="rgba(255,255,255,0.06)"
-          gridType="polygon"
+    <ResponsiveContainer width="100%" height="100%">
+      <RadarChart data={data} margin={{ top: 12, right: 36, bottom: 12, left: 36 }} outerRadius="72%">
+        <PolarGrid stroke="rgba(245,233,228,0.1)" gridType="polygon" />
+        <PolarAngleAxis dataKey="subject" tick={{ fill: "rgba(245,233,228,0.72)", fontSize: 12 }} />
+        <Tooltip
+          content={
+            <ChartTooltip
+              title={(_, p) => p[0]?.payload?.subject}
+              format={(p) => {
+                const row = p[0].payload;
+                return [
+                  { label: a.driver.familyName, value: `${Number(row.aRaw).toFixed(1)}${row.unit}`, color: A_COLOR },
+                  { label: b.driver.familyName, value: `${Number(row.bRaw).toFixed(1)}${row.unit}`, color: B_COLOR },
+                ];
+              }}
+            />
+          }
         />
-        <PolarAngleAxis
-          dataKey="subject"
-          tick={{
-            fontFamily: "'Rajdhani', sans-serif",
-            fontSize: 10,
-            fontWeight: 600,
-            fill: "rgba(255,255,255,0.35)",
-            letterSpacing: "0.06em",
-          }}
-        />
-        <Tooltip content={<CustomTooltip />} />
-        <Radar
-          name={d1Name}
-          dataKey="d1"
-          stroke={D1_COLOR}
-          strokeWidth={1.5}
-          fill={D1_COLOR}
-          fillOpacity={0.15}
-          dot={{ r: 3, fill: D1_COLOR, strokeWidth: 0 }}
-        />
-        <Radar
-          name={d2Name}
-          dataKey="d2"
-          stroke="rgba(255,255,255,0.5)"
-          strokeWidth={1.5}
-          fill="rgba(255,255,255,0.5)"
-          fillOpacity={0.08}
-          dot={{ r: 3, fill: "rgba(255,255,255,0.6)", strokeWidth: 0 }}
-        />
+        <Radar name={a.driver.familyName} dataKey="a" stroke={A_COLOR} strokeWidth={2} fill={A_COLOR} fillOpacity={0.18} />
+        <Radar name={b.driver.familyName} dataKey="b" stroke={B_COLOR} strokeWidth={2} fill={B_COLOR} fillOpacity={0.14} />
       </RadarChart>
     </ResponsiveContainer>
   );

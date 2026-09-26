@@ -1,347 +1,169 @@
 /**
- * RaceDetailPage – Displays race results and qualifying for a specific F1 race.
+ * app/races/[season]/[round]/page.tsx — One race weekend's results.
  *
- * Features:
- * - Race header with name, location, date, round watermark
- * - Race results table (position, driver, team, grid, laps, points)
- * - Qualifying results table (position, driver, team, Q1, Q2, Q3)
- * - Responsive tables with horizontal scroll on mobile
- * - Team colour accents
- * - Links to driver profiles
- * - Back navigation to calendar
+ * Header, podium at a glance with fastest lap and pole, then the full race
+ * and qualifying classifications, then previous/next round navigation.
  */
 
 import Link from "next/link";
-import {
-  getRaceResults,
-  getQualifyingResults,
-  getRaceSchedule,
-} from "@/lib/api/jolpica";
+import { ChevronLeft, ChevronRight, Flag, Timer, Trophy } from "lucide-react";
+import { getQualifyingResults, getRaceResults, getRaceSchedule } from "@/lib/api/jolpica";
+import { Section, HeaderBackdrop } from "@/components/ui/Section";
+import { Card } from "@/components/ui/Card";
+import { ButtonLink } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/States";
+import { TeamMark } from "@/components/ui/TeamMark";
+import { shortTeamName } from "@/lib/theme/teams";
+import ResultsTables from "./ResultsTables";
+import { cn } from "@/lib/utils/cn";
 
-// Team colour mapping for constructor accents
-const TEAM_COLORS: Record<string, string> = {
-  mercedes: "#00D2BE",
-  ferrari: "#E8002D",
-  red_bull: "#3671C6",
-  mclaren: "#FF8000",
-  alpine: "#FF87BC",
-  aston_martin: "#229971",
-  williams: "#64C4FF",
-  haas: "#B6BABD",
-  sauber: "#52E252",
-  rb: "#6692FF",
-};
+const MEDAL_TEXT = ["text-gold", "text-silver", "text-bronze"];
 
-function getTeamColor(teamName: string): string {
-  const lower = teamName.toLowerCase();
-  for (const [key, color] of Object.entries(TEAM_COLORS)) {
-    if (lower.includes(key)) return color;
-  }
-  return "#E10600";
-}
-
-export default async function RaceDetailPage({
-  params,
-}: {
-  params: Promise<{ season: string; round: string }>;
-}) {
+export default async function RaceDetailPage({ params }: { params: Promise<{ season: string; round: string }> }) {
   const { season, round } = await params;
 
-  // Fetch all required data in parallel
-  const [raceResults, qualifyingResults, scheduleResult] =
-    await Promise.allSettled([
-      getRaceResults(season, round),
-      getQualifyingResults(season, round),
-      getRaceSchedule(season),
-    ]);
+  const [raceRes, qualiRes, scheduleRes] = await Promise.allSettled([
+    getRaceResults(season, round),
+    getQualifyingResults(season, round),
+    getRaceSchedule(season),
+  ]);
+  const race = raceRes.status === "fulfilled" ? raceRes.value : null;
+  const qualifying = qualiRes.status === "fulfilled" ? qualiRes.value : null;
+  const schedule: any[] = scheduleRes.status === "fulfilled" ? scheduleRes.value ?? [] : [];
 
-  const race = raceResults.status === "fulfilled" ? raceResults.value : null;
-  const qualifying =
-    qualifyingResults.status === "fulfilled" ? qualifyingResults.value : null;
-  const schedule =
-    scheduleResult.status === "fulfilled" ? scheduleResult.value : [];
-  const scheduleRace = schedule?.find((r: any) => r.round === round);
-  const raceInfo = race || scheduleRace;
+  const idx = schedule.findIndex((r) => r.round === round);
+  const info = race || schedule[idx];
+  const prev = idx > 0 ? schedule[idx - 1] : null;
+  const next = idx >= 0 && idx < schedule.length - 1 ? schedule[idx + 1] : null;
 
-  // Early return if no race info found
-  if (!raceInfo) {
+  if (!info) {
     return (
-      <main className="min-h-screen bg-[#060606] flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-white/30 text-sm tracking-wider">Race not found</p>
-          <Link
-            href="/calendar"
-            className="text-[#E10600] text-xs font-semibold tracking-[0.15em] uppercase hover:underline"
-          >
-            ← Calendar
-          </Link>
-        </div>
-      </main>
+      <Section>
+        <Card>
+          <EmptyState
+            icon={<Flag />}
+            title="Race not found"
+            description={`There’s no round ${round} in the ${season} season.`}
+            action={<ButtonLink href="/calendar" variant="filled">Calendar</ButtonLink>}
+          />
+        </Card>
+      </Section>
     );
   }
 
-  const hasResults = race?.Results && race.Results.length > 0;
-  const hasQualifying =
-    qualifying?.QualifyingResults && qualifying.QualifyingResults.length > 0;
-  const raceDate = raceInfo.date ? new Date(raceInfo.date) : null;
+  const results: any[] = race?.Results ?? [];
+  const quali: any[] = qualifying?.QualifyingResults ?? [];
+  const fastest = results.find((r) => r.FastestLap?.rank === "1");
+  const pole = quali[0];
+  const date = info.date
+    ? new Date(`${info.date}T00:00:00Z`).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })
+    : null;
 
   return (
-    <main className="min-h-screen bg-[#060606]">
-      {/* Top red line */}
-      <div className="h-[2px] bg-[#E10600]" />
-
-      {/* Hero section */}
-      <section className="relative border-b border-white/10 overflow-hidden">
-        {/* Round watermark */}
-        <div className="absolute right-0 top-0 bottom-0 flex items-center pr-4 md:pr-8 pointer-events-none select-none">
-          <span className="font-display text-[clamp(4rem,15vw,14rem)] text-white/5 leading-none">
-            R{round}
-          </span>
-        </div>
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
-          {/* Back link */}
+    <>
+      <header className="relative mb-8 overflow-hidden border-b border-hairline sm:mb-10">
+        <HeaderBackdrop watermark={`R${round}`} />
+        <div className="container-page relative pb-8 pt-8 sm:pt-12">
           <Link
             href="/calendar"
-            className="inline-flex items-center gap-2 text-white/40 text-xs uppercase tracking-[0.15em] mb-6 hover:text-white/70 transition"
+            className="pressable -ml-1 mb-6 inline-flex h-9 items-center gap-1.5 px-1 text-[0.8125rem] font-bold uppercase tracking-[0.16em] text-label-3 hover:text-paper"
           >
-            ← Calendar
+            <ChevronLeft className="h-4 w-4" aria-hidden />
+            Calendar
           </Link>
-
-          {/* Season & round label */}
-          <div className="mb-2">
-            <span className="text-[#E10600] text-[0.7rem] md:text-xs font-semibold tracking-[0.28em] uppercase">
-              {season} · Round {round}
+          <p className="eyebrow mb-3">
+            {season} · Round {round}
+          </p>
+          <h1 className="text-title-1 text-paper sm:text-display">{info.raceName}</h1>
+          <p className="mt-3 text-callout text-label-2">
+            <Link href={`/tracks/${info.Circuit?.circuitId}`} className="hover:text-tint">
+              {info.Circuit?.circuitName}
+            </Link>
+            <span className="text-label-3">
+              {" "}
+              · {info.Circuit?.Location?.locality}, {info.Circuit?.Location?.country}
+              {date && ` · ${date}`}
             </span>
-          </div>
-
-          {/* Race name */}
-          <h1 className="font-display text-[clamp(1.8rem,6vw,4rem)] text-white leading-[0.95] tracking-[-0.02em] mb-3">
-            {raceInfo.raceName?.toUpperCase()}
-          </h1>
-
-          {/* Location and date */}
-          <p className="text-white/40 text-sm md:text-base tracking-wide">
-            {raceInfo.Circuit?.Location?.locality},{" "}
-            {raceInfo.Circuit?.Location?.country}
-            {raceDate &&
-              ` · ${raceDate.toLocaleDateString("en-US", {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              })}`}
           </p>
         </div>
-      </section>
+      </header>
 
-      {/* Main content container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-12">
-        {/* No results placeholder */}
-        {!hasResults && !hasQualifying && (
-          <div className="py-16 text-center border border-white/10 bg-[#0a0a0a]">
-            <div className="font-display text-sm uppercase tracking-wider text-white/20 mb-2">
-              No Results Yet
-            </div>
-            <p className="text-white/20 text-sm">
-              Results will appear here after the race weekend.
-            </p>
-          </div>
-        )}
-
-        {/* Race Results Section */}
-        {hasResults && (
-          <div className="mb-12">
-            <span className="label-overline block mb-4">Race Results</span>
-
-            {/* Horizontal scroll container for mobile */}
-            <div className="overflow-x-auto border border-white/10">
-              <div className="min-w-[640px]">
-                {/* Table header */}
-                <div className="grid grid-cols-[3rem_1fr_8rem_4rem_4rem_5rem] bg-[#0d0d0d] border-b border-white/10 px-4 py-3">
-                  {["Pos", "Driver", "Team", "Grid", "Laps", "Pts"].map((h) => (
-                    <div
-                      key={h}
-                      className="text-white/30 text-[0.65rem] uppercase tracking-wider font-semibold"
-                    >
-                      {h}
+      <Section className="pt-0 sm:pt-0">
+        {!results.length && !quali.length ? (
+          <Card>
+            <EmptyState icon={<Flag />} title="No results yet" description="Results appear here once the session has been classified." />
+          </Card>
+        ) : (
+          <div className="space-y-8">
+            {results.length >= 3 && (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {results.slice(0, 3).map((r, i) => (
+                  <Link key={r.position} href={`/drivers/${r.Driver?.driverId}`} className="card card-interactive block p-5">
+                    <div className={cn("flex items-center gap-1.5 text-footnote font-semibold", MEDAL_TEXT[i])}>
+                      {i === 0 && <Trophy className="h-3.5 w-3.5" aria-hidden />}
+                      {i === 0 ? "Winner" : `P${i + 1}`}
                     </div>
-                  ))}
-                </div>
-
-                {/* Table rows */}
-                {race.Results.map((result: any) => {
-                  const pos = parseInt(result.position);
-                  const isWin = pos === 1;
-                  const isPodium = pos <= 3;
-                  const teamColor = getTeamColor(
-                    result.Constructor?.name || "",
-                  );
-                  return (
-                    <div
-                      key={result.position}
-                      className="grid grid-cols-[3rem_1fr_8rem_4rem_4rem_5rem] items-center px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors"
-                    >
-                      {/* Position */}
-                      <div
-                        className="font-display text-base"
-                        style={{
-                          color: isWin
-                            ? "#FFD700"
-                            : isPodium
-                              ? "#FF8C00"
-                              : "white",
-                        }}
-                      >
-                        {result.position}
+                    <div className="mt-3 truncate text-title-3 text-paper">{r.Driver?.familyName}</div>
+                    <div className="mt-1 flex items-center gap-1.5 text-footnote text-label-3">
+                      <TeamMark team={r.Constructor?.constructorId} size="sm" />
+                      {shortTeamName(r.Constructor?.name, r.Constructor?.constructorId)}
+                    </div>
+                    <div className="tabular mt-4 text-subhead text-label-2">{r.Time?.time ?? r.status}</div>
+                  </Link>
+                ))}
+                <Card padding="sm" className="flex flex-col justify-center gap-4 p-5">
+                  {fastest && (
+                    <div>
+                      <div className="flex items-center gap-1.5 text-footnote font-semibold text-purple">
+                        <Timer className="h-3.5 w-3.5" aria-hidden />
+                        Fastest lap
                       </div>
-
-                      {/* Driver info with link */}
-                      <div>
-                        <Link
-                          href={`/drivers/${result.Driver?.driverId}`}
-                          className="no-underline hover:opacity-80 transition"
-                        >
-                          <div className="font-display text-sm text-white leading-tight">
-                            {result.Driver?.givenName}{" "}
-                            {result.Driver?.familyName}
-                          </div>
-                          <div className="font-mono text-[0.6rem] text-white/40">
-                            {result.status}
-                          </div>
-                        </Link>
-                      </div>
-
-                      {/* Team with colour stripe */}
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-0.5 h-3 flex-shrink-0"
-                          style={{ background: teamColor }}
-                        />
-                        <span className="text-white/50 text-xs">
-                          {result.Constructor?.name}
-                        </span>
-                      </div>
-
-                      {/* Grid, Laps, Points */}
-                      <div className="font-mono text-sm text-white/50">
-                        {result.grid}
-                      </div>
-                      <div className="font-mono text-sm text-white/50">
-                        {result.laps}
-                      </div>
-                      <div
-                        className="font-display text-sm"
-                        style={{
-                          color:
-                            parseFloat(result.points) > 0
-                              ? "#E10600"
-                              : "rgba(255,255,255,0.25)",
-                        }}
-                      >
-                        {result.points}
+                      <div className="mt-1 text-callout text-paper">
+                        <span className="font-semibold">{fastest.Driver?.familyName}</span>
+                        <span className="tabular ml-2 text-label-2">{fastest.FastestLap?.Time?.time}</span>
                       </div>
                     </div>
-                  );
-                })}
+                  )}
+                  {pole && (
+                    <div>
+                      <div className="text-footnote font-semibold text-label-3">Pole position</div>
+                      <div className="mt-1 text-callout text-paper">
+                        <span className="font-semibold">{pole.Driver?.familyName}</span>
+                        <span className="tabular ml-2 text-label-2">{pole.Q3 || pole.Q2 || pole.Q1}</span>
+                      </div>
+                    </div>
+                  )}
+                </Card>
               </div>
-            </div>
+            )}
+
+            <ResultsTables results={results} qualifying={quali} />
           </div>
         )}
 
-        {/* Qualifying Section */}
-        {hasQualifying && (
-          <div>
-            <span className="label-overline block mb-4">Qualifying</span>
-
-            <div className="overflow-x-auto border border-white/10">
-              <div className="min-w-[640px]">
-                {/* Header */}
-                <div className="grid grid-cols-[3rem_1fr_7rem_5.5rem_5.5rem_5.5rem] bg-[#0d0d0d] border-b border-white/10 px-4 py-3">
-                  {["Pos", "Driver", "Team", "Q1", "Q2", "Q3"].map((h) => (
-                    <div
-                      key={h}
-                      className="text-white/30 text-[0.65rem] uppercase tracking-wider font-semibold"
-                    >
-                      {h}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Rows */}
-                {qualifying.QualifyingResults.map((result: any) => {
-                  const teamColor = getTeamColor(
-                    result.Constructor?.name || "",
-                  );
-                  const isPole = result.position === "1";
-                  return (
-                    <div
-                      key={result.position}
-                      className="grid grid-cols-[3rem_1fr_7rem_5.5rem_5.5rem_5.5rem] items-center px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors"
-                    >
-                      {/* Position */}
-                      <div
-                        className="font-display text-base"
-                        style={{ color: isPole ? "#FFD700" : "white" }}
-                      >
-                        {result.position}
-                      </div>
-
-                      {/* Driver */}
-                      <div>
-                        <Link
-                          href={`/drivers/${result.Driver?.driverId}`}
-                          className="no-underline hover:opacity-80 transition"
-                        >
-                          <div className="font-display text-sm text-white">
-                            {result.Driver?.givenName}{" "}
-                            {result.Driver?.familyName}
-                          </div>
-                        </Link>
-                      </div>
-
-                      {/* Team */}
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-0.5 h-3 flex-shrink-0"
-                          style={{ background: teamColor }}
-                        />
-                        <span className="text-white/50 text-xs">
-                          {result.Constructor?.name}
-                        </span>
-                      </div>
-
-                      {/* Q1, Q2, Q3 times */}
-                      {["Q1", "Q2", "Q3"].map((q) => (
-                        <div
-                          key={q}
-                          className="font-mono text-sm"
-                          style={{
-                            color: result[q]
-                              ? "rgba(255,255,255,0.6)"
-                              : "rgba(255,255,255,0.15)",
-                          }}
-                        >
-                          {result[q] || "—"}
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })}
+        <nav aria-label="Other rounds" className="mt-10 grid gap-3 sm:grid-cols-2">
+          {prev ? (
+            <Link href={`/races/${season}/${prev.round}`} className="card card-interactive flex items-center gap-3 p-4">
+              <ChevronLeft className="h-5 w-5 shrink-0 text-label-3" aria-hidden />
+              <div className="min-w-0">
+                <div className="text-caption text-label-3">Round {prev.round}</div>
+                <div className="truncate text-callout font-semibold text-paper">{prev.raceName}</div>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Bottom back link */}
-        <div className="mt-12 pt-6 border-t border-white/10">
-          <Link
-            href="/calendar"
-            className="text-white/40 text-xs uppercase tracking-[0.15em] hover:text-white/70 transition"
-          >
-            ← Back to Calendar
-          </Link>
-        </div>
-      </div>
-    </main>
+            </Link>
+          ) : (
+            <span />
+          )}
+          {next && (
+            <Link href={`/races/${season}/${next.round}`} className="card card-interactive flex items-center justify-end gap-3 p-4 text-right">
+              <div className="min-w-0">
+                <div className="text-caption text-label-3">Round {next.round}</div>
+                <div className="truncate text-callout font-semibold text-paper">{next.raceName}</div>
+              </div>
+              <ChevronRight className="h-5 w-5 shrink-0 text-label-3" aria-hidden />
+            </Link>
+          )}
+        </nav>
+      </Section>
+    </>
   );
 }

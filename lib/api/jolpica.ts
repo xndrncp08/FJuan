@@ -102,12 +102,21 @@ export async function getRaceSchedule(season: string = "current") {
   return data?.MRData?.RaceTable?.Races ?? [];
 }
 
+// A race counts as past once it has plausibly finished: start time plus three
+// hours. Comparing against the bare date (midnight UTC) marked races as past
+// on the morning of race day, before lights out.
+const RACE_DURATION_MS = 3 * 60 * 60 * 1000;
+
+function raceEndTime(race: any): number {
+  return new Date(`${race.date}T${race.time ?? "23:59:59Z"}`).getTime() + RACE_DURATION_MS;
+}
+
 export async function getRaceCalendar(season: string = "current") {
   const races = await getRaceSchedule(season);
-  const now = new Date();
+  const now = Date.now();
   return races.map((race: any) => ({
     ...race,
-    isPast: new Date(race.date) < now,
+    isPast: raceEndTime(race) < now,
   }));
 }
 
@@ -224,11 +233,14 @@ export async function getLastRace() {
   const races = await getRaceCalendar("current");
   const past = races.filter((r: any) => r.isPast);
   if (past.length === 0) return null;
-  const last = past[past.length - 1];
-  // Fetch full results for that round
-  const result = await getRaceResults(
-    last.season ?? new Date().getFullYear().toString(),
-    last.round,
-  );
-  return result;
+  // Results can lag the chequered flag by a while; fall back to the previous
+  // round until the latest one has been published.
+  for (const race of past.slice(-2).reverse()) {
+    const result = await getRaceResults(
+      race.season ?? new Date().getFullYear().toString(),
+      race.round,
+    );
+    if (result?.Results?.length) return result;
+  }
+  return null;
 }

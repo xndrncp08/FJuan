@@ -149,16 +149,22 @@ export default function HeroSection() {
       setTimeout(() => setGlitch(false), 110);
     }, 7000);
 
-    // Drives the telemetry waveform's motion.
+    // Drives the telemetry waveform's motion — only while the hero is on
+    // screen, and not at all for people who ask for reduced motion.
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let visible = true;
     const animateWave = () => {
-      setPhase((p) => p + 0.018);
+      if (visible) setPhase((p) => p + 0.018);
       rafRef.current = requestAnimationFrame(animateWave);
     };
-    rafRef.current = requestAnimationFrame(animateWave);
+    if (!reduce) rafRef.current = requestAnimationFrame(animateWave);
+    const io = new IntersectionObserver(([e]) => (visible = e.isIntersecting));
+    if (sectionRef.current) io.observe(sectionRef.current);
 
     return () => {
       clearInterval(glitchInterval);
       cancelAnimationFrame(rafRef.current);
+      io.disconnect();
     };
   }, []);
 
@@ -197,7 +203,7 @@ export default function HeroSection() {
       style={{
         position: "relative",
         overflow: "hidden",
-        height: "100dvh",
+        height: "calc(100dvh - var(--nav-h))",
         minHeight: "560px",
         display: "flex",
         flexDirection: "column",

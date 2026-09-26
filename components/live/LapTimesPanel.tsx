@@ -1,209 +1,66 @@
 /**
  * components/live/LapTimesPanel.tsx
  *
- * Full lap-by-lap table with sector times. Green/amber sector-time colors
- * are a motorsport-wide convention (personal-best vs. close-vs-off) and are
- * kept as their own functional palette, same as elsewhere in the app —
- * everything else (fastest-lap highlight, borders, text) uses the shared
- * brand palette.
+ * Every lap, newest first, with sector times colored against the driver's
+ * best in each sector. The fastest lap is marked purple (F1 convention).
  */
+
 import { LapData, formatLapTime } from "./types";
-import { RED, RGB } from "@/lib/theme/palette";
+import { cn } from "@/lib/utils/cn";
 
-interface Props {
-  laps: LapData[];
-  fastestLap: number;
+function best(laps: LapData[], key: keyof LapData) {
+  const v = laps.map((l) => l[key] as number | null).filter((x): x is number => !!x && x > 0);
+  return v.length ? Math.min(...v) : null;
 }
 
-function pbSector(laps: LapData[], key: keyof LapData): number | null {
-  const vals = laps
-    .map((l) => l[key] as number | null)
-    .filter((v): v is number => v !== null && v > 0);
-  return vals.length > 0 ? Math.min(...vals) : null;
+function sectorTone(v: number | null, pb: number | null) {
+  if (!v || !pb) return "text-label-4";
+  const d = v - pb;
+  if (d <= 0.001) return "text-success";
+  if (d < 0.3) return "text-warning";
+  return "text-label-2";
 }
 
-function sectorColor(val: number | null, best: number | null): string {
-  if (!val || !best) return `rgba(${RGB.paper},0.2)`;
-  const d = val - best;
-  if (d <= 0.001) return "#4ade80";
-  if (d < 0.3) return "#f5a623";
-  return `rgba(${RGB.paper},0.55)`;
-}
-
-const COLS = "36px 1fr 1fr 1fr 1fr 86px";
-
-export default function LapTimesPanel({ laps, fastestLap }: Props) {
-  const display = [...laps].reverse().slice(0, 40);
-  const pbS1 = pbSector(laps, "duration_sector_1");
-  const pbS2 = pbSector(laps, "duration_sector_2");
-  const pbS3 = pbSector(laps, "duration_sector_3");
+export default function LapTimesPanel({ laps, fastestLap }: { laps: LapData[]; fastestLap: number }) {
+  const rows = [...laps].reverse().slice(0, 60);
+  const keys = ["duration_sector_1", "duration_sector_2", "duration_sector_3"] as const;
+  const pbs = keys.map((k) => best(laps, k));
 
   return (
-    <div style={{ overflow: "hidden" }}>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: COLS,
-          padding: "0.5rem 0.75rem",
-          background: `rgba(${RGB.paper},0.02)`,
-          borderBottom: `1px solid rgba(${RGB.paper},0.07)`,
-          position: "sticky",
-          top: 0,
-          zIndex: 2,
-        }}
-      >
-        {["Lap", "S1", "S2", "S3", "Time", "Trap"].map((h) => (
-          <div
-            key={h}
-            style={{
-              fontFamily: "'Rajdhani', sans-serif",
-              fontSize: "0.48rem",
-              fontWeight: 700,
-              letterSpacing: "0.15em",
-              textTransform: "uppercase",
-              color: `rgba(${RGB.paper},0.2)`,
-            }}
-          >
-            {h}
-          </div>
-        ))}
-      </div>
-
-      <div style={{ maxHeight: "520px", overflowY: "auto" }}>
-        {display.map((lap, idx) => {
-          const isFastest =
-            lap.lap_duration !== null &&
-            Math.abs(lap.lap_duration - fastestLap) < 0.001;
-          const isPit = lap.is_pit_out_lap;
-          return (
-            <div
-              key={lap.lap_number}
-              style={{
-                display: "grid",
-                gridTemplateColumns: COLS,
-                padding: "0.45rem 0.75rem",
-                borderBottom: `1px solid rgba(${RGB.paper},0.04)`,
-                background: isFastest
-                  ? `rgba(${RGB.red},0.08)`
-                  : isPit
-                    ? "rgba(245,166,35,0.03)"
-                    : idx % 2 === 0
-                      ? `rgba(${RGB.paper},0.01)`
-                      : "transparent",
-                alignItems: "center",
-              }}
-            >
-              <div
-                style={{
-                  fontFamily: "'Russo One', sans-serif",
-                  fontSize: "0.58rem",
-                  color: isFastest
-                    ? RED
-                    : isPit
-                      ? "#f5a623"
-                      : `rgba(${RGB.paper},0.3)`,
-                }}
-              >
-                {lap.lap_number}
-              </div>
-              {[
-                { val: lap.duration_sector_1, pb: pbS1 },
-                { val: lap.duration_sector_2, pb: pbS2 },
-                { val: lap.duration_sector_3, pb: pbS3 },
-              ].map((s, i) => (
-                <div
-                  key={i}
-                  style={{
-                    fontFamily: "'Rajdhani', sans-serif",
-                    fontSize: "0.6rem",
-                    fontWeight: 600,
-                    color: sectorColor(s.val, s.pb),
-                  }}
-                >
-                  {formatLapTime(s.val)}
-                </div>
-              ))}
-              <div
-                style={{
-                  fontFamily: "'Russo One', sans-serif",
-                  fontSize: isFastest ? "0.65rem" : "0.6rem",
-                  color: isFastest
-                    ? RED
-                    : isPit
-                      ? "#f5a623"
-                      : `rgba(${RGB.paper},0.75)`,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "3px",
-                }}
-              >
-                {isFastest && <span style={{ fontSize: "0.5rem" }}>⚡</span>}
-                {isPit ? (
-                  <span
-                    style={{
-                      fontFamily: "'Rajdhani', sans-serif",
-                      fontSize: "0.48rem",
-                      letterSpacing: "0.08em",
-                    }}
-                  >
-                    PIT OUT
-                  </span>
-                ) : (
-                  formatLapTime(lap.lap_duration)
-                )}
-              </div>
-              <div
-                style={{
-                  fontFamily: "'Rajdhani', sans-serif",
-                  fontSize: "0.58rem",
-                  fontWeight: 600,
-                  color: lap.st_speed
-                    ? `rgba(${RGB.paper},0.4)`
-                    : `rgba(${RGB.paper},0.1)`,
-                  textAlign: "right",
-                }}
-              >
-                {lap.st_speed ? `${lap.st_speed}` : "—"}
-                {lap.st_speed && (
-                  <span
-                    style={{
-                      fontSize: "0.42rem",
-                      marginLeft: "2px",
-                      color: `rgba(${RGB.paper},0.2)`,
-                    }}
-                  >
-                    km/h
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div
-        style={{
-          padding: "0.5rem 0.75rem",
-          borderTop: `1px solid rgba(${RGB.paper},0.06)`,
-          display: "flex",
-          gap: "1.2rem",
-          flexWrap: "wrap",
-          fontFamily: "'Rajdhani', sans-serif",
-          fontSize: "0.45rem",
-          fontWeight: 600,
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
-          color: `rgba(${RGB.paper},0.15)`,
-        }}
-      >
-        <span>
-          <span style={{ color: "#4ade80" }}>Green</span> = sector PB
-        </span>
-        <span>
-          <span style={{ color: "#f5a623" }}>Amber</span> = &lt;0.3s off
-        </span>
-        <span>⚡ = fastest lap</span>
-      </div>
+    <div className="-mx-5 max-h-[560px] overflow-y-auto sm:-mx-6">
+      <table className="w-full text-left">
+        <thead className="sticky top-0 z-10 bg-surface">
+          <tr className="border-b border-hairline label-caps text-[0.75rem] text-label-3">
+            <th scope="col" className="py-2.5 pl-5 pr-2 font-semibold sm:pl-6">Lap</th>
+            {keys.map((_, i) => (
+              <th key={i} scope="col" className="hidden px-2 py-2.5 text-right font-semibold sm:table-cell">
+                S{i + 1}
+              </th>
+            ))}
+            <th scope="col" className="px-2 py-2.5 text-right font-semibold">Time</th>
+            <th scope="col" className="py-2.5 pl-2 pr-5 text-right font-semibold sm:pr-6">Trap</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((lap) => {
+            const fastest = lap.lap_duration !== null && Math.abs(lap.lap_duration - fastestLap) < 0.001;
+            return (
+              <tr key={lap.lap_number} className={cn("border-b border-hairline last:border-0", fastest && "bg-purple/10")}>
+                <td className="font-mono tabular py-2 pl-5 pr-2 text-footnote text-label-3 sm:pl-6">{lap.lap_number}</td>
+                {keys.map((k, i) => (
+                  <td key={k} className={cn("font-mono tabular hidden px-2 py-2 text-right text-footnote sm:table-cell", sectorTone(lap[k] as number | null, pbs[i]))}>
+                    {formatLapTime(lap[k] as number | null)}
+                  </td>
+                ))}
+                <td className={cn("font-mono tabular px-2 py-2 text-right text-subhead", fastest ? "font-bold text-purple" : "text-paper")}>
+                  {lap.is_pit_out_lap ? <span className="text-caption font-semibold text-warning">Pit out</span> : formatLapTime(lap.lap_duration)}
+                </td>
+                <td className="font-mono tabular py-2 pl-2 pr-5 text-right text-footnote text-label-3 sm:pr-6">{lap.st_speed ?? "—"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

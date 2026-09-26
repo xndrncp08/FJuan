@@ -1,118 +1,161 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+/**
+ * Instant search over drivers (all of F1 history), teams, and circuits.
+ * Filtering is local, so results update per keystroke with no network
+ * round-trip; the query is mirrored to ?q= so results can be shared.
+ */
+
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ChevronRight, MapPin, Search, Trophy, User } from "lucide-react";
+import { Container } from "@/components/ui/Section";
+import { EmptyState } from "@/components/ui/States";
 
-export default function SearchClient() {
-  const searchParams = useSearchParams();
-  const initialQ = searchParams.get("q") || "";
-  const [query, setQuery] = useState(initialQ);
-  const [results, setResults] = useState<{ drivers: any[]; circuits: any[] }>({ drivers: [], circuits: [] });
-  const [isLoading, setIsLoading] = useState(false);
+export interface SearchIndex {
+  drivers: { id: string; name: string; nationality: string; code: string; number: string; born: string }[];
+  teams: { id: string; name: string; nationality: string; color: string; titles: number }[];
+  circuits: { id: string; name: string; location: string }[];
+}
 
-  const search = useCallback(async (q: string) => {
-    if (q.trim().length < 2) { setResults({ drivers: [], circuits: [] }); return; }
-    setIsLoading(true);
-    try {
-      const res = await fetch(`https://api.jolpi.ca/ergast/f1/drivers.json?limit=1000`);
-      const data = await res.json();
-      const allDrivers: any[] = data?.MRData?.DriverTable?.Drivers || [];
-      const lower = q.toLowerCase();
-      const matchedDrivers = allDrivers.filter((d: any) =>
-        `${d.givenName} ${d.familyName}`.toLowerCase().includes(lower) ||
-        d.nationality?.toLowerCase().includes(lower) ||
-        d.code?.toLowerCase().includes(lower)
-      ).slice(0, 10);
-      setResults({ drivers: matchedDrivers, circuits: [] });
-    } catch {
-      setResults({ drivers: [], circuits: [] });
-    }
-    setIsLoading(false);
-  }, []);
+// Accent-insensitive: "hulkenberg" finds "Hülkenberg".
+const fold = (s: string) => s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
 
-  useEffect(() => { search(query); }, [query, search]);
+export default function SearchClient({ index }: { index: SearchIndex }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const [query, setQuery] = useState(params.get("q") ?? "");
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const totalResults = results.drivers.length + results.circuits.length;
+  // Keep the URL in step without adding history entries per keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const q = query.trim();
+      router.replace(q ? `${pathname}?q=${encodeURIComponent(q)}` : pathname, { scroll: false });
+    }, 250);
+    return () => clearTimeout(t);
+  }, [query, pathname, router]);
+
+  const folded = useMemo(
+    () => ({
+      drivers: index.drivers.map((d) => fold(`${d.name} ${d.code} ${d.nationality} ${d.number}`)),
+      teams: index.teams.map((t) => fold(`${t.name} ${t.nationality}`)),
+      circuits: index.circuits.map((c) => fold(`${c.name} ${c.location}`)),
+    }),
+    [index],
+  );
+
+  const q = fold(query.trim());
+  const terms = q.split(/\s+/).filter(Boolean);
+  const hit = (hay: string) => terms.every((t) => hay.includes(t));
+
+  const drivers = q.length >= 2 ? index.drivers.filter((_, i) => hit(folded.drivers[i])).slice(0, 12) : [];
+  const teams = q.length >= 2 ? index.teams.filter((_, i) => hit(folded.teams[i])).slice(0, 6) : [];
+  const circuits = q.length >= 2 ? index.circuits.filter((_, i) => hit(folded.circuits[i])).slice(0, 6) : [];
+  const total = drivers.length + teams.length + circuits.length;
 
   return (
-    <main style={{ background: "#080808", minHeight: "100vh" }}>
-      <div style={{ height: "2px", background: "#E10600" }} />
+    <Container className="pb-16 pt-10 sm:pt-16">
+      <h1 className="text-title-1 text-paper">Search</h1>
+      <p className="mt-2 text-callout text-label-2">
+        {index.drivers.length.toLocaleString()} drivers, {index.teams.length} teams, and {index.circuits.length} circuits.
+      </p>
 
-      <section style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "3rem 1.5rem" }}>
-          <div style={{ marginBottom: "0.5rem" }}>
-            <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.72rem", letterSpacing: "0.28em", textTransform: "uppercase", color: "#E10600" }}>FJUAN Search</span>
+      <label className="relative mt-6 flex items-center">
+        <Search className="pointer-events-none absolute left-4 h-5 w-5 text-label-3" aria-hidden />
+        <input
+          ref={inputRef}
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Try “Senna”, “Monza”, or “Ferrari”"
+          aria-label="Search drivers, teams, and circuits"
+          autoFocus
+          enterKeyHint="search"
+          className="card h-14 w-full rounded-lg bg-surface pl-12 pr-4 text-[1.0625rem] text-paper outline-none placeholder:text-label-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tint"
+        />
+      </label>
+
+      <div className="mt-8" aria-live="polite">
+        {q.length < 2 ? (
+          <p className="text-subhead text-label-3">Type at least two letters.</p>
+        ) : total === 0 ? (
+          <div className="card">
+            <EmptyState icon={<Search />} title={`No results for “${query.trim()}”`} description="Check the spelling, or search by nationality or three-letter code." />
           </div>
-          <h1 style={{ fontFamily: "'Russo One', sans-serif", fontSize: "clamp(2.5rem, 6vw, 4rem)", color: "white", lineHeight: 0.92, margin: "0 0 2rem" }}>SEARCH</h1>
+        ) : (
+          <div className="space-y-8">
+            <p className="text-footnote text-label-3">
+              {total} {total === 1 ? "result" : "results"}
+            </p>
 
-          <div style={{ position: "relative", maxWidth: "600px" }}>
-            <input
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder="Search drivers, teams, circuits..."
-              autoFocus
-              style={{
-                width: "100%",
-                background: "#111",
-                border: "1px solid rgba(255,255,255,0.12)",
-                borderLeft: "3px solid #E10600",
-                padding: "1rem 3rem 1rem 1.25rem",
-                fontFamily: "'Rajdhani', sans-serif",
-                fontWeight: 600,
-                fontSize: "1.1rem",
-                color: "white",
-                outline: "none",
-                letterSpacing: "0.04em",
-                boxSizing: "border-box",
-              }}
-            />
-            {isLoading && (
-              <div style={{ position: "absolute", right: "1rem", top: "50%", transform: "translateY(-50%)", width: "18px", height: "18px", border: "2px solid #E10600", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+            {drivers.length > 0 && (
+              <Group title="Drivers">
+                {drivers.map((d) => (
+                  <Row key={d.id} href={`/drivers/${d.id}`} icon={<User className="h-4 w-4" />} title={d.name} detail={[d.nationality, d.born && `born ${d.born}`].filter(Boolean).join(" · ")} meta={d.code || (d.number && `#${d.number}`)} />
+                ))}
+              </Group>
             )}
-          </div>
-        </div>
-      </section>
 
-      <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "2rem 1.5rem" }}>
-        {query.length >= 2 && !isLoading && (
-          <div style={{ marginBottom: "1rem" }}>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.75rem", color: "rgba(255,255,255,0.3)" }}>
-              {totalResults} result{totalResults !== 1 ? "s" : ""} for &ldquo;{query}&rdquo;
-            </span>
-          </div>
-        )}
+            {teams.length > 0 && (
+              <Group title="Teams">
+                {teams.map((t) => (
+                  <Row
+                    key={t.id}
+                    href={`/teams/${t.id}`}
+                    icon={<span className="h-3 w-3 rounded-full" style={{ background: t.color }} />}
+                    title={t.name}
+                    detail={t.nationality}
+                    meta={
+                      t.titles > 0 ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Trophy className="h-3.5 w-3.5 text-gold" aria-hidden />
+                          {t.titles}
+                        </span>
+                      ) : undefined
+                    }
+                  />
+                ))}
+              </Group>
+            )}
 
-        {results.drivers.length > 0 && (
-          <div style={{ marginBottom: "2rem" }}>
-            <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.68rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", display: "block", marginBottom: "1rem" }}>Drivers</span>
-            <div style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
-              {results.drivers.map((driver: any) => (
-                <Link key={driver.driverId} href={`/drivers/${driver.driverId}`} style={{ textDecoration: "none" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.9rem 1.25rem", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.75rem", color: "rgba(255,255,255,0.25)", minWidth: "2rem" }}>#{driver.permanentNumber || "—"}</div>
-                      <div>
-                        <div style={{ fontFamily: "'Russo One', sans-serif", fontSize: "0.95rem", color: "white" }}>{driver.givenName} {driver.familyName}</div>
-                        <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.7rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)" }}>{driver.nationality}</div>
-                      </div>
-                    </div>
-                    <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.72rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "#E10600" }}>View →</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {query.length >= 2 && !isLoading && totalResults === 0 && (
-          <div style={{ padding: "3rem", textAlign: "center", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <span style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, fontSize: "0.9rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>No results found for &ldquo;{query}&rdquo;</span>
+            {circuits.length > 0 && (
+              <Group title="Circuits">
+                {circuits.map((c) => (
+                  <Row key={c.id} href={`/tracks/${c.id}`} icon={<MapPin className="h-4 w-4" />} title={c.name} detail={c.location} />
+                ))}
+              </Group>
+            )}
           </div>
         )}
       </div>
+    </Container>
+  );
+}
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </main>
+function Group({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <h2 className="mb-3 text-headline text-paper">{title}</h2>
+      <ul className="card overflow-hidden">{children}</ul>
+    </section>
+  );
+}
+
+function Row({ href, icon, title, detail, meta }: { href: string; icon: React.ReactNode; title: string; detail?: string; meta?: React.ReactNode }) {
+  return (
+    <li className="border-b border-hairline last:border-0">
+      <Link href={href} className="row-interactive flex items-center gap-3 px-4 py-3 sm:px-5">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-fill-2 text-label-2">{icon}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-callout font-semibold text-paper">{title}</span>
+          {detail && <span className="block truncate text-footnote text-label-3">{detail}</span>}
+        </span>
+        {meta && <span className="tabular shrink-0 text-footnote font-semibold text-label-3">{meta}</span>}
+        <ChevronRight className="h-4 w-4 shrink-0 text-label-4" aria-hidden />
+      </Link>
+    </li>
   );
 }
