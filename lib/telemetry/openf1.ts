@@ -207,11 +207,13 @@ export async function getSessionTelemetry(opts: { sessionKey?: number; driverNum
     .filter((s) => toCompound(s.compound))
     .map((s) => ({ stint: s.stint_number, compound: toCompound(s.compound)!, lapStart: s.lap_start, lapEnd: s.lap_end, tyreAgeAtStart: s.tyre_age_at_start ?? 0 }));
 
-  const trackTemps = trackTempSeries(weather, sessionStart);
+  const trackTemps = trackTempSeries(weather.filter((w) => w.track_temperature > 5), sessionStart);
+  // OpenF1 occasionally reports 0 °C for a missed reading; drop those.
+  const validWeather = weather.filter((w) => w.track_temperature > 5);
   const tempAt = (ms: number | null) => {
-    if (ms === null || !weather.length) return null;
-    let best = weather[0];
-    for (const w of weather) if (Math.abs(Date.parse(w.date) - ms) < Math.abs(Date.parse(best.date) - ms)) best = w;
+    if (ms === null || !validWeather.length) return null;
+    let best = validWeather[0];
+    for (const w of validWeather) if (Math.abs(Date.parse(w.date) - ms) < Math.abs(Date.parse(best.date) - ms)) best = w;
     return best.track_temperature;
   };
 

@@ -858,6 +858,7 @@ export async function generateRacePrediction(
   circuitName: string,
   raceDate: string,
   topN = 10,
+  options: { insights?: boolean } = {},
 ): Promise<RacePrediction> {
   const targetRound = parseInt(round);
   const priorRounds = getPriorRounds(targetRound);
@@ -1010,7 +1011,9 @@ export async function generateRacePrediction(
   // Concurrency-limited with retry, instead of a plain Promise.all, to
   // stay under Moonshot's per-account rate limit — see
   // INSIGHT_CONCURRENCY_LIMIT above for why this matters.
-  const insights = await mapWithConcurrency(
+  // Backtests skip the AI analyst notes: they're slow, cost tokens, and
+  // don't affect the ranking being scored.
+  const insights = options.insights === false ? scoredDrivers.map(() => "") : await mapWithConcurrency(
     scoredDrivers,
     INSIGHT_CONCURRENCY_LIMIT,
     (d) =>
@@ -1068,6 +1071,7 @@ export async function generateRacePrediction(
     raceDate,
     predictions: podium,
     likelyFinishers,
+    ranking: [...predictions].sort((a, b) => b.score - a.score),
     generatedAt: new Date().toISOString(),
     weather,
     isSprint,

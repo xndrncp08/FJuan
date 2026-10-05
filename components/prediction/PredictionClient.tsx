@@ -8,14 +8,14 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, CloudRain, RefreshCw, Sparkles, Thermometer, TriangleAlert, Wind, Zap } from "lucide-react";
+import { Activity, ChevronDown, CloudRain, RefreshCw, Sparkles, Thermometer, TriangleAlert, Wind, Zap } from "lucide-react";
 import type { DriverPrediction, RacePrediction } from "@/lib/types/prediction";
 import { usePrediction } from "@/lib/hooks/usePrediction";
 import { teamColor } from "@/lib/theme/teams";
 import { Section, HeaderBackdrop } from "@/components/ui/Section";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { TeamMark } from "@/components/ui/TeamMark";
 import { EmptyState, Skeleton } from "@/components/ui/States";
 import { cn } from "@/lib/utils/cn";
@@ -122,7 +122,11 @@ export default function PredictionClient({
                 </Badge>
               </>
             )}
-            <Button size="sm" variant="plain" onClick={refresh} disabled={isLoading} className="ml-auto">
+            <ButtonLink href="/predict/delta" size="sm" variant="plain" className="ml-auto">
+              <Activity className="h-3.5 w-3.5" aria-hidden />
+              Model vs actual
+            </ButtonLink>
+            <Button size="sm" variant="plain" onClick={refresh} disabled={isLoading}>
               <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} aria-hidden />
               {isLoading ? "Updating" : "Refresh"}
             </Button>

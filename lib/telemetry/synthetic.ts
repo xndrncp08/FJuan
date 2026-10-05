@@ -11,7 +11,7 @@
  */
 
 import { teamColor } from "@/lib/theme/teams";
-import { DEFAULT_CONFIG, predictRace, sectorProfile, type LapModelConfig } from "@/lib/prediction/laptime";
+import { cornerSpeedLimit, DEFAULT_CONFIG, predictRace, sectorProfile, V_MAX, type LapModelConfig } from "@/lib/prediction/laptime";
 import type { DriverInfo, LapSummary, LapTrace, SessionTelemetry, Stint, TelemetrySample } from "./types";
 
 // ─── Seeded randomness ───────────────────────────────────────────────────────
@@ -150,10 +150,6 @@ function curvature(points: CircuitPoint[]): number[] {
 
 // ─── Physics lap ─────────────────────────────────────────────────────────────
 
-const V_MAX = 92; // m/s ≈ 331 km/h
-// Lateral grip = mechanical (μg) + aero (k·v²): v² = μg·r / (1 − k·r).
-const MU_G = 21; // m/s²
-const AERO_K = 0.0036; // 1/m
 const A_BRAKE = 46; // m/s²
 const GEAR_TOPS = [0, 95, 130, 165, 200, 235, 270, 305, 999]; // km/h, gear n tops out at GEAR_TOPS[n]
 
@@ -172,11 +168,7 @@ export function simulateLap(points: CircuitPoint[], lapNumber = 1, paceScale = 1
     const q = points[(i + 1) % n];
     return Math.hypot(q.x - p.x, q.y - p.y);
   });
-  const vLim = k.map((ki) => {
-    const r = 1 / Math.max(ki, 1e-5);
-    const denom = 1 - AERO_K * r;
-    return (denom <= 0 ? V_MAX : Math.min(V_MAX, Math.sqrt((MU_G * r) / denom))) * paceScale;
-  });
+  const vLim = k.map((ki) => cornerSpeedLimit(1 / Math.max(ki, 1e-5)) * paceScale);
 
   const v = [...vLim];
   for (let pass = 0; pass < 2; pass++) {

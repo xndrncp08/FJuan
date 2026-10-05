@@ -57,6 +57,9 @@ export interface RacePrediction {
   // P4–P10 range (shuffled slightly to reflect uncertainty in midfield)
   likelyFinishers: DriverPrediction[];
 
+  // Every scored driver in predicted order (unshuffled) — what backtests score
+  ranking?:       DriverPrediction[];
+
   generatedAt:    string; // ISO timestamp of when prediction was generated
 
   // ── v3 additions ─────────────────────────────────────────────────────────

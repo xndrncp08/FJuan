@@ -68,6 +68,8 @@ export interface LapModelConfig {
   /** Extra wear multiplier per °C above / below the window. */
   overheatWearPerDeg: number;
   grainingWearPerDeg: number;
+  /** Multiplier on all tyre wear, fitted per driver/race by calibrate(). */
+  degScale: number;
   /** Time lost to a pit stop (pit lane + stationary), seconds. */
   pitLoss: number;
   /** Fraction of the lap in each sector, from a reference lap. */
@@ -84,6 +86,7 @@ export const DEFAULT_CONFIG: Omit<LapModelConfig, "basePace" | "totalLaps"> = {
   thermalPacePerDeg: 0.018,
   overheatWearPerDeg: 0.05,
   grainingWearPerDeg: 0.03,
+  degScale: 1,
   pitLoss: 22,
   sectorShares: [0.32, 0.36, 0.32],
   sectorBrakeWeights: [1, 1, 1],
@@ -114,13 +117,18 @@ function outsideWindow(temp: number, [lo, hi]: [number, number]) {
 }
 
 /** Seconds lost to tyre wear at this age and temperature. */
-export function degradation(compound: Compound, tyreAge: number, trackTemp: number, cfg: Pick<LapModelConfig, "overheatWearPerDeg" | "grainingWearPerDeg">) {
+export function degradation(
+  compound: Compound,
+  tyreAge: number,
+  trackTemp: number,
+  cfg: Pick<LapModelConfig, "overheatWearPerDeg" | "grainingWearPerDeg"> & { degScale?: number },
+) {
   const m = COMPOUNDS[compound];
   const { over, under } = outsideWindow(trackTemp, m.window);
   const thermalWear = 1 + over * cfg.overheatWearPerDeg + under * cfg.grainingWearPerDeg;
   const linear = m.deg * tyreAge * thermalWear;
   const pastCliff = Math.max(0, tyreAge - m.cliffLap);
-  return linear + m.cliffRate * pastCliff * pastCliff * thermalWear;
+  return (cfg.degScale ?? 1) * (linear + m.cliffRate * pastCliff * pastCliff * thermalWear);
 }
 
 export function predictLap(
@@ -188,31 +196,49 @@ export function predictRace(cfg: LapModelConfig, stints: Stint[], tempsByLap: [n
 }
 
 /**
- * Fit base pace on the first `window` green-flag laps after lap 1. Returns
- * the config plus the laps used, so callers can exclude them from scoring.
+ * Fit the model's two free parameters — base pace and a wear multiplier —
+ * by least squares on the first `fraction` of clean laps (at least
+ * `minLaps`). Everything after that window is out of sample. Returns the
+ * fitted config plus the laps used, so callers can exclude them from
+ * scoring.
+ *
+ * The wear multiplier absorbs what the generic compound table can't know
+ * (this year's tyres, this track's abrasiveness, this driver's management).
+ * It's only fitted when the window spans enough tyre ageing to identify it.
  */
 export function calibrate(
-  partial: Omit<LapModelConfig, "basePace">,
+  partial: Omit<LapModelConfig, "basePace" | "degScale"> & { degScale?: number },
   laps: LapSummary[],
   tempsByLap: [number, number][],
-  window = 5,
+  fraction = 0.4,
+  minLaps = 5,
 ): { cfg: LapModelConfig; trainingLaps: number[] } {
-  const probe: LapModelConfig = { ...partial, basePace: 0 };
-  const clean = cleanLaps(laps).slice(0, window);
-  if (!clean.length) return { cfg: { ...probe, basePace: 90 }, trainingLaps: [] };
+  const probe: LapModelConfig = { ...partial, basePace: 0, degScale: 0 };
+  const clean = cleanLaps(laps);
+  const window = clean.slice(0, Math.max(minLaps, Math.floor(clean.length * fraction)));
+  if (!window.length) return { cfg: { ...probe, basePace: 90, degScale: 1 }, trainingLaps: [] };
 
-  const residuals = clean.map((l) => {
-    const p = predictLap(probe, {
-      lapNumber: l.lapNumber,
-      compound: l.compound ?? "MEDIUM",
-      tyreAge: l.tyreAge,
-      trackTemp: l.trackTemp ?? tempAtLap(tempsByLap, l.lapNumber),
-    });
-    return (l.lapTime as number) - p.lapTime;
+  // y = actual − (everything except base and wear) = base + s · wear
+  const rows = window.map((l) => {
+    const compound = l.compound ?? "MEDIUM";
+    const temp = l.trackTemp ?? tempAtLap(tempsByLap, l.lapNumber);
+    const rest = predictLap(probe, { lapNumber: l.lapNumber, compound, tyreAge: l.tyreAge, trackTemp: temp, stintLap: l.tyreAge }).lapTime;
+    return { y: (l.lapTime as number) - rest, wear: degradation(compound, l.tyreAge, temp, { ...partial, degScale: 1 }) };
   });
-  residuals.sort((a, b) => a - b);
-  const basePace = residuals[Math.floor(residuals.length / 2)];
-  return { cfg: { ...probe, basePace }, trainingLaps: clean.map((l) => l.lapNumber) };
+  const n = rows.length;
+  const mw = rows.reduce((a, r) => a + r.wear, 0) / n;
+  const my = rows.reduce((a, r) => a + r.y, 0) / n;
+  const varW = rows.reduce((a, r) => a + (r.wear - mw) ** 2, 0) / n;
+
+  let degScale = 1;
+  if (varW > 0.01) {
+    const cov = rows.reduce((a, r) => a + (r.wear - mw) * (r.y - my), 0) / n;
+    degScale = Math.min(2.5, Math.max(0, cov / varW));
+  }
+  // Base pace: median residual after wear, robust to a stray slow lap.
+  const resid = rows.map((r) => r.y - degScale * r.wear).sort((a, b) => a - b);
+  const basePace = resid[Math.floor(n / 2)];
+  return { cfg: { ...probe, basePace, degScale }, trainingLaps: window.map((l) => l.lapNumber) };
 }
 
 /**
@@ -330,6 +356,67 @@ export function predictCornerSpeeds(cfg: LapModelConfig, corners: Corner[], ref:
   const g1 = gripFactor(cfg, target.compound, target.tyreAge, target.trackTemp);
   const scale = Math.sqrt(g1 / g0);
   return corners.map((c) => ({ ...c, predicted: c.speed * scale }));
+}
+
+// ─── Cornering physics ───────────────────────────────────────────────────────
+
+/** Top speed cap, m/s (≈ 331 km/h). */
+export const V_MAX = 92;
+/** Mechanical lateral grip μ·g, m/s². */
+export const MU_G = 21;
+/** Aero grip coefficient: downforce adds k·v² of lateral grip. 1/m. */
+export const AERO_K = 0.0036;
+
+/**
+ * Maximum cornering speed (m/s) for a radius in metres:
+ * v² = μg·r + k·v²·r  →  v² = μg·r / (1 − k·r). Above r = 1/k the corner
+ * is flat out.
+ */
+export function cornerSpeedLimit(radius: number, grip = 1): number {
+  const denom = 1 - AERO_K * grip * radius;
+  if (denom <= 0) return V_MAX;
+  return Math.min(V_MAX, Math.sqrt((MU_G * grip * radius) / denom));
+}
+
+/** Path resampled at even spacing by distance, for curvature estimates. */
+function resample(samples: TelemetrySample[], spacing: number) {
+  const out: { d: number; x: number; y: number }[] = [];
+  const total = samples[samples.length - 1].distance;
+  let j = 0;
+  for (let d = 0; d <= total; d += spacing) {
+    while (j < samples.length - 2 && samples[j + 1].distance < d) j++;
+    const a = samples[j];
+    const b = samples[j + 1];
+    const f = (d - a.distance) / Math.max(1e-6, b.distance - a.distance);
+    out.push({ d, x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f });
+  }
+  return out;
+}
+
+/**
+ * Predicted apex speed (km/h) for each corner from track geometry alone:
+ * the tightest radius within ±20 m of the apex (circumcircle over a ±25 m
+ * chord, which smooths GPS noise), through cornerSpeedLimit().
+ */
+export function predictApexSpeeds(samples: TelemetrySample[], corners: Corner[], grip = 1) {
+  const SP = 4;
+  const path = resample(samples, SP);
+  const half = Math.round(25 / SP);
+  const radius = path.map((p, i) => {
+    const a = path[Math.max(0, i - half)];
+    const c = path[Math.min(path.length - 1, i + half)];
+    const ab = Math.hypot(p.x - a.x, p.y - a.y);
+    const bc = Math.hypot(c.x - p.x, c.y - p.y);
+    const ca = Math.hypot(a.x - c.x, a.y - c.y);
+    const cross = Math.abs((p.x - a.x) * (c.y - a.y) - (p.y - a.y) * (c.x - a.x));
+    return cross > 1e-6 ? (ab * bc * ca) / (2 * cross) : Infinity;
+  });
+  return corners.map((c) => {
+    let r = Infinity;
+    for (let i = 0; i < path.length; i++) if (Math.abs(path[i].d - c.distance) <= 20) r = Math.min(r, radius[i]);
+    const predicted = cornerSpeedLimit(r, grip) * 3.6;
+    return { ...c, radius: r, predicted };
+  });
 }
 
 /** Mean absolute error and related accuracy stats for paired values. */
