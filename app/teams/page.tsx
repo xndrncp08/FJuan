@@ -12,7 +12,8 @@ import ConstructorCharts from "@/components/teams/ConstructorCharts";
 import { PageHeader, Section } from "@/components/ui/Section";
 import { Card } from "@/components/ui/Card";
 import { PositionBadge } from "@/components/ui/Badge";
-import { TeamMark } from "@/components/ui/TeamMark";
+import { TeamLogo } from "@/components/ui/TeamLogo";
+import { getLiveTeamColours, resolveTeamColour } from "@/lib/api/teamLogos";
 import { shortTeamName, teamColor } from "@/lib/theme/teams";
 import { cn } from "@/lib/utils/cn";
 
@@ -24,10 +25,13 @@ const MEDAL_TEXT = ["text-gold", "text-silver", "text-bronze"];
 const MEDAL_BG = ["bg-gold/15", "bg-silver/15", "bg-bronze/15"];
 
 export default async function TeamsPage() {
+  const season = String(new Date().getFullYear());
   let standings: any[] = [];
-  try {
-    standings = await getConstructorStandings("current");
-  } catch {}
+  const [standingsResult, liveColours] = await Promise.all([
+    getConstructorStandings("current").catch(() => []),
+    getLiveTeamColours(),
+  ]);
+  standings = standingsResult ?? [];
 
   const teams =
     standings.length > 0
@@ -43,7 +47,9 @@ export default async function TeamsPage() {
             points: parseFloat(s.points) || 0,
             wins: parseInt(s.wins) || 0,
             championships: local?.championships ?? 0,
-            color: local?.color ?? teamColor(s.Constructor.constructorId),
+            color: liveColours.length
+              ? resolveTeamColour(s.Constructor.constructorId, liveColours)
+              : local?.color ?? teamColor(s.Constructor.constructorId),
             base: local?.base ?? "",
             founded: local?.founded ?? 0,
           };
@@ -63,7 +69,6 @@ export default async function TeamsPage() {
             founded: c.founded,
           }));
 
-  const season = String(new Date().getFullYear());
   const leader = teams[0]?.points || 1;
   const totalPoints = teams.reduce((s, t) => s + t.points, 0);
 
@@ -95,6 +100,7 @@ export default async function TeamsPage() {
                     )}
                   </div>
                   <div className="mt-6">
+                    <TeamLogo team={t.constructorId} season={Number(season)} color={t.color} size="lg" className="mb-4" />
                     <div className="truncate text-title-3 text-paper">{shortTeamName(t.name, t.constructorId)}</div>
                     <div className="mt-1 truncate text-footnote text-label-3">
                       {[t.base.split(",")[0], t.founded ? `Since ${t.founded}` : null].filter(Boolean).join(" · ")}
@@ -135,7 +141,7 @@ export default async function TeamsPage() {
                     <PositionBadge position={t.position || i + 1} />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <TeamMark color={t.color} size="sm" />
+                        <TeamLogo team={t.constructorId} season={Number(season)} color={t.color} size="sm" />
                         <span className="truncate text-callout font-semibold text-paper">{shortTeamName(t.name, t.constructorId)}</span>
                       </div>
                       <div className="mt-1.5 h-1 overflow-hidden bg-fill-1" aria-hidden>

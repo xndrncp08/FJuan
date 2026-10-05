@@ -8,7 +8,7 @@
 
 const BY_ID: Record<string, string> = {
   red_bull: "#3671C6",
-  ferrari: "#E8002D",
+  ferrari: "#E80020",
   mercedes: "#27F4D2",
   mclaren: "#FF8000",
   aston_martin: "#229971",

@@ -15,6 +15,7 @@ import { Card } from "@/components/ui/Card";
 import { Stat, StatGrid } from "@/components/ui/Stat";
 import { ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
+import { TeamLogo } from "@/components/ui/TeamLogo";
 
 interface RaceRow {
   round: number;
@@ -98,7 +99,10 @@ export default async function ConstructorProfilePage({ params }: { params: Promi
             {team.founded > 0 && <span className="text-label-3">· Since {team.founded}</span>}
             {team.base && <span className="text-label-3">· {team.base}</span>}
           </p>
-          <h1 className="text-title-1 text-paper sm:text-display">{team.name}</h1>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+            <TeamLogo team={constructorId} season={Number(season)} color={team.color} size="xl" />
+            <h1 className="text-title-1 text-paper sm:text-display">{team.name}</h1>
+          </div>
 
           {team.championships > 0 && (
             <p className="mt-4 inline-flex items-center gap-2 bg-gold/10 px-3 py-1.5 text-subhead font-semibold text-gold">
