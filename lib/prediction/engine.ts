@@ -35,12 +35,9 @@
  *      standings endpoint twice (once for points/position, again for
  *      constructor names). Merged into a single snapshot fetch.
  *
- *   7. Insight generation retains concurrency limiting and 429
- *      retry-with-backoff (added while briefly trying Kimi/Moonshot,
- *      kept on revert back to Groq) — firing all ~10 insight requests at
- *      once in a plain Promise.all is fragile against any provider's
- *      rate limit, so this stays as cheap insurance regardless of who's
- *      generating the text.
+ *   7. Insight generation uses concurrency limiting and 429
+ *      retry-with-backoff — firing all ~10 insight requests at once in a
+ *      plain Promise.all is fragile against any provider's rate limit.
  *
  * Weights (must sum to 1.0 — validated at module load):
  *   35%  Recent form
@@ -682,9 +679,8 @@ function normalise(entries: [string, number][]): Map<string, number> {
   return out;
 }
 
-// Groq's free tier is generally more generous than Moonshot's unfunded
-// tier, but concurrency limiting + retry is cheap insurance either way —
-// keeping it means a temporary rate-limit blip degrades to "a couple of
+// Concurrency limiting + retry is cheap insurance against rate limits —
+// it means a temporary rate-limit blip degrades to "a couple of
 // drivers get fallback text" instead of "every driver gets fallback text."
 // Raise this if you have a paid Groq tier and want faster generation.
 const INSIGHT_CONCURRENCY_LIMIT = 4;
@@ -1009,8 +1005,7 @@ export async function generateRacePrediction(
     .slice(0, topN);
 
   // Concurrency-limited with retry, instead of a plain Promise.all, to
-  // stay under Moonshot's per-account rate limit — see
-  // INSIGHT_CONCURRENCY_LIMIT above for why this matters.
+  // stay under the provider's rate limit — see INSIGHT_CONCURRENCY_LIMIT.
   // Backtests skip the AI analyst notes: they're slow, cost tokens, and
   // don't affect the ranking being scored.
   const insights = options.insights === false ? scoredDrivers.map(() => "") : await mapWithConcurrency(
