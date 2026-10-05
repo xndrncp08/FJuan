@@ -1,8 +1,8 @@
 /**
  * components/ui/Card.tsx
  *
- * Cards are the main surface. Elevation comes from a lighter surface tone
- * and a hairline ring, never a glow. `CardLink` makes the whole card the
+ * Cards are the main surface: square glass panels (translucent surface,
+ * backdrop blur, 10% white edge) over the cockpit's ambient lighting. `CardLink` makes the whole card the
  * hit target (a real <a>, so it's keyboard- and middle-click-friendly).
  */
 

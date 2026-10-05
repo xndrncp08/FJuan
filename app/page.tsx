@@ -3,6 +3,7 @@ import { getCurrentStandings } from "@/lib/api/fetchers";
 import { getNextRace, getLastRace } from "@/lib/api/jolpica";
 import { generateRacePrediction } from "@/lib/prediction/engine";
 import HeroSection from "@/components/home/HeroSection";
+import CarShowcase from "@/components/home/CarShowcase";
 import NextRaceSection from "@/components/home/NextRaceSection";
 import DashboardSection from "@/components/home/DashboardSection";
 import LastRaceSection from "@/components/home/LastRaceSection";
@@ -38,6 +39,7 @@ export default async function Home() {
   return (
     <>
       <HeroSection />
+      <CarShowcase />
       <NextRaceSection nextRace={nextRace} />
       <DashboardSection
         standings={standings ?? []}

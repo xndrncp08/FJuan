@@ -11,6 +11,20 @@ export const AXIS = {
   tick: { fill: "rgba(245,233,228,0.54)", fontSize: 11, fontFamily: "var(--font-data), monospace" },
 } as const;
 
+/**
+ * Two-series palette for model-vs-measured charts, validated for the dark
+ * surface (OKLCH L 0.48–0.67, CVD ΔE 24): actual = ember, predicted = blue.
+ * Predicted lines are also dashed so identity never rests on color alone.
+ */
+export const SERIES = { actual: "#EC5C30", predicted: "#3896DE" } as const;
+
+/**
+ * Track heatmap states. Red/green is the convention drivers and engineers
+ * read, but it fails deutan separation, so braking is also drawn raised and
+ * wider on the track, and every readout names the state in text.
+ */
+export const HEAT = { brake: "#E8322E", throttle: "#1FA350", coast: "#14A3BE" } as const;
+
 export const GRID = { vertical: false, stroke: "rgba(245,233,228,0.07)" } as const;
 
 export const CURSOR_BAR = { fill: "rgba(245,233,228,0.04)" } as const;
