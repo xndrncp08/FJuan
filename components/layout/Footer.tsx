@@ -16,6 +16,8 @@ const EXPLORE = [
   { href: "/compare", label: "Compare", code: "05" },
   { href: "/predict", label: "Predict", code: "06" },
   { href: "/live", label: "Live", code: "07" },
+  { href: "/telemetry", label: "3D Telemetry", code: "08" },
+  { href: "/predict/delta", label: "Delta", code: "09" },
 ];
 
 const DATA = [

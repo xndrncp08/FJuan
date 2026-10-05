@@ -29,7 +29,11 @@ const NAV_LINKS = [
   { href: "/compare", label: "Compare", code: "05", description: "Two drivers, head to head" },
   { href: "/predict", label: "Predict", code: "06", description: "Model picks for the next race" },
   { href: "/live", label: "Live", code: "07", description: "Session telemetry and lap times" },
+  { href: "/telemetry", label: "3D", code: "08", description: "Circuit telemetry in three dimensions" },
 ];
+
+/** Reachable from search and the menu, but not the desktop bar. */
+const MORE_LINKS = [{ href: "/predict/delta", label: "Delta", code: "09", description: "Model predictions vs what actually happened" }];
 
 const SPRING = { type: "spring", bounce: 0, duration: 0.35 } as const;
 
@@ -195,7 +199,7 @@ export default function Navbar() {
                 transition={SPRING}
               >
                 <ul className="container-page py-2">
-                  {[{ href: "/", label: "Home", code: "00", description: "Standings, next race, news" }, ...NAV_LINKS].map((link) => {
+                  {[{ href: "/", label: "Home", code: "00", description: "Standings, next race, news" }, ...NAV_LINKS, ...MORE_LINKS].map((link) => {
                     const active = isActive(pathname, link.href);
                     return (
                       <li key={link.href} className="border-b border-hairline last:border-0">
@@ -251,7 +255,8 @@ function SearchPalette({ open, onClose, time }: { open: boolean; onClose: () => 
   };
 
   const q = query.trim().toLowerCase();
-  const pages = q ? NAV_LINKS.filter((l) => l.label.toLowerCase().includes(q)) : NAV_LINKS;
+  const all = [...NAV_LINKS, ...MORE_LINKS];
+  const pages = q ? all.filter((l) => `${l.label} ${l.description}`.toLowerCase().includes(q)) : all;
 
   return (
     <AnimatePresence>

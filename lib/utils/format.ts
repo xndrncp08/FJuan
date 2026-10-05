@@ -183,3 +183,18 @@ export function formatDuration(seconds: number): string {
   }
   return `${minutes}:${secs.toString().padStart(2, "0")}`;
 }
+/** 93.456 → "1:33.456"; under a minute → "59.012". For lap and sector times in seconds. */
+export function formatLapSeconds(seconds: number, decimals = 3): string {
+  if (!Number.isFinite(seconds)) return "—";
+  const sign = seconds < 0 ? "-" : "";
+  const s = Math.abs(seconds);
+  const m = Math.floor(s / 60);
+  const rest = (s - m * 60).toFixed(decimals);
+  return m > 0 ? `${sign}${m}:${rest.padStart(decimals + 3, "0")}` : `${sign}${rest}`;
+}
+
+/** Signed delta in seconds: -0.184 → "Δ -0.184s". */
+export function formatDelta(seconds: number, decimals = 3): string {
+  const v = seconds.toFixed(decimals);
+  return `Δ ${seconds > 0 ? "+" : ""}${v}s`;
+}
