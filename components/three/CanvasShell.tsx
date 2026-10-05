@@ -27,21 +27,38 @@ export default function CanvasShell({
   children,
   className,
   label,
+  decorative = false,
   fallback,
   camera,
+  eventSource,
   onPointerMissed,
+  onReady,
+  onUnsupported,
 }: {
   children: React.ReactNode;
   className?: string;
   /** Accessible description of what the scene shows. */
   label: string;
+  /** The scene duplicates content that's already in the DOM: hide it from assistive tech. */
+  decorative?: boolean;
   fallback?: React.ReactNode;
   camera?: CanvasProps["camera"];
+  /** Element whose pointer events drive the scene, when DOM content sits on top of the canvas. */
+  eventSource?: React.RefObject<HTMLElement | null>;
   onPointerMissed?: CanvasProps["onPointerMissed"];
+  /** Called once the WebGL context exists. */
+  onReady?: () => void;
+  /** Called when the browser has no WebGL. */
+  onUnsupported?: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(true);
   const [supported] = useState(hasWebGL);
+
+  useEffect(() => {
+    if (!supported) onUnsupported?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- report once on mount
+  }, []);
 
   useEffect(() => {
     const el = ref.current;
@@ -62,14 +79,23 @@ export default function CanvasShell({
   }, [visible]);
 
   return (
-    <div ref={ref} role="img" aria-label={label} className={cn("relative h-full w-full", className)}>
+    <div
+      ref={ref}
+      role={decorative ? undefined : "img"}
+      aria-label={decorative ? undefined : label}
+      aria-hidden={decorative || undefined}
+      className={cn("relative h-full w-full", className)}
+    >
       {supported ? (
         <Canvas
           frameloop={visible ? "always" : "never"}
           dpr={[1, 1.75]}
           camera={camera}
           gl={{ antialias: true, powerPreference: "high-performance", alpha: true }}
+          eventSource={eventSource?.current ?? undefined}
+          eventPrefix={eventSource ? "client" : undefined}
           onPointerMissed={onPointerMissed}
+          onCreated={() => onReady?.()}
         >
           {children}
         </Canvas>
