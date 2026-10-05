@@ -110,30 +110,52 @@ export default function PredictionChat({ prediction }: { prediction: RacePredict
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: next, prediction }),
       });
-      if (!res.ok || !res.body) throw new Error("Chat API error");
+      if (!res.ok || !res.body) {
+        const detail = await res.json().catch(() => null);
+        throw new Error(detail?.error ?? "Chat API error");
+      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let reply = "";
+      // SSE events can be split across network chunks: keep the trailing
+      // partial line and only parse complete ones.
+      let buffer = "";
+      let finished = false;
       setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
-      while (true) {
+      while (!finished) {
         const { done, value } = await reader.read();
         if (done) break;
-        const lines = decoder.decode(value, { stream: true }).split("\n").filter((l) => l.startsWith("data: "));
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
         for (const line of lines) {
-          const raw = line.replace("data: ", "").trim();
-          if (raw === "[DONE]") break;
+          if (!line.startsWith("data:")) continue;
+          const raw = line.slice(5).trim();
+          if (raw === "[DONE]") {
+            finished = true;
+            break;
+          }
           try {
-            reply += JSON.parse(raw).choices?.[0]?.delta?.content ?? "";
-            setMessages((prev) => [...prev.slice(0, -1), { role: "assistant", content: reply }]);
+            const delta = JSON.parse(raw).choices?.[0]?.delta?.content;
+            if (delta) {
+              reply += delta;
+              const text = reply;
+              setMessages((prev) => [...prev.slice(0, -1), { role: "assistant", content: text }]);
+            }
           } catch {
-            // malformed chunk — skip
+            // keep-alive or non-JSON line — skip
           }
         }
       }
+      if (!reply) throw new Error("Empty reply");
     } catch {
-      setMessages((prev) => [...prev, { role: "assistant", content: "Ay, something went wrong ese. Try again." }]);
+      // Replace the empty streaming bubble (if any) with the error line.
+      setMessages((prev) => [
+        ...(prev[prev.length - 1]?.role === "assistant" && !prev[prev.length - 1].content ? prev.slice(0, -1) : prev),
+        { role: "assistant", content: "Ay, something went wrong ese. Try again." },
+      ]);
     } finally {
       setStreaming(false);
     }
