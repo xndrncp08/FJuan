@@ -9,6 +9,8 @@
 import Link from "next/link";
 import { ArrowLeftRight, ChevronRight, UserX } from "lucide-react";
 import { getDriverStats } from "@/lib/api/fetchers";
+import { getDriverPhoto } from "@/lib/api/driverPhotos";
+import { DriverPortrait } from "@/components/ui/DriverPortrait";
 import { getNationalityFlag, formatPercentage } from "@/lib/utils/format";
 import { teamColor as lookupTeamColor } from "@/lib/theme/teams";
 import { Section, HeaderBackdrop } from "@/components/ui/Section";
@@ -42,6 +44,7 @@ export default async function DriverProfile({ driverId }: { driverId: string }) 
   const team = stats.currentTeam;
   const color = lookupTeamColor(team?.constructorId ?? team?.name);
   const number = driver.permanentNumber || driver.code;
+  const photo = await getDriverPhoto(driver);
 
   const headline = [
     { label: stats.totalChampionships === 1 ? "Championship" : "Championships", value: stats.totalChampionships, gold: stats.totalChampionships > 0 },
@@ -111,15 +114,7 @@ export default async function DriverProfile({ driverId }: { driverId: string }) 
                 <span className="whitespace-nowrap">{driver.familyName}</span>
               </h1>
             </div>
-            {number && (
-              <span
-                aria-label={`Car number ${number}`}
-                className="tabular hidden shrink-0 text-[6rem] font-bold leading-[0.8] tracking-[-0.06em] sm:block"
-                style={{ color, opacity: 0.9 }}
-              >
-                {number}
-              </span>
-            )}
+            <DriverPortrait photo={photo} name={`${driver.givenName} ${driver.familyName}`} number={number} color={color} />
           </div>
 
           <Card className="mt-8">

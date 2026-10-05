@@ -59,13 +59,18 @@ export async function getDriverStandings(
     ? `/${season}/${round}/driverStandings.json`
     : `/${season}/driverStandings.json`;
   const data = await fetchFromAPI<any>(endpoint);
-  return data.MRData.StandingsTable.StandingsLists[0]?.DriverStandings || [];
+  return data?.MRData?.StandingsTable?.StandingsLists?.[0]?.DriverStandings || [];
 }
 
+/**
+ * Standings for the season in progress. Before the first race of a new
+ * year the current season has no standings yet, so fall back to the
+ * season that just finished rather than showing an empty table.
+ */
 export async function getCurrentDriverStandings() {
-  const currentYear = new Date().getFullYear();
-  const season = currentYear > 2025 ? "2025" : currentYear.toString();
-  return getDriverStandings(season);
+  const current = await getDriverStandings("current");
+  if (current.length) return current;
+  return getDriverStandings(String(new Date().getFullYear() - 1));
 }
 
 // Fixed: query string must come before .json extension
