@@ -20,6 +20,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Menu, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Logo } from "@/components/ui/Logo";
+import { usePagePathname } from "@/lib/hooks/usePagePathname";
 
 const NAV_LINKS = [
   { href: "/drivers", label: "Drivers", code: "01", description: "Standings and career stats" },
@@ -63,6 +64,8 @@ function useClock() {
 
 export default function Navbar() {
   const pathname = usePathname();
+  // The underline follows the page on screen, not a floating window's URL.
+  const page = usePagePathname();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -122,7 +125,7 @@ export default function Navbar() {
 
             <ul className="hidden items-stretch lg:flex">
               {NAV_LINKS.map((link) => {
-                const active = isActive(pathname, link.href);
+                const active = isActive(page, link.href);
                 return (
                   <li key={link.href} className="flex">
                     <Link
@@ -200,7 +203,7 @@ export default function Navbar() {
               >
                 <ul className="container-page py-2">
                   {[{ href: "/", label: "Home", code: "00", description: "Standings, next race, news" }, ...NAV_LINKS, ...MORE_LINKS].map((link) => {
-                    const active = isActive(pathname, link.href);
+                    const active = isActive(page, link.href);
                     return (
                       <li key={link.href} className="border-b border-hairline last:border-0">
                         <Link

@@ -66,6 +66,18 @@ export function toConstructorId(team: string): string {
   return v.replace(/ /g, "_");
 }
 
+/**
+ * Official car render from the Formula1.com CDN: a transparent side
+ * profile, nose pointing `side`. Null if we don't know the team's slug for
+ * that season.
+ */
+export function f1CarImageUrl(team: string, season: number, side: "left" | "right" = "right", width = 1600): string | null {
+  const entry = F1_SLUGS[toConstructorId(team)];
+  if (!entry) return null;
+  const year = entry.seasons.includes(season) ? season : entry.seasons[0];
+  return `${F1_CDN}/c_fit,w_${width}/q_auto/common/f1/${year}/${entry.slug}/${year}${entry.slug}car${side}.webp`;
+}
+
 /** Formula1.com CDN logo URLs to try, best first. `height` is in CSS px; we request 2x. */
 export function f1LogoUrls(team: string, season?: number, height = 32): string[] {
   const entry = F1_SLUGS[toConstructorId(team)];

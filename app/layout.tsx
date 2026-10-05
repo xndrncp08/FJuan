@@ -67,8 +67,11 @@ async function getNextRacePrediction() {
 
 export default async function RootLayout({
   children,
+  modal,
 }: {
   children: React.ReactNode;
+  /** Floating windows for detail pages (app/@modal). */
+  modal: React.ReactNode;
 }) {
   const prediction = await getNextRacePrediction();
 
@@ -79,6 +82,7 @@ export default async function RootLayout({
           <Navbar />
           <PageTransition>{children}</PageTransition>
           <Footer />
+          {modal}
         </Providers>
 
         {prediction && <PredictionChat prediction={prediction} />}

@@ -6,7 +6,7 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight, Trophy } from "lucide-react";
+import { ArrowRight, ChevronRight, Cpu, Trophy } from "lucide-react";
 import { getConstructorStandings, getConstructorResults, getDriverStandings } from "@/lib/api/jolpica";
 import constructorsData from "@/lib/data/constructors.json";
 import ConstructorProfileCharts from "@/components/teams/ConstructorProfileCharts";
@@ -16,6 +16,8 @@ import { Stat, StatGrid } from "@/components/ui/Stat";
 import { ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 import { TeamLogo } from "@/components/ui/TeamLogo";
+import { getSeasonCar } from "@/lib/api/cars";
+import { f1CarImageUrl } from "@/lib/api/teamLogos";
 
 interface RaceRow {
   round: number;
@@ -34,11 +36,13 @@ export default async function ConstructorProfilePage({ params }: { params: Promi
 
   const season = new Date().getFullYear().toString();
 
-  const [standings, raceResults, driverStandings] = await Promise.all([
+  const [standings, raceResults, driverStandings, car] = await Promise.all([
     getConstructorStandings("current").catch(() => []),
     getConstructorResults(constructorId, season).catch(() => []),
     getDriverStandings("current").catch(() => []),
+    getSeasonCar(constructorId).catch(() => null),
   ]);
+  const carImage = car ? f1CarImageUrl(constructorId, car.season, "right", 1200) : null;
 
   const entry = standings.find((s: any) => s.Constructor?.constructorId === constructorId);
   const team = {
@@ -125,6 +129,32 @@ export default async function ConstructorProfilePage({ params }: { params: Promi
 
       <Section className="pt-2 sm:pt-4">
         <div className="space-y-5">
+          {car && (
+            <Link
+              href={`/teams/${constructorId}/car`}
+              scroll={false}
+              className="card card-interactive group relative grid items-center gap-4 overflow-hidden p-5 sm:grid-cols-[1fr_1.4fr] sm:p-6"
+            >
+              <div aria-hidden className="absolute inset-0" style={{ background: `radial-gradient(60% 90% at 75% 60%, ${team.color}30, transparent 70%)` }} />
+              <div className="relative min-w-0">
+                <p className="eyebrow mb-2">{car.season} car</p>
+                <h2 className="font-display text-[2.25rem] uppercase leading-none text-paper">{car.chassis}</h2>
+                <p className="mt-2 flex items-center gap-1.5 text-subhead text-label-2">
+                  <Cpu className="h-4 w-4 text-label-3" aria-hidden />
+                  {car.powerUnit}
+                </p>
+                <span className="mt-4 inline-flex items-center gap-1.5 text-[0.8125rem] font-bold uppercase tracking-[0.14em] text-tint">
+                  Specs, history and renders
+                  <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" aria-hidden />
+                </span>
+              </div>
+              {carImage && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={carImage} alt={`${team.name} ${car.chassis}`} loading="lazy" className="relative w-full drop-shadow-[0_14px_24px_rgba(0,0,0,0.55)]" />
+              )}
+            </Link>
+          )}
+
           <ConstructorProfileCharts raceSeries={series} teamColor={team.color} season={season} />
 
           {drivers.length > 0 && (
