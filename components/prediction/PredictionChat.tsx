@@ -4,18 +4,33 @@
  * "Nacho Bot" — floating chat about the next race's prediction.
  * Tagline: "I'm not your bot, ese."
  *
- * - The panel grows out of the button (transform-origin bottom-right) and
- *   returns into it, on a critically damped spring.
+ * - The bubble docks in any corner, picture-in-picture style: drag it (or
+ *   flick it — release velocity is projected forward) and it springs to the
+ *   nearest corner, carrying the throw's velocity. Arrow keys move it too.
+ *   The corner is remembered across visits.
+ * - The panel grows out of the bubble's corner and returns into it, on a
+ *   critically damped spring.
  * - On phones it lifts above the soft keyboard via visualViewport.
  * - Escape closes; the input is focused on open; replies are announced.
  */
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from "framer-motion";
 import { ArrowUp, MessageCircle, RotateCcw, X } from "lucide-react";
 import type { RacePrediction } from "@/lib/types/prediction";
 import { cn } from "@/lib/utils/cn";
+import { BUBBLE_SIZE, CORNERS, cornerInDirection, cornerPoint, isLeft, isTop, loadCorner, nearestCorner, project, saveCorner, type Corner } from "./bubbleDock";
+
+const noopSubscribe = () => () => {};
+
+const PANEL_SIDE: Record<Corner, string> = {
+  tl: "left-3 origin-top-left sm:left-6",
+  tr: "right-3 origin-top-right sm:right-6",
+  bl: "left-3 origin-bottom-left sm:left-6",
+  br: "right-3 origin-bottom-right sm:right-6",
+};
+const CORNER_NAME: Record<Corner, string> = { tl: "top left", tr: "top right", bl: "bottom left", br: "bottom right" };
 
 interface Message {
   role: "user" | "assistant";
@@ -51,6 +66,59 @@ export default function PredictionChat({ prediction }: { prediction: RacePredict
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const reduce = useReducedMotion();
+
+  // ── Corner docking ──────────────────────────────────────────────────────
+  // The bubble is positioned entirely by x/y motion values (fixed at 0,0),
+  // so a drag and the dock spring move the same values and hand off
+  // without a jump. It renders only after mount: its position needs the
+  // viewport, and the saved corner lives in localStorage.
+  const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
+  const [corner, setCorner] = useState<Corner>(() => (typeof window === "undefined" ? "br" : loadCorner()));
+  const [target, setTarget] = useState<Corner | null>(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const dragging = useRef(false);
+  const didDrag = useRef(false);
+  const docked = useRef<string | null>(null);
+  const viewport = useRef<HTMLDivElement>(null);
+
+  const dock = useCallback(
+    (c: Corner, velocity?: { x: number; y: number }) => {
+      const p = cornerPoint(c, keyboard);
+      const first = docked.current === null;
+      docked.current = `${c}:${keyboard}`;
+      if (first || reduce) {
+        x.set(p.x);
+        y.set(p.y);
+        return;
+      }
+      // Critically damped for repositioning; a touch of bounce only when a
+      // throw carried momentum into the corner.
+      const thrown = !!velocity && Math.hypot(velocity.x, velocity.y) > 300;
+      const spring = { type: "spring", bounce: thrown ? 0.18 : 0, duration: 0.45 } as const;
+      animate(x, p.x, { ...spring, velocity: velocity?.x ?? 0 });
+      animate(y, p.y, { ...spring, velocity: velocity?.y ?? 0 });
+    },
+    [keyboard, reduce, x, y],
+  );
+
+  useEffect(() => {
+    if (mounted && !dragging.current && docked.current !== `${corner}:${keyboard}`) dock(corner);
+  }, [mounted, corner, keyboard, dock]);
+
+  useEffect(() => {
+    const onResize = () => !dragging.current && dock(corner);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [corner, dock]);
+
+  const landing = (vx: number, vy: number) =>
+    nearestCorner(x.get() + project(vx), y.get() + project(vy), keyboard);
+
+  const moveTo = (c: Corner) => {
+    setCorner(c);
+    saveCorner(c);
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "end" });
@@ -170,11 +238,21 @@ export default function PredictionChat({ prediction }: { prediction: RacePredict
           <motion.div
             role="dialog"
             aria-label="Nacho Bot"
-            className="material-thick fixed right-3 z-[400] flex w-[min(400px,calc(100vw-24px))] origin-bottom-right flex-col overflow-hidden rounded-xl shadow-popover sm:right-6"
-            style={{ bottom: `calc(5.5rem + env(safe-area-inset-bottom) + ${lift})`, height: `min(560px, calc(100dvh - 8rem - ${lift}))` }}
-            initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: 12 }}
+            className={cn(
+              "material-thick fixed z-[400] flex w-[min(400px,calc(100vw-24px))] flex-col overflow-hidden rounded-xl shadow-popover",
+              PANEL_SIDE[corner],
+            )}
+            style={
+              isTop(corner)
+                ? {
+                    top: `calc(var(--nav-h) + ${BUBBLE_SIZE + 24}px)`,
+                    height: `min(560px, calc(100dvh - var(--nav-h) - ${BUBBLE_SIZE + 40}px - ${lift}))`,
+                  }
+                : { bottom: `calc(5.5rem + env(safe-area-inset-bottom) + ${lift})`, height: `min(560px, calc(100dvh - 8rem - ${lift}))` }
+            }
+            initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: isTop(corner) ? -12 : 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: 12 }}
+            exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: isTop(corner) ? -12 : 12 }}
             transition={{ type: "spring", bounce: 0, duration: 0.32 }}
           >
             <header className="flex items-center gap-3 border-b border-hairline px-4 py-3">
@@ -279,31 +357,114 @@ export default function PredictionChat({ prediction }: { prediction: RacePredict
       </AnimatePresence>
 
       <AnimatePresence>
-        {hint && !open && (
+        {hint && !open && mounted && (
           <motion.button
             type="button"
             onClick={toggle}
-            className="material-thick fixed right-24 z-[399] hidden origin-right px-4 py-2 text-footnote text-paper shadow-popover sm:block"
-            style={{ bottom: "calc(2.25rem + env(safe-area-inset-bottom))" }}
-            initial={{ opacity: 0, x: 8 }}
+            className={cn(
+              "material-thick fixed z-[399] hidden px-4 py-2 text-footnote text-paper shadow-popover sm:block",
+              isLeft(corner) ? "left-24 origin-left" : "right-24 origin-right",
+            )}
+            style={isTop(corner) ? { top: "calc(var(--nav-h) + 22px)" } : { bottom: "calc(2.25rem + env(safe-area-inset-bottom))" }}
+            initial={{ opacity: 0, x: isLeft(corner) ? -8 : 8 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 8 }}
+            exit={{ opacity: 0, x: isLeft(corner) ? -8 : 8 }}
           >
             Psst. Ask me anything, ese. 🏎️
           </motion.button>
         )}
       </AnimatePresence>
 
-      <button
-        type="button"
-        onClick={toggle}
-        aria-label={open ? "Close Nacho Bot" : "Open Nacho Bot"}
-        aria-expanded={open}
-        className="pressable fixed right-4 z-[400] flex h-14 w-14 items-center justify-center rounded-full bg-accent text-paper shadow-[0_8px_24px_-6px_rgb(var(--accent)/0.7),0_2px_6px_rgba(0,0,0,0.4)] hover:bg-[#D5170F] sm:right-6"
-        style={{ bottom: `calc(max(1.25rem, env(safe-area-inset-bottom) + 0.75rem) + ${lift})` }}
-      >
-        {open ? <X className="h-5 w-5" /> : <MessageCircle className="h-6 w-6" />}
-      </button>
+      {/* Drag bounds: the bubble rubber-bands past the viewport edges. */}
+      <div ref={viewport} aria-hidden className="pointer-events-none fixed inset-0 -z-10" />
+
+      {/* Dock targets, shown while dragging; the one it will land in is lit. */}
+      <AnimatePresence>
+        {target &&
+          CORNERS.map((c) => {
+            const p = cornerPoint(c, keyboard);
+            const lit = c === target;
+            return (
+              <motion.span
+                key={c}
+                aria-hidden
+                className={cn(
+                  "pointer-events-none fixed left-0 top-0 z-[398] rounded-full border-2 border-dashed",
+                  lit ? "border-accent bg-accent/15" : "border-paper/25",
+                )}
+                style={{ width: BUBBLE_SIZE, height: BUBBLE_SIZE, x: p.x, y: p.y }}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: lit ? 1.08 : 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ type: "spring", bounce: 0, duration: 0.25 }}
+              />
+            );
+          })}
+      </AnimatePresence>
+
+      {mounted && (
+        <motion.button
+          type="button"
+          onPointerDown={() => (didDrag.current = false)}
+          onClick={() => {
+            // A drag ends with a click on the same element; don't treat it as
+            // a tap. Also catch a release that left the bubble off its corner
+            // (a flick so fast the drag never registered) and dock it instead.
+            const home = cornerPoint(corner, keyboard);
+            const settled = !x.isAnimating() && !y.isAnimating();
+            const offCorner = settled && Math.hypot(x.get() - home.x, y.get() - home.y) > 8;
+            if (didDrag.current || offCorner) {
+              didDrag.current = false;
+              if (offCorner && !dragging.current) {
+                const c = nearestCorner(x.get(), y.get(), keyboard);
+                moveTo(c);
+                dock(c);
+              }
+              return;
+            }
+            toggle();
+          }}
+          onKeyDown={(e) => {
+            if (!e.key.startsWith("Arrow")) return;
+            e.preventDefault();
+            const next = cornerInDirection(corner, e.key);
+            if (next !== corner) moveTo(next);
+          }}
+          aria-label={open ? "Close Nacho Bot" : "Open Nacho Bot"}
+          aria-description={`Docked ${CORNER_NAME[corner]}. Drag, or use the arrow keys, to move it to another corner.`}
+          aria-expanded={open}
+          drag={!open}
+          dragMomentum={false}
+          dragConstraints={viewport}
+          dragElastic={0.18}
+          onDragStart={() => {
+            dragging.current = true;
+            didDrag.current = true;
+            setHint(false);
+            setTarget(corner);
+          }}
+          onDrag={(_, info) => {
+            const c = landing(info.velocity.x, info.velocity.y);
+            setTarget((t) => (t === c ? t : c));
+          }}
+          onDragEnd={(_, info) => {
+            dragging.current = false;
+            const c = landing(info.velocity.x, info.velocity.y);
+            setTarget(null);
+            moveTo(c);
+            dock(c, info.velocity);
+          }}
+          whileTap={reduce ? undefined : { scale: 0.94 }}
+          whileDrag={reduce ? undefined : { scale: 1.08 }}
+          className={cn(
+            "fixed left-0 top-0 z-[400] flex h-14 w-14 touch-none select-none items-center justify-center rounded-full bg-accent text-paper shadow-[0_8px_24px_-6px_rgb(var(--accent)/0.7),0_2px_6px_rgba(0,0,0,0.4)] hover:bg-[#D5170F]",
+            !open && "cursor-grab active:cursor-grabbing",
+          )}
+          style={{ x, y }}
+        >
+          {open ? <X className="h-5 w-5" /> : <MessageCircle className="h-6 w-6" />}
+        </motion.button>
+      )}
     </>
   );
 }
