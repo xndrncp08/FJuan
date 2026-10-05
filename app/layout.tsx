@@ -22,7 +22,12 @@ export const metadata: Metadata = {
     "Real-time Formula 1 driver statistics, live telemetry, race calendar, and historical data analysis",
   keywords: ["F1", "Formula 1", "statistics", "telemetry", "racing", "drivers", "standings"],
   authors: [{ name: "Xander Rancap" }],
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  // Absolute URLs for the OG/Twitter cards: explicit override, else the
+  // Vercel production domain, else local dev.
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ??
+      (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000"),
+  ),
   openGraph: {
     title: "FJUAN — Formula 1 Statistics & Analytics",
     description: "Comprehensive Formula 1 statistics and analytics",
