@@ -420,7 +420,7 @@ export default function TelemetryCockpit({ initialSession }: { initialSession?: 
               </div>
             </div>
             {mode === "inputs" && (
-              <ul className="glass-strong absolute bottom-3 right-3 flex gap-3 px-3 py-2 text-[0.75rem] font-semibold text-label-2 sm:bottom-4 sm:right-4" aria-label="Track color legend">
+              <ul className="glass-strong flex flex-wrap gap-3 border-0 border-t px-4 py-2 text-[0.75rem] font-semibold text-label-2 sm:absolute sm:bottom-4 sm:right-4 sm:border sm:px-3" aria-label="Track color legend">
                 {(["brake", "throttle", "coast"] as const).map((k) => (
                   <li key={k} className="flex items-center gap-1.5">
                     <span className={cn("w-3", k === "brake" ? "h-2.5" : "h-1.5")} style={{ background: HEAT[k] }} aria-hidden />
