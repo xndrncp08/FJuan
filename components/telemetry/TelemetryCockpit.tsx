@@ -61,7 +61,7 @@ function Hud({ samples, playhead, lapTime }: { samples: TelemetrySample[]; playh
   const state = driveState(s);
   const color = HEAT[state];
   return (
-    <div className="glass-strong pointer-events-none w-[min(240px,calc(100vw-56px))] p-4" aria-live="off">
+    <div className="glass-strong pointer-events-none w-full border-0 p-4 sm:w-[240px] sm:border" aria-live="off">
       <div className="flex items-end justify-between">
         <div>
           <div className="font-display text-[3rem] leading-none tabular-nums text-paper">{Math.round(s.speed)}</div>
@@ -402,7 +402,8 @@ export default function TelemetryCockpit({ initialSession }: { initialSession?: 
         </div>
         {samples?.length ? (
           <>
-            <div className="absolute left-3 top-3 sm:left-4 sm:top-4">
+            {/* Overlay on larger screens; below the canvas on phones so it doesn't hide the track. */}
+            <div className="border-t border-[var(--glass-edge)] sm:absolute sm:left-4 sm:top-4 sm:border-0">
               <Hud samples={samples} playhead={playhead} lapTime={lapTime} />
             </div>
             <div className="glass-strong pointer-events-none absolute right-3 top-3 hidden px-3 py-2 sm:block sm:right-4 sm:top-4">
