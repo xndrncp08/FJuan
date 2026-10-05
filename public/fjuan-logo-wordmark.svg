@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -2 361 134" role="img" aria-label="FJUAN">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -2 361 106" role="img" aria-label="FJUAN">
 <defs>
 <linearGradient id="fj-red" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#A80B08"/><stop offset=".55" stop-color="#D3120C"/><stop offset="1" stop-color="#F0561E"/></linearGradient>
 <linearGradient id="fj-ember" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#C3110C"/><stop offset="1" stop-color="#FF6A2A"/></linearGradient>
@@ -9,6 +9,5 @@
 <path d="M64 100V37Q64 30 71 30H126Q118 41 104 44H80V100Z" fill="url(#fj-red)"/>
 <g fill="#F5E9E4"><path d="M151 42H166V92Q166 100 158 100H130Q122 100 122 92V76H137V85H151Z"/><path d="M176 42H191V85H207V42H222V92Q222 100 214 100H184Q176 100 176 92Z"/><path d="M229 100L250 42H264L285 100H269L257 64L245 100Z"/><path d="M291 100V42H305L324 77V42H339V100H325L306 65V100Z"/></g>
 </g>
-<g fill="#F5E9E4" opacity=".86"><text x="182.5" y="126" text-anchor="middle" font-family="Rajdhani, 'Eurostile', 'Helvetica Neue', Arial, sans-serif" font-weight="600" font-size="11" letter-spacing="4.2">F1 ANALYTICS PLATFORM</text></g>
-<rect x="8" y="121.6" width="44" height="1.2" fill="url(#fj-ember)"/><rect x="305" y="121.6" width="44" height="1.2" fill="url(#fj-ember)"/>
+
 </svg>

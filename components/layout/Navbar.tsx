@@ -19,6 +19,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Menu, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { Logo } from "@/components/ui/Logo";
 
 const NAV_LINKS = [
   { href: "/drivers", label: "Drivers", code: "01", description: "Standings and career stats" },
@@ -38,9 +39,9 @@ function isActive(pathname: string, href: string) {
 
 export function Wordmark({ className, tag = true }: { className?: string; tag?: boolean }) {
   return (
-    <span className={cn("inline-flex items-baseline font-display text-[1.375rem] leading-none tracking-[-0.04em] text-paper", className)}>
-      FJ<span className="text-accent">U</span>AN
-      {tag && <span className="ml-1.5 font-mono text-[0.625rem] tracking-normal text-label-3">26</span>}
+    <span className={cn("inline-flex items-end text-[1.5rem] leading-none text-paper", className)}>
+      <Logo />
+      {tag && <span className="mb-[0.1em] ml-1.5 font-mono text-[0.625rem] leading-none tracking-normal text-label-3">26</span>}
     </span>
   );
 }

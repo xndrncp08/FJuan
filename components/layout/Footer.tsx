@@ -41,7 +41,7 @@ export default function Footer() {
 
       <div className="container-page relative grid gap-10 py-14 lg:grid-cols-[1.3fr_1fr_1fr]">
         <div className="max-w-sm">
-          <Wordmark className="text-[1.75rem]" />
+          <Wordmark className="text-[2rem]" />
           <p className="mt-4 text-subhead text-label-2">
             Formula 1 statistics, telemetry, race data, and predictions — in one high-speed data platform.
           </p>
