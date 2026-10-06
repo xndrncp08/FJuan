@@ -1,17 +1,16 @@
 /**
  * components/three/realCar/CarScene3D.tsx
  *
- * Studio for a RealCar: key light, team-coloured rim light, local
- * Lightformer reflections (nothing downloaded), contact shadow, and a grid
- * floor that rolls while the car moves.
+ * Studio for a car model (GlbCar): key light, team-coloured rim light,
+ * local Lightformer reflections, contact shadow, and a grid floor that
+ * rolls while the car moves.
  *
- *   Changing car  the old car drives off and the new one drives in from
- *                 the side it's heading to; wheels turn by the distance
- *                 covered, so they never skid.
+ *   Changing car  the old car drives off and the new one drives on once
+ *                 its model has loaded (each car sits in its own Suspense
+ *                 boundary, so it never appears mid-drive).
  *   Camera        orbit rig fed by `rig` (written by pointer handlers in
  *                 Car3D): eased azimuth/elevation/distance with inertia,
  *                 slow auto-rotate when idle, presets.
- *   Front wheels  steer toward the pointer.
  *   Hotspots      optional labelled points (car page) with short notes.
  */
 
@@ -20,38 +19,47 @@
 import { ContactShadows, Environment, Grid, Html, Lightformer } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { easing } from "maath";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { cn } from "@/lib/utils/cn";
-import { RealCar, type CarBundle } from "./RealCar";
+import { GlbCar } from "./GlbCar";
 import type { Hotspot, Rig } from "./rig";
 
 const DRIVE = 9; // metres off-stage
+// Cars are normalised to 5.4 m long, centred, on the ground: look here.
+const CENTER = new THREE.Vector3(0, 0.42, 0);
+
+export interface CarSpec {
+  team: string;
+  url: string;
+  color: string;
+}
+
+/** Fires once its subtree has rendered (i.e. the model above it has loaded). */
+function Loaded({ onLoaded }: { onLoaded?: () => void }) {
+  useEffect(() => onLoaded?.(), [onLoaded]);
+  return null;
+}
 
 function CarInstance({
-  bundle,
+  car,
   phase,
   dir,
-  rolling,
   reduce,
-  rig,
   onExited,
+  onLoaded,
 }: {
-  bundle: CarBundle;
+  car: CarSpec;
   phase: "enter" | "idle" | "exit";
   dir: -1 | 0 | 1;
-  rolling: boolean;
   reduce: boolean;
-  rig: React.RefObject<Rig>;
   onExited?: () => void;
+  onLoaded?: () => void;
 }) {
   const group = useRef<THREE.Group>(null);
-  const spin = useRef(0);
-  const steer = useRef(0);
-  // Cars always drive forward (nose = +x): in from the left, off to the
+  // Cars always drive forward (nose = +x): on from the left, off to the
   // right. Starting off-stage means the first frame is already in place.
   const state = useRef({ x: phase === "enter" && dir !== 0 && !reduce ? -DRIVE : 0, done: false });
-  const r = bundle.profile.wheels.radius;
 
   useFrame((_, delta) => {
     const g = group.current;
@@ -59,14 +67,9 @@ function CarInstance({
     const dt = Math.min(delta, 1 / 20);
     const s = state.current;
     const target = phase === "exit" ? DRIVE : 0;
-    const before = s.x;
     if (reduce) s.x = target;
     else easing.damp(s, "x", target, phase === "exit" ? 0.32 : 0.45, dt);
     g.position.x = s.x;
-    // Rolling without slipping: wheel angle = distance / radius.
-    spin.current += (s.x - before) / r;
-    if (rolling && !reduce) spin.current += (dt * 14) / r;
-    easing.damp(steer, "current", reduce ? 0 : (rig.current?.pointerX ?? 0) * -0.32, 0.25, dt);
     if (phase === "exit" && !s.done && Math.abs(s.x - target) < 0.05) {
       s.done = true;
       onExited?.();
@@ -75,7 +78,8 @@ function CarInstance({
 
   return (
     <group ref={group}>
-      <RealCar bundle={bundle} spin={spin} steer={steer} />
+      <GlbCar url={car.url} />
+      <Loaded onLoaded={onLoaded} />
     </group>
   );
 }
@@ -166,40 +170,39 @@ function Hotspots({ items }: { items: Hotspot[] }) {
 }
 
 export default function CarScene3D({
-  bundle,
+  car,
   direction,
   rolling,
   reduce,
   rig,
   hotspots,
+  onLoaded,
 }: {
-  bundle: CarBundle;
+  car: CarSpec;
   direction: -1 | 0 | 1;
   rolling: boolean;
   reduce: boolean;
   rig: React.RefObject<Rig>;
   hotspots?: Hotspot[];
+  /** The first car's model has loaded. */
+  onLoaded?: () => void;
 }) {
   // Cars on stage: the current one, plus the previous one while it drives off.
-  const [cars, setCars] = useState<{ bundle: CarBundle; id: number; phase: "enter" | "idle" | "exit"; dir: -1 | 0 | 1 }[]>(() => [
-    { bundle, id: 0, phase: "idle", dir: 0 },
+  const [cars, setCars] = useState<{ car: CarSpec; id: number; phase: "enter" | "idle" | "exit"; dir: -1 | 0 | 1 }[]>(() => [
+    { car, id: 0, phase: "idle", dir: 0 },
   ]);
-  const [shown, setShown] = useState(bundle);
-  if (shown !== bundle) {
-    setShown(bundle);
+  const [shown, setShown] = useState(car.team);
+  if (shown !== car.team) {
+    setShown(car.team);
     setCars((list) => [
       ...list.filter((c) => c.phase !== "exit").map((c) => ({ ...c, phase: "exit" as const, dir: direction || 1 })),
-      { bundle, id: Math.max(0, ...list.map((c) => c.id)) + 1, phase: "enter", dir: direction || 1 },
+      { car, id: Math.max(0, ...list.map((c) => c.id)) + 1, phase: "enter", dir: direction || 1 },
     ]);
   }
 
-  const color = bundle.profile.color;
-  const { xMin, xMax, top } = bundle.profile.extent;
-  const center = useMemo(() => new THREE.Vector3((xMin + xMax) / 2, top * 0.4, 0), [xMin, xMax, top]);
-
   useEffect(() => {
     // Hand the stage to the new car once it has arrived.
-    const id = setTimeout(() => setCars((list) => list.map((c) => (c.phase === "enter" ? { ...c, phase: "idle" } : c))), 900);
+    const id = setTimeout(() => setCars((list) => list.map((c) => (c.phase === "enter" ? { ...c, phase: "idle" } : c))), 1400);
     return () => clearTimeout(id);
   }, [shown]);
 
@@ -207,11 +210,11 @@ export default function CarScene3D({
     <>
       <color attach="background" args={["#0c0403"]} />
       <fog attach="fog" args={["#0c0403", 14, 30]} />
-      <ambientLight intensity={0.45} />
-      <directionalLight position={[4, 8, 6]} intensity={1.6} />
-      <directionalLight position={[-6, 4, -5]} intensity={0.5} />
-      <spotLight position={[-5, 4, -6]} angle={0.6} penumbra={0.9} intensity={70} color={color} />
-      <pointLight position={[0, 0.25, 0]} intensity={4} distance={4.5} color={color} />
+      <ambientLight intensity={0.5} />
+      <directionalLight position={[4, 8, 6]} intensity={1.8} />
+      <directionalLight position={[-6, 4, -5]} intensity={0.6} />
+      <spotLight position={[-5, 4, -6]} angle={0.6} penumbra={0.9} intensity={70} color={car.color} />
+      <pointLight position={[0, 0.25, 0]} intensity={4} distance={4.5} color={car.color} />
 
       <Environment resolution={256} frames={1}>
         <Lightformer form="rect" intensity={2.4} position={[0, 7, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[14, 5, 1]} />
@@ -221,22 +224,22 @@ export default function CarScene3D({
       </Environment>
 
       {cars.map((c) => (
-        <CarInstance
-          key={c.id}
-          bundle={c.bundle}
-          phase={c.phase}
-          dir={c.dir}
-          rolling={rolling}
-          reduce={reduce}
-          rig={rig}
-          onExited={() => setCars((list) => list.filter((o) => o.id !== c.id))}
-        />
+        <Suspense key={c.id} fallback={null}>
+          <CarInstance
+            car={c.car}
+            phase={c.phase}
+            dir={c.dir}
+            reduce={reduce}
+            onLoaded={c.id === 0 ? onLoaded : undefined}
+            onExited={() => setCars((list) => list.filter((o) => o.id !== c.id))}
+          />
+        </Suspense>
       ))}
       {hotspots && cars.length === 1 && <Hotspots items={hotspots} />}
 
       <RollingGrid rolling={rolling || cars.length > 1} reduce={reduce} />
       <ContactShadows position={[0, 0.002, 0]} opacity={0.8} scale={12} blur={2.2} far={2.2} resolution={512} color="#000000" />
-      <CameraRig rig={rig} center={center} reduce={reduce} />
+      <CameraRig rig={rig} center={CENTER} reduce={reduce} />
     </>
   );
 }

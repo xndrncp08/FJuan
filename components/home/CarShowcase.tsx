@@ -1,8 +1,8 @@
 /**
  * components/home/CarShowcase.tsx
  *
- * "The 2026 grid" on the landing page: every team's real car in 3D, built
- * from its official Formula1.com renders (Car3D). Drag to spin it; change
+ * "The 2026 grid" on the landing page: every team's car in 3D (Car3D,
+ * Sketchfab models, official render while loading). Drag to spin it; change
  * car with the arrow keys or buttons, or by picking a team — the next car
  * drives onto the stage. Each car shows its chassis and power unit
  * (Wikipedia's entry list) and opens its full spec in a floating window.
@@ -17,7 +17,7 @@ import { ArrowRight, ChevronLeft, ChevronRight, Cpu } from "lucide-react";
 import { SectionHeader } from "@/components/ui/Section";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import type { StageCar } from "@/components/teams/CarStage";
-import { Car3D, usePrefetchCar } from "@/components/teams/Car3D";
+import { Car3D, CarModelCredit, usePrefetchCar } from "@/components/teams/Car3D";
 import { f1CarImageUrl } from "@/lib/api/teamLogos";
 import { shortTeamName, teamColor } from "@/lib/theme/teams";
 import { cn } from "@/lib/utils/cn";
@@ -53,8 +53,8 @@ export default function CarShowcase({ cars, season }: { cars: ShowcaseCar[]; sea
   const prefetch = usePrefetchCar();
   useEffect(() => {
     const n = grid.length;
-    prefetch(grid[(index + 1) % n].constructorId, season);
-    prefetch(grid[(index - 1 + n) % n].constructorId, season);
+    prefetch(grid[(index + 1) % n].constructorId);
+    prefetch(grid[(index - 1 + n) % n].constructorId);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- prefetch is a plain function
   }, [index, season, grid]);
 
@@ -76,7 +76,7 @@ export default function CarShowcase({ cars, season }: { cars: ShowcaseCar[]; sea
         <SectionHeader
           eyebrow="Chassis lab"
           title={`The ${season} Grid`}
-          description="Every car on the grid in 3D, built from the teams' official renders. Drag to spin it, use the arrows to change car."
+          description="Every car on the grid in 3D. Drag to spin it, use the arrows to change car."
         />
 
         <div
@@ -95,7 +95,6 @@ export default function CarShowcase({ cars, season }: { cars: ShowcaseCar[]; sea
           <Car3D
             mode="showcase"
             team={id}
-            season={season}
             fallback={stageCar}
             direction={direction}
             className="aspect-[4/5] min-h-[380px] sm:aspect-[16/8] sm:min-h-[360px] lg:aspect-[16/7]"
@@ -188,7 +187,9 @@ export default function CarShowcase({ cars, season }: { cars: ShowcaseCar[]; sea
             </div>
           </div>
         </div>
-        <p className="mt-3 text-caption text-label-3">Car renders: Formula1.com · Entry list: Wikipedia</p>
+        <p className="mt-3 text-caption text-label-3">
+          <CarModelCredit team={id} /> · Entry list: Wikipedia
+        </p>
       </div>
     </section>
   );

@@ -16,13 +16,11 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useRef, useState } from "react";
 import { useReducedMotion } from "framer-motion";
-import type * as THREE from "three";
 import { Info, Play, Pause, Rotate3d } from "lucide-react";
-import type { CarProfile } from "@/lib/api/carModel";
-import type { CarBundle } from "@/components/three/realCar/RealCar";
+import { CAR_MODEL_LICENSE, carModelFor } from "@/lib/data/carModels";
+import { teamColor } from "@/lib/theme/teams";
 import { createRig, type Hotspot, type Rig } from "@/components/three/realCar/rig";
 import { CarStage, type StageCar } from "./CarStage";
 import { cn } from "@/lib/utils/cn";
@@ -30,38 +28,35 @@ import { cn } from "@/lib/utils/cn";
 const CanvasShell = dynamic(() => import("@/components/three/CanvasShell"), { ssr: false });
 const CarScene3D = dynamic(() => import("@/components/three/realCar/CarScene3D"), { ssr: false });
 
-// three.js is loaded on demand so it stays out of the page's first bundle.
-const textures = new Map<string, Promise<THREE.Texture>>();
-function loadTexture(url: string) {
-  let p = textures.get(url);
-  if (!p) {
-    p = import("three").then(async ({ TextureLoader, SRGBColorSpace }) => {
-      const loader = new TextureLoader();
-      loader.setCrossOrigin("anonymous");
-      const t = await loader.loadAsync(url);
-      t.colorSpace = SRGBColorSpace;
-      t.anisotropy = 8;
-      return t;
-    });
-    textures.set(url, p);
-    p.catch(() => textures.delete(url));
-  }
-  return p;
-}
-
-async function fetchProfile(team: string, season: number): Promise<CarProfile> {
-  const res = await fetch(`/api/car-model?team=${team}&season=${season}`);
-  if (!res.ok) throw new Error("car model unavailable");
-  return res.json();
-}
-
-/** Prefetch a car (profile + both liveries) so switching to it is instant. */
+/** Warm the HTTP cache for a car's model so switching to it is instant. */
 export function usePrefetchCar() {
-  return (team: string, season: number) => {
-    fetchProfile(team, season)
-      .then((p) => Promise.all([loadTexture(p.images.right.url), loadTexture(p.images.left.url)]))
-      .catch(() => {});
+  return (team: string) => {
+    const model = carModelFor(team);
+    if (model) fetch(model.file, { priority: "low" } as RequestInit).catch(() => {});
   };
+}
+
+/** Credit line for the car's 3D model (CC BY 4.0 requires it). */
+export function CarModelCredit({ team, className }: { team: string; className?: string }) {
+  const model = carModelFor(team);
+  if (!model) return null;
+  return (
+    <span className={className}>
+      3D model:{" "}
+      <a href={model.modelUrl} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:text-paper hover:underline">
+        {model.title}
+      </a>{" "}
+      by{" "}
+      <a href={model.authorUrl} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:text-paper hover:underline">
+        {model.author}
+      </a>{" "}
+      (Sketchfab,{" "}
+      <a href={CAR_MODEL_LICENSE.url} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:text-paper hover:underline">
+        {CAR_MODEL_LICENSE.label}
+      </a>
+      )
+    </span>
+  );
 }
 
 const PRESETS = [
@@ -72,30 +67,24 @@ const PRESETS = [
   { id: "rear", label: "Rear", az: -2.45, el: 0.2, dist: 7 },
 ] as const;
 
-function hotspotsFor(p: CarProfile): Hotspot[] {
-  const { rearX, frontX, radius } = p.wheels;
-  const { xMin, xMax, top } = p.extent;
-  const wb = frontX - rearX;
-  return [
-    { id: "fw", label: "Front wing · active aero", text: "Both wings now have movable elements: flattened on the straights to cut drag, angled in the corners for grip.", position: [xMax - 0.35, 0.16, 0.86] },
-    { id: "rw", label: "Rear wing", text: "The rear wing opens on designated straights for every driver, replacing DRS. Overtaking help comes from extra electrical power instead.", position: [xMin + 0.18, top * 0.86, 0.48] },
-    { id: "pu", label: "Power unit", text: "1.6-litre turbo V6 with electrical power raised to about 350 kW — close to half the total. The MGU-H is gone and the fuel is fully sustainable.", position: [rearX + wb * 0.3, top * 0.82, 0.22] },
-    { id: "halo", label: "Halo", text: "Titanium cockpit protection, mandatory since 2018.", position: [rearX + wb * 0.63, top * 0.86, 0] },
-    { id: "size", label: "Smaller, lighter", text: "2026 cars are 1.9 m wide (100 mm narrower), with a 3.4 m maximum wheelbase and a 768 kg minimum weight.", position: [rearX + wb * 0.5, 0.45, 0.74] },
-    { id: "tyres", label: "Tyres", text: "Pirelli 18-inch tyres, slightly narrower than before to cut drag and weight.", position: [frontX, radius * 1.8, 0.96] },
-  ];
-}
+/** Notes on the 2026 rules, placed on the normalised car (5.4 m, nose at +x). */
+const HOTSPOTS: Hotspot[] = [
+  { id: "fw", label: "Front wing · active aero", text: "Both wings now have movable elements: flattened on the straights to cut drag, angled in the corners for grip.", position: [2.4, 0.16, 0.8] },
+  { id: "rw", label: "Rear wing", text: "The rear wing opens on designated straights for every driver, replacing DRS. Overtaking help comes from extra electrical power instead.", position: [-2.45, 0.88, 0.42] },
+  { id: "pu", label: "Power unit", text: "1.6-litre turbo V6 with electrical power raised to about 350 kW — close to half the total. The MGU-H is gone and the fuel is fully sustainable.", position: [-0.75, 0.86, 0.2] },
+  { id: "halo", label: "Halo", text: "Titanium cockpit protection, mandatory since 2018.", position: [0.35, 0.98, 0] },
+  { id: "size", label: "Smaller, lighter", text: "2026 cars are 1.9 m wide (100 mm narrower), with a 3.4 m maximum wheelbase and a 768 kg minimum weight.", position: [-0.1, 0.5, 0.72] },
+  { id: "tyres", label: "Tyres", text: "Pirelli 18-inch tyres, slightly narrower than before to cut drag and weight.", position: [1.72, 0.68, 0.98] },
+];
 
 export function Car3D({
   team,
-  season,
   fallback,
   direction = 0,
   mode,
   className,
 }: {
   team: string;
-  season: number;
   /** The flat render shown while loading, or for good if 3D isn't possible. */
   fallback: StageCar;
   direction?: -1 | 0 | 1;
@@ -104,32 +93,16 @@ export function Car3D({
 }) {
   const reduce = !!useReducedMotion();
   const rig = useRef<Rig>(createRig());
-  const [bundle, setBundle] = useState<CarBundle | null>(null);
+  const model = carModelFor(team);
   const [ready, setReady] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [noWebGL, setNoWebGL] = useState(false);
   const [rolling, setRolling] = useState(false);
   const [showHotspots, setShowHotspots] = useState(mode === "viewer");
   const drag = useRef<{ x: number; y: number; t: number; vx: number; mouse: boolean } | null>(null);
 
-  const profile = useQuery({ queryKey: ["car-model", team, season], queryFn: () => fetchProfile(team, season), staleTime: Infinity, retry: 1 });
-
-  // Swap the bundle only once the new car's liveries have loaded, so the
-  // old car stays on stage (and drives off) instead of blanking.
-  const [textureFailed, setTextureFailed] = useState<string | null>(null);
-  useEffect(() => {
-    const p = profile.data;
-    if (!p) return;
-    let live = true;
-    Promise.all([loadTexture(p.images.right.url), loadTexture(p.images.left.url)])
-      .then(([right, left]) => live && setBundle({ profile: p, right, left }))
-      .catch(() => live && setTextureFailed(p.team));
-    return () => {
-      live = false;
-    };
-  }, [profile.data]);
-
-  const failed = noWebGL || profile.isError || textureFailed === team;
-  const show3D = !!bundle && ready && !failed;
+  const failed = noWebGL || !model;
+  const show3D = !failed && ready && loaded;
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!show3D) return;
@@ -200,9 +173,17 @@ export function Car3D({
             rig.current.lastInput = e.timeStamp;
           }}
         >
-          {bundle && (
+          {model && (
             <CanvasShell label={fallback.label} decorative camera={{ position: [4, 1.6, 6], fov: 30 }} onReady={() => setReady(true)} onUnsupported={() => setNoWebGL(true)}>
-              <CarScene3D bundle={bundle} direction={direction} rolling={rolling} reduce={reduce} rig={rig} hotspots={showHotspots ? hotspotsFor(bundle.profile) : undefined} />
+              <CarScene3D
+                car={{ team, url: model.file, color: teamColor(team) }}
+                direction={direction}
+                rolling={rolling}
+                reduce={reduce}
+                rig={rig}
+                hotspots={showHotspots ? HOTSPOTS : undefined}
+                onLoaded={() => setLoaded(true)}
+              />
             </CanvasShell>
           )}
         </div>

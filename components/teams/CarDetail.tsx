@@ -73,7 +73,6 @@ export default async function CarDetail({ constructorId, variant }: { constructo
     >
       <div className="space-y-5">
         <CarViewer
-          season={car.season}
           car={{
             id: constructorId,
             label: `${title} — official render`,
@@ -165,7 +164,7 @@ export default async function CarDetail({ constructorId, variant }: { constructo
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-hairline pt-5">
           <p className="text-caption text-label-3">
-            Renders: Formula1.com · Text: Wikipedia, CC BY-SA 4.0 · Standings: Jolpica
+            Renders: Formula1.com · 3D model: Sketchfab, CC BY 4.0 · Text: Wikipedia, CC BY-SA 4.0 · Standings: Jolpica
           </p>
           <ButtonLink href={`/teams/${constructorId}`} variant="tinted">
             {teamName} team profile

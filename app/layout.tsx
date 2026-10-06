@@ -24,8 +24,10 @@ export const metadata: Metadata = {
   authors: [{ name: "Xander Rancap" }],
   // Absolute URLs for the OG/Twitter cards: explicit override, else the
   // Vercel production domain, else local dev.
+  // `||`, not `??`: an empty variable (e.g. copied from .env.example) must
+  // fall through too, or new URL("") throws on every page.
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ??
+    process.env.NEXT_PUBLIC_SITE_URL ||
       (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000"),
   ),
   openGraph: {
