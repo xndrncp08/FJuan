@@ -1,38 +1,23 @@
 /**
  * components/teams/CarViewer.tsx
  *
- * One car on the CarStage with a toggle between its two official side
- * profiles (liveries aren't symmetric, so these are two real renders).
+ * One car in interactive 3D (Car3D, viewer mode: camera presets, rolling,
+ * 2026-rules hotspots), built from its official renders. The flat render
+ * shows while it loads, and stays if 3D isn't possible.
  */
 
 "use client";
 
-import { useState } from "react";
-import { Segmented } from "@/components/ui/Segmented";
-import { CarStage, type StageCar } from "./CarStage";
+import { Car3D } from "./Car3D";
+import type { StageCar } from "./CarStage";
 
-export function CarViewer({ car }: { car: StageCar }) {
-  const [side, setSide] = useState<"left" | "right">("right");
-  const both = !!car.left && !!car.right;
+export function CarViewer({ car, season }: { car: StageCar; season: number }) {
   return (
-    <div className="glass relative overflow-hidden">
-      <CarStage car={car} side={side} direction={0} className="aspect-[16/8] min-h-[220px] sm:aspect-[16/7]" />
-      {/* Below the car on phones, overlaid on the floor from sm up. */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--glass-edge)] p-3 sm:absolute sm:inset-x-0 sm:bottom-0 sm:border-0 sm:p-4">
-        <span className="font-mono text-[0.75rem] uppercase tracking-[0.14em] text-label-3">Render · Formula1.com</span>
-        {both && (
-          <Segmented
-            size="sm"
-            aria-label="Side"
-            value={side}
-            onChange={setSide}
-            segments={[
-              { value: "left", label: "Left side" },
-              { value: "right", label: "Right side" },
-            ]}
-          />
-        )}
-      </div>
+    <div className="glass overflow-hidden">
+      <Car3D mode="viewer" team={car.id} season={season} fallback={car} className="aspect-square min-h-[340px] sm:aspect-[16/8] sm:min-h-[320px] lg:aspect-[16/7]" />
+      <p className="border-t border-[var(--glass-edge)] px-4 py-2.5 text-caption text-label-3">
+        3D model built from the official Formula1.com renders — shape traced from the side profile, livery from each side. Drag to rotate.
+      </p>
     </div>
   );
 }

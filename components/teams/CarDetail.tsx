@@ -73,6 +73,7 @@ export default async function CarDetail({ constructorId, variant }: { constructo
     >
       <div className="space-y-5">
         <CarViewer
+          season={car.season}
           car={{
             id: constructorId,
             label: `${title} — official render`,
