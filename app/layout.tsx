@@ -8,6 +8,7 @@ import PageTransition from "@/components/PageTransition";
 import PredictionChat from "@/components/prediction/PredictionChat";
 import { getNextRace } from "@/lib/api/jolpica";
 import { generateRacePrediction } from "@/lib/prediction/engine";
+import { Analytics } from "@vercel/analytics/next";
 
 // Brand type: Russo One for display, Rajdhani for UI, JetBrains Mono for
 // timing data. Self-hosted by next/font so they always load (no FOUT from a
@@ -86,6 +87,7 @@ export default async function RootLayout({
         </Providers>
 
         {prediction && <PredictionChat prediction={prediction} />}
+        <Analytics />
       </body>
     </html>
   );
