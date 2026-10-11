@@ -327,16 +327,14 @@ export default function HeroSection() {
         {/* Wordmark */}
         <div className="relative w-full">
           {/* Ignition ring */}
-          {!reduce && (
-            <motion.span
-              aria-hidden
-              className="pointer-events-none absolute left-1/2 top-1/2 -ml-6 -mt-6 h-12 w-12 rounded-full"
-              style={{ background: "radial-gradient(circle, rgb(var(--ember) / 0.9) 0%, rgb(var(--accent) / 0.45) 45%, transparent 72%)" }}
-              initial={false}
-              animate={phase === "go" ? { opacity: [0.9, 0], transform: ["scale(0.6)", "scale(34)"] } : { opacity: 0, transform: "scale(0.6)" }}
-              transition={{ duration: 1.3, ease: EASE_OUT }}
-            />
-          )}
+          <motion.span
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-1/2 -ml-6 -mt-6 h-12 w-12 rounded-full motion-reduce:hidden"
+            style={{ background: "radial-gradient(circle, rgb(var(--ember) / 0.9) 0%, rgb(var(--accent) / 0.45) 45%, transparent 72%)" }}
+            initial={false}
+            animate={!reduce && phase === "go" ? { opacity: [0.9, 0], transform: ["scale(0.6)", "scale(34)"] } : { opacity: 0, transform: "scale(0.6)" }}
+            transition={{ duration: 1.3, ease: EASE_OUT }}
+          />
           <h1
             ref={headingRef}
             aria-label="FJUAN"
