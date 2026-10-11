@@ -84,9 +84,10 @@ export default async function TeamsPage() {
       <Section className="pt-0 sm:pt-0">
         <div className="space-y-5">
           {teams.length >= 3 && (
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="leader-grid">
               {teams.slice(0, 3).map((t, i) => (
-                <Link key={t.constructorId} href={`/teams/${t.constructorId}`} className="card card-interactive relative block overflow-hidden p-5 sm:p-6">
+                <Link key={t.constructorId} href={`/teams/${t.constructorId}`} className="card card-interactive leader-panel relative block overflow-hidden p-5 sm:p-7">
+                  <span className="leader-number" aria-hidden>{String(t.position || i + 1).padStart(2, "0")}</span>
                   <div aria-hidden className="absolute inset-x-0 top-0 h-1" style={{ background: t.color }} />
                   <div className="flex items-center justify-between">
                     <span className={cn("inline-flex h-8 items-center px-3 text-subhead font-bold", MEDAL_TEXT[i], MEDAL_BG[i])}>
@@ -99,7 +100,7 @@ export default async function TeamsPage() {
                       </span>
                     )}
                   </div>
-                  <div className="mt-6">
+                  <div className="relative mt-8">
                     <TeamLogo team={t.constructorId} season={Number(season)} color={t.color} size="lg" className="mb-4" />
                     <div className="truncate text-title-3 text-paper">{shortTeamName(t.name, t.constructorId)}</div>
                     <div className="mt-1 truncate text-footnote text-label-3">
@@ -108,7 +109,7 @@ export default async function TeamsPage() {
                   </div>
                   <div className="mt-6 flex items-end justify-between border-t border-hairline pt-4">
                     <div>
-                      <div className="tabular text-stat text-paper">{t.points}</div>
+                      <div className="tabular text-stat-lg text-paper">{t.points}</div>
                       <div className="text-caption text-label-3">Points</div>
                     </div>
                     <div className="text-right">
@@ -122,6 +123,10 @@ export default async function TeamsPage() {
           )}
 
           <Card padding="none" className="overflow-hidden">
+            <div className="classification-heading">
+              <h2 className="text-headline">Constructor classification</h2>
+              <span className="font-mono text-[0.6875rem] uppercase tracking-widest text-label-3">{teams.length} teams / {season}</span>
+            </div>
             <div className="hidden grid-cols-[2.5rem_minmax(0,1.6fr)_4rem_4rem_minmax(0,1fr)_5rem_1rem] gap-4 border-b border-hairline px-5 py-3 label-caps text-[0.75rem] text-label-3 md:grid">
               <span>Pos</span>
               <span>Team</span>

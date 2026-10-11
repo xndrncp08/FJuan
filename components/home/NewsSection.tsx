@@ -62,11 +62,12 @@ export default function NewsSection({ news }: { news: any[] }) {
           </a>
         </Card>
 
-        <Card padding="none" className="overflow-hidden">
+        <div className="border-t border-separator">
           <ul className="divide-y divide-hairline">
-            {secondary.map((a) => (
+            {secondary.map((a, index) => (
               <li key={a.link}>
                 <a href={a.link} target="_blank" rel="noreferrer" className="row-interactive group flex gap-4 p-5 sm:px-6">
+                  <span className="pt-1 font-mono text-[0.6875rem] text-tint" aria-hidden>{String(index + 2).padStart(2, "0")}</span>
                   <div className="min-w-0 flex-1">
                     <Meta source={a.source} date={a.pubDate} />
                     <h3 className="mt-1.5 line-clamp-3 text-callout font-semibold text-paper">{a.title}</h3>
@@ -79,7 +80,7 @@ export default function NewsSection({ news }: { news: any[] }) {
               </li>
             ))}
           </ul>
-        </Card>
+        </div>
       </div>
     </Section>
   );

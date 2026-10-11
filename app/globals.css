@@ -611,3 +611,15 @@
     .pressable { min-height: 44px; }
   }
 }
+
+@media (min-width: 1024px) {
+  .calendar-month { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 2rem; }
+  .calendar-month-title { padding-top: 1.5rem; border-top: 1px solid var(--separator); }
+}
+@media (hover: hover) and (pointer: fine) {
+  .hero-ticker:hover { animation-play-state: paused; }
+}
+
+.workflow-rail { display: flex; flex-wrap: wrap; gap: 1rem 2rem; border-bottom: 1px solid var(--separator); padding-bottom: 1.25rem; font-weight: 700; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.12em; }
+.workflow-rail li { display: flex; align-items: center; gap: 0.75rem; }
+.workflow-rail li > span:first-child { font-family: var(--font-data), monospace; font-size: 0.6875rem; }

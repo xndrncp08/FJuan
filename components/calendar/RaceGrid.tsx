@@ -61,8 +61,8 @@ export default function RaceGrid({ races, season }: { races: any[]; season: stri
   return (
     <div className="space-y-8">
       {months.map((m) => (
-        <section key={m.key} aria-labelledby={`m-${m.key}`}>
-          <h2 id={`m-${m.key}`} className="mb-3 text-title-3 text-paper">
+        <section className="calendar-month" key={m.key} aria-labelledby={`m-${m.key}`}>
+          <h2 id={`m-${m.key}`} className="calendar-month-title mb-3 text-title-3 text-paper">
             {m.label}
           </h2>
           <ol className="card overflow-hidden">
@@ -146,7 +146,7 @@ export function SeasonProgress({ races }: { races: any[] }) {
         aria-valuemax={races.length}
         aria-label="Season progress"
       >
-        <div className="h-full bg-accent transition-[width] duration-700 ease-out" style={{ width: `${pct}%` }} />
+        <div className="h-full w-full origin-left bg-accent" style={{ transform: `scaleX(${pct / 100})` }} />
       </div>
     </div>
   );
