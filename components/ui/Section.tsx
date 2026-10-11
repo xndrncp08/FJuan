@@ -143,7 +143,7 @@ export function PageHeader({
   className?: string;
 }) {
   return (
-    <header className={cn("page-masthead relative mb-8 overflow-hidden border-b border-hairline sm:mb-10", className)}>
+    <header className={cn("page-masthead relative mb-8 border-b border-hairline sm:mb-10", className)}>
       <HeaderBackdrop watermark={watermark} />
       <div className="container-page relative pb-8 pt-12 sm:pb-10 sm:pt-20">
         <span className="masthead-index" aria-hidden>FJUAN / {watermark ?? "F1"}</span>

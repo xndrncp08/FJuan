@@ -1,3 +1,6 @@
+import { Suspense } from "react";
+import ExploreRoutes from "@/components/home/ExploreRoutes";
+import { RouteLoading } from "@/components/ui/RouteLoading";
 import { getF1News } from "@/lib/api/news-fetcher";
 import { getCurrentStandings } from "@/lib/api/fetchers";
 import { getConstructorStandings, getNextRace, getLastRace } from "@/lib/api/jolpica";
@@ -12,7 +15,15 @@ import NewsSection from "@/components/home/NewsSection";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
+export default function Home() {
+  return <>
+    <HeroSection />
+    <ExploreRoutes />
+    <Suspense fallback={<RouteLoading label="Loading the paddock" />}><HomeData /></Suspense>
+  </>;
+}
+
+async function HomeData() {
   const [standings, nextRace, lastRace, news, seasonCars, ctorStandings] = await Promise.all([
     getCurrentStandings(),
     getNextRace(),
@@ -48,7 +59,6 @@ export default async function Home() {
 
   return (
     <>
-      <HeroSection />
       <CarShowcase cars={cars} season={carSeason} />
       <NextRaceSection nextRace={nextRace} />
       <DashboardSection

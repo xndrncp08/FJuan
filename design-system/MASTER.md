@@ -23,3 +23,7 @@ Replacement branding, generic SaaS cards, decorative chart animation, blur on ev
 ## Validation
 
 Desktop 1440px, tablet 768px and 1024px, phone 375px; route and interaction checks through Playwright, reduced-motion checks, lint, typecheck and production build. Browser emulation cannot certify hardware touch behavior.
+
+## Analytics experience refinement
+
+See AUDIT.md for the route and workflow audit. Use task-based entry points for newcomers, complete classifications with visible filters, a clear local page index on long profiles, and context next to unfamiliar metrics. Keep summary views compact and make all raw values reachable through native disclosure and named scroll regions. Use Fields.tsx for visible search/select labels and 44px controls; use InsightNote for definitions. Empty, failed, and pending data are separate states with recovery actions. Page-specific loading shapes must match the content. Stream expensive ancillary data instead of blocking the shell.
