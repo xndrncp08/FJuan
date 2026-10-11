@@ -38,11 +38,12 @@ export function DetailFrame({
   aside?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const Heading = variant === "window" ? "h2" : "h1";
   const heading = (
-    <div className="flex items-end justify-between gap-6">
+    <div className="flex flex-wrap items-end justify-between gap-6">
       <div className="min-w-0">
         {eyebrow && <p className="eyebrow mb-3">{eyebrow}</p>}
-        <h1 className={cn("text-paper", variant === "page" ? "text-title-1 sm:text-display" : "text-title-1")}>{title}</h1>
+        <Heading className={cn("profile-title text-paper", variant === "window" && "!text-title-1")}>{title}</Heading>
         {meta && <p className="mt-3 text-callout text-label-2">{meta}</p>}
         {description && <p className="mt-4 max-w-prose text-body text-label-2">{description}</p>}
       </div>
@@ -68,7 +69,7 @@ export function DetailFrame({
           {back && (
             <Link
               href={back.href}
-              className="pressable -ml-1 mb-6 inline-flex h-9 items-center gap-1.5 px-1 text-[0.8125rem] font-bold uppercase tracking-[0.16em] text-label-3 hover:text-paper"
+              className="pressable -ml-1 mb-6 inline-flex h-11 items-center gap-1.5 px-1 text-[0.8125rem] font-bold uppercase tracking-[0.16em] text-label-3 hover:text-paper"
             >
               <ChevronLeft className="h-4 w-4" aria-hidden />
               {back.label}

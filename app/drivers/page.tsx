@@ -10,6 +10,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Users } from "lucide-react";
+import { useSeasonChoice } from "@/lib/hooks/useSeasonChoice";
+import { SearchField, SelectField } from "@/components/ui/Fields";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { useDriverStandings } from "@/lib/hooks/useDrivers";
 import { PageHeader, Section } from "@/components/ui/Section";
 import { Card } from "@/components/ui/Card";
@@ -28,18 +31,24 @@ const MEDAL_BG = ["bg-gold/15", "bg-silver/15", "bg-bronze/15"];
 async function fetchSeasonStandings(season: string) {
   try {
     const res = await fetch(`https://api.jolpi.ca/ergast/f1/${season}/driverStandings.json`, { cache: "force-cache" });
+    if (!res.ok) throw new Error("Standings service unavailable");
     const data = await res.json();
     return data.MRData.StandingsTable.StandingsLists[0]?.DriverStandings || [];
   } catch {
-    return [];
+    throw new Error("Standings service unavailable");
   }
 }
 
 export default function DriversPage() {
-  const [season, setSeason] = useState(String(currentYear));
+  const [season, setSeason] = useSeasonChoice();
+  const [query, setQuery] = useState("");
+  const [team, setTeam] = useState("");
+  const [scoring, setScoring] = useState("all");
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const { data: current, isLoading } = useDriverStandings();
+  const { data: current, isLoading, isError, refetch } = useDriverStandings();
   const isCurrent = season === String(currentYear);
 
   useEffect(() => {
@@ -50,16 +59,20 @@ export default function DriversPage() {
       return;
     }
     setLoading(true);
+    setFailed(false);
     fetchSeasonStandings(season).then((data) => {
       if (cancelled) return;
       setRows(data);
-      setLoading(false);
-    });
+    }).catch(() => { if (!cancelled) { setRows([]); setFailed(true); } }).finally(() => { if (!cancelled) setLoading(false); });
     return () => {
       cancelled = true;
     };
-  }, [season, current, isCurrent]);
+  }, [season, current, isCurrent, attempt]);
 
+  const teams = [...new Map(rows.flatMap((r) => (r.Constructors ?? []).map((c: any) => [c.constructorId, c.name] as const))).entries()];
+  const normalize = (s: string) => s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+  const shown = rows.filter((s) => normalize(`${s.Driver.givenName} ${s.Driver.familyName} ${s.Driver.code ?? ""}`).includes(normalize(query.trim())) && (!team || s.Constructors?.some((c: any) => c.constructorId === team)) && (scoring === "all" || (scoring === "points" ? Number(s.points) > 0 : Number(s.wins) > 0)));
+  const resetFilters = () => { setQuery(""); setTeam(""); setScoring("all"); };
   const busy = (isCurrent && isLoading) || loading;
   const leader = Math.max(...rows.map((d) => parseFloat(d.points) || 0), 1);
 
@@ -71,13 +84,13 @@ export default function DriversPage() {
         watermark="F1"
         description="The drivers’ championship, from this weekend back to 1950. Tap anyone for their full career."
       >
-        <SeasonPicker value={season} onChange={setSeason} />
+        <div className="flex flex-wrap items-center justify-between gap-4"><SeasonPicker value={season} onChange={(value) => { setSeason(value); resetFilters(); }} /><ButtonLink href="/teams" variant="plain" size="sm">Constructor standings</ButtonLink></div>
       </PageHeader>
 
       <Section className="pt-0 sm:pt-0">
         {busy ? (
           <LoadingState />
-        ) : rows.length === 0 ? (
+        ) : (isCurrent ? isError : failed) ? (<Card><EmptyState title="Standings unavailable" description="The data service didn’t respond. Your season is saved; try again." action={<Button onClick={() => isCurrent ? void refetch() : setAttempt((n) => n + 1)}>Retry standings</Button>} /></Card>) : rows.length === 0 ? (
           <Card>
             <EmptyState
               icon={<Users />}
@@ -95,6 +108,12 @@ export default function DriversPage() {
               </div>
             )}
 
+            <div className="filter-toolbar">
+              <SearchField label="Find a driver" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Name or driver code" />
+              <SelectField label="Team" value={team} onChange={(e) => setTeam(e.target.value)}><option value="">All teams</option>{teams.map(([id, name]) => <option key={String(id)} value={String(id)}>{String(name)}</option>)}</SelectField>
+              <SelectField label="Results" value={scoring} onChange={(e) => setScoring(e.target.value)}><option value="all">All drivers</option><option value="points">Points scorers</option><option value="wins">Race winners</option></SelectField>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2"><p role="status" className="text-footnote text-label-3">{shown.length} of {rows.length} drivers · Championship order</p>{(query || team || scoring !== "all") && <Button size="sm" variant="plain" onClick={resetFilters}>Clear filters</Button>}</div>
             <Card padding="none" className="overflow-hidden">
               <div className="classification-heading">
                 <h2 className="text-headline">The classification</h2>
@@ -109,10 +128,11 @@ export default function DriversPage() {
                 <span />
               </div>
               <ol>
-                {rows.slice(rows.length >= 3 ? 3 : 0).map((s) => (
+                {shown.map((s) => (
                   <StandingRow key={s.Driver.driverId} standing={s} leader={leader} />
                 ))}
               </ol>
+              {!shown.length && <EmptyState title="No drivers match" description="Try another name or broaden the team and results filters." action={<Button onClick={resetFilters}>Clear filters</Button>} />}
             </Card>
           </div>
         )}
