@@ -12,7 +12,7 @@ export function WinRateTrendChart({ a, b, metric }: { a: DriverStats; b: DriverS
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: -12 }}>
+      <LineChart accessibilityLayer data={data} margin={{ top: 8, right: 4, bottom: 0, left: -12 }}>
         <CartesianGrid {...GRID} />
         <XAxis dataKey="season" {...AXIS} interval="preserveStartEnd" minTickGap={12} />
         <YAxis {...AXIS} width={44} domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(v) => `${v}%`} />
@@ -25,8 +25,8 @@ export function WinRateTrendChart({ a, b, metric }: { a: DriverStats; b: DriverS
             />
           }
         />
-        <Line type="monotone" dataKey="a" name={a.driver.familyName} stroke={A_COLOR} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
-        <Line type="monotone" dataKey="b" name={b.driver.familyName} stroke={B_COLOR} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
+        <Line isAnimationActive={false} type="monotone" dataKey="a" name={a.driver.familyName} stroke={A_COLOR} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
+        <Line isAnimationActive={false} type="monotone" dataKey="b" strokeDasharray="5 3" name={b.driver.familyName} stroke={B_COLOR} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
       </LineChart>
     </ResponsiveContainer>
   );
