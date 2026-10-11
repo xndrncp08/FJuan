@@ -54,7 +54,7 @@ export function ChartsSection({ a, b }: { a: DriverStats; b: DriverStats }) {
       <div className="mt-5 flex min-h-8 flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-4 text-footnote text-label-2">
           <Key color={A_COLOR} name={a.driver.familyName} />
-          <Key color={B_COLOR} name={b.driver.familyName} dashed />
+          <Key color={B_COLOR} name={b.driver.familyName} dashed={view === "points" || view === "rates"} />
         </div>
         {view === "seasons" && (
           <Segmented
@@ -97,8 +97,8 @@ export function ChartsSection({ a, b }: { a: DriverStats; b: DriverStats }) {
           <table className="w-full text-left text-footnote">
             <caption className="sr-only">Season totals for {a.driver.familyName} and {b.driver.familyName}</caption>
             <thead className="sticky top-0 bg-surface-1 text-label-2"><tr><th scope="col" className="p-2">Season</th><th scope="col" className="p-2">Driver</th><th scope="col" className="p-2 text-right">Wins</th><th scope="col" className="p-2 text-right">Podiums</th><th scope="col" className="p-2 text-right">Points</th></tr></thead>
-            <tbody>{alignSeasons(a, b).flatMap((row) => ([{ stats: row.a, driver: a.driver }, { stats: row.b, driver: b.driver }].map(({ stats, driver }) => (
-              <tr key={`${row.season}-${driver.driverId}`} className="border-t border-hairline"><th scope="row" className="p-2 font-mono text-caption font-normal">{row.season}</th><td className="p-2">{driver.familyName}</td><td className="p-2 text-right font-mono text-caption">{stats?.wins ?? "—"}</td><td className="p-2 text-right font-mono text-caption">{stats?.podiums ?? "—"}</td><td className="p-2 text-right font-mono text-caption">{stats?.points ?? "—"}</td></tr>
+            <tbody>{alignSeasons(a, b).flatMap((row) => ([{ stats: row.a, driver: a.driver }, { stats: row.b, driver: b.driver }].map(({ stats, driver }, side) => (
+              <tr key={`${row.season}-${driver.driverId}-${side}`} className="border-t border-hairline"><th scope="row" className="p-2 font-mono text-caption font-normal">{row.season}</th><td className="p-2">{driver.familyName}</td><td className="p-2 text-right font-mono text-caption">{stats?.wins ?? "—"}</td><td className="p-2 text-right font-mono text-caption">{stats?.podiums ?? "—"}</td><td className="p-2 text-right font-mono text-caption">{stats?.points ?? "—"}</td></tr>
             ))))}</tbody>
           </table>
         </div>

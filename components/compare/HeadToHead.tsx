@@ -57,7 +57,7 @@ function Side({ stats, team, color, align }: { stats: DriverStats; team: string;
         <span className="truncate">{team}</span>
       </div>
       <div className="mt-2 truncate text-callout text-label-2">{stats.driver.givenName}</div>
-      <div className="truncate text-title-2 text-paper">{stats.driver.familyName}</div>
+      <div className="break-words font-display text-[clamp(1rem,3vw,1.9rem)] uppercase leading-tight tracking-tight text-paper">{stats.driver.familyName}</div>
       <div className={`mt-4 flex flex-wrap gap-x-5 gap-y-2 ${right ? "justify-end" : ""}`}>
         <Mini label="Titles" value={stats.totalChampionships} icon={stats.totalChampionships > 0} />
         <Mini label="Wins" value={stats.totalWins} />

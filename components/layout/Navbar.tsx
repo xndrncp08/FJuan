@@ -76,6 +76,13 @@ export default function Navbar() {
   useFocusScope(menuRef, menuOpen);
 
   useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const onChange = () => { if (desktop.matches) setMenuOpen(false); };
+    desktop.addEventListener("change", onChange);
+    return () => desktop.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 4);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -187,7 +194,7 @@ export default function Navbar() {
             <>
               <motion.div
                 key="scrim"
-                className="fixed inset-0 top-[var(--nav-h)] -z-10 bg-black/55 lg:hidden"
+                className="fixed inset-0 top-[var(--nav-offset)] -z-10 bg-black/55 lg:hidden"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -202,7 +209,7 @@ export default function Navbar() {
                 aria-label="Navigation"
                 key="menu"
                 className="material-thick absolute inset-x-0 top-full origin-top overflow-y-auto border-b border-accent/40 shadow-popover lg:hidden"
-                style={{ maxHeight: "calc(100dvh - var(--nav-h))" }}
+                style={{ maxHeight: "calc(100dvh - var(--nav-offset))" }}
                 initial={reduce ? { opacity: 0 } : { opacity: 0, y: -12, scaleY: 0.96 }}
                 animate={{ opacity: 1, y: 0, scaleY: 1 }}
                 exit={reduce ? { opacity: 0 } : { opacity: 0, y: -12, scaleY: 0.96 }}
