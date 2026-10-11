@@ -11,7 +11,7 @@ import { usePagePathname } from "@/lib/hooks/usePagePathname";
 export default function PageTransition({ children }: { children: React.ReactNode }) {
   const page = usePagePathname();
   return (
-    <main id="main" key={page} className="page-enter min-h-[60vh]">
+    <main id="main" tabIndex={-1} key={page} data-page={page} className="page-enter min-h-[60vh]">
       {children}
     </main>
   );

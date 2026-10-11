@@ -49,7 +49,7 @@ export function CardHeader({
   className?: string;
 }) {
   return (
-    <div className={cn("mb-4 flex items-start justify-between gap-4", className)}>
+    <div className={cn("instrument-heading mb-5 flex flex-wrap items-start justify-between gap-3", className)}>
       <div className="min-w-0">
         <Heading className="text-title-3 text-paper">{title}</Heading>
         {subtitle && <p className="mt-0.5 text-footnote text-label-3">{subtitle}</p>}

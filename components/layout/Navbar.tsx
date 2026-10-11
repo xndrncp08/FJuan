@@ -116,7 +116,7 @@ export default function Navbar() {
         Skip to content
       </a>
 
-      <header className="sticky top-0 z-[100]">
+      <header className="nav-shell sticky top-0 z-[100]">
         <div className={cn("material-bar transition-[box-shadow] duration-300", scrolled || menuOpen ? "shadow-[0_1px_0_0_var(--hairline)]" : "shadow-none")}>
           <nav aria-label="Main" className="container-page flex h-[var(--nav-h)] items-stretch gap-2">
             <Link href="/" aria-label="FJUAN home" className="pressable -ml-1 mr-6 flex items-center px-1">
@@ -159,7 +159,7 @@ export default function Navbar() {
                 onClick={() => setSearchOpen(true)}
                 aria-label="Search"
                 aria-keyshortcuts="Meta+K"
-                className="pressable flex h-9 items-center gap-2 border border-hairline px-3 text-label-3 hover:border-accent/50 hover:text-paper"
+                className="pressable flex h-11 items-center gap-2 border border-separator px-3 text-label-3 hover:border-accent/50 hover:text-paper"
               >
                 <Search className="h-4 w-4" aria-hidden />
                 <span className="hidden text-[0.75rem] font-bold uppercase tracking-[0.14em] sm:inline">Search</span>
