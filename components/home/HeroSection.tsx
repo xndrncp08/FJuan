@@ -72,13 +72,13 @@ function buildWave(pts: number, w: number, h: number, phase: number, amp: number
 }
 
 /** Counts up to `target` once `run` turns true. */
-function useCountUp(target: number, run: boolean, delay = 0) {
+function useCountUp(target: number, run: boolean, delay = 0, reduce = false) {
   const [value, setValue] = useState(0);
   useEffect(() => {
     if (!run) return;
-    const c = animate(0, target, { duration: 1.1, delay, ease: EASE_OUT, onUpdate: (v) => setValue(Math.round(v)) });
+    const c = animate(0, target, { duration: reduce ? 0 : 1.1, delay: reduce ? 0 : delay, ease: EASE_OUT, onUpdate: (v) => setValue(Math.round(v)) });
     return () => c.stop();
-  }, [target, run, delay]);
+  }, [target, run, delay, reduce]);
   return value;
 }
 
@@ -182,9 +182,9 @@ export default function HeroSection() {
     };
   }, [reduce]);
 
-  const drivers = useCountUp(22, revealed, 0.05);
-  const rounds = useCountUp(24, revealed, 0.12);
-  const seasons = useCountUp(77, revealed, 0.19);
+  const drivers = useCountUp(22, revealed, 0.05, !!reduce);
+  const rounds = useCountUp(24, revealed, 0.12, !!reduce);
+  const seasons = useCountUp(77, revealed, 0.19, !!reduce);
 
   /** What each DOM letter shows: hidden under the 3D scene, or the 2D sequence. */
   const letterState = (i: number) => {
@@ -205,7 +205,7 @@ export default function HeroSection() {
       ref={sectionRef}
       onPointerDown={() => (phase === "lights" || phase === "pending") && skip()}
       className="hero relative flex flex-col overflow-hidden bg-ink"
-      style={{ height: "calc(100dvh - var(--nav-h))", minHeight: 600, ["--mx" as string]: 0.5, ["--my" as string]: 0.4 }}
+      style={{ ["--mx" as string]: 0.5, ["--my" as string]: 0.4 }}
     >
       {/* ── Background ─────────────────────────────────────────────── */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
@@ -327,16 +327,14 @@ export default function HeroSection() {
         {/* Wordmark */}
         <div className="relative w-full">
           {/* Ignition ring */}
-          {!reduce && (
-            <motion.span
-              aria-hidden
-              className="pointer-events-none absolute left-1/2 top-1/2 -ml-6 -mt-6 h-12 w-12 rounded-full"
-              style={{ background: "radial-gradient(circle, rgb(var(--ember) / 0.9) 0%, rgb(var(--accent) / 0.45) 45%, transparent 72%)" }}
-              initial={false}
-              animate={phase === "go" ? { opacity: [0.9, 0], transform: ["scale(0.6)", "scale(34)"] } : { opacity: 0, transform: "scale(0.6)" }}
-              transition={{ duration: 1.3, ease: EASE_OUT }}
-            />
-          )}
+          <motion.span
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-1/2 -ml-6 -mt-6 h-12 w-12 rounded-full motion-reduce:hidden"
+            style={{ background: "radial-gradient(circle, rgb(var(--ember) / 0.9) 0%, rgb(var(--accent) / 0.45) 45%, transparent 72%)" }}
+            initial={false}
+            animate={!reduce && phase === "go" ? { opacity: [0.9, 0], transform: ["scale(0.6)", "scale(34)"] } : { opacity: 0, transform: "scale(0.6)" }}
+            transition={{ duration: 1.3, ease: EASE_OUT }}
+          />
           <h1
             ref={headingRef}
             aria-label="FJUAN"
@@ -378,7 +376,8 @@ export default function HeroSection() {
           <span className="hidden h-px w-7 bg-accent/50 sm:block" aria-hidden />
         </div>
 
-        <div className="mt-8 flex flex-col items-center gap-5" style={{ pointerEvents: revealed ? "auto" : "none" }}>
+        <motion.p {...reveal(0)} className="hero-intro mt-5">Every lap tells a story. Get closer to the race.</motion.p>
+        <div className="mt-6 flex flex-col items-center gap-5" style={{ pointerEvents: revealed ? "auto" : "none" }}>
           {/* Stats */}
           <motion.dl {...reveal(0)} className="glass flex divide-x divide-[var(--glass-edge)]">
             {[
@@ -433,8 +432,8 @@ export default function HeroSection() {
       </AnimatePresence>
 
       {/* Scroll cue */}
-      <motion.div {...reveal(0.3)} aria-hidden className="pointer-events-none absolute bottom-12 left-1/2 z-[5] -ml-px flex flex-col items-center">
-        <span className="hero-cue block h-8 w-px bg-gradient-to-b from-transparent via-paper/50 to-transparent" />
+      <motion.div {...reveal(0.3)} className="absolute bottom-12 left-4 z-[5] sm:left-8">
+        <a href="#grid" tabIndex={revealed ? 0 : -1} className="hero-scroll font-mono text-[0.625rem] uppercase tracking-[0.18em] text-label-2 hover:text-paper">Explore the grid <ArrowRight className="h-3 w-3 rotate-90" aria-hidden /></a>
       </motion.div>
 
       {/* LIVE ticker */}

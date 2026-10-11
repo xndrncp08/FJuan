@@ -91,6 +91,10 @@ export default function SessionSearch({ onSelect }: { onSelect: (session: Sessio
 
   return (
     <div className="card p-4 sm:p-6">
+      <div className="instrument-heading mb-5 flex flex-wrap items-end justify-between gap-2">
+        <div><p className="eyebrow mb-2">Session archive</p><h2 className="text-title-3">Choose your race weekend</h2></div>
+        <p className="text-footnote text-label-3">OpenF1 / {year}</p>
+      </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Segmented aria-label="Year" value={year} onChange={setYear} segments={YEARS.map((y) => ({ value: y, label: y }))} />
         <label className="relative flex h-10 items-center sm:w-72">
@@ -106,7 +110,7 @@ export default function SessionSearch({ onSelect }: { onSelect: (session: Sessio
         </label>
       </div>
 
-      <div className="mt-3">
+      <div className="mt-4 min-w-0">
         <Segmented
           aria-label="Session type"
           size="sm"
@@ -161,7 +165,7 @@ export default function SessionSearch({ onSelect }: { onSelect: (session: Sessio
                             onSelect(race.sessions[t]);
                           }}
                           className={cn(
-                            "pressable h-7 px-2.5 text-caption font-semibold",
+                            "pressable min-h-9 px-2.5 text-caption font-semibold",
                             t === type ? "bg-accent text-paper" : "bg-fill-2 text-label-2 hover:bg-fill-3 hover:text-paper",
                           )}
                         >

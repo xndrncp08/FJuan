@@ -71,7 +71,7 @@ export default function CarShowcase({ cars, season }: { cars: ShowcaseCar[]; sea
   };
 
   return (
-    <section className="relative py-12 sm:py-16" aria-roledescription="carousel" aria-label={`${season} cars`}>
+    <section id="grid" className="relative py-12 sm:py-16" aria-roledescription="carousel" aria-label={`${season} cars`}>
       <div className="container-page">
         <SectionHeader
           eyebrow="Chassis lab"

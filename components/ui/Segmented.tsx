@@ -40,7 +40,7 @@ export function Segmented<T extends string>({
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className={cn("no-scrollbar inline-flex max-w-full overflow-x-auto border border-hairline bg-fill-1 p-0.5", className)}
+      className={cn("no-scrollbar inline-flex max-w-full overflow-x-auto border border-separator bg-fill-1 p-0.5", className)}
     >
       {segments.map((s) => {
         const active = s.value === value;
@@ -51,6 +51,15 @@ export function Segmented<T extends string>({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(s.value)}
+            onKeyDown={(event) => {
+              const direction = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+              if (!direction && event.key !== "Home" && event.key !== "End") return;
+              event.preventDefault();
+              const index = segments.findIndex((segment) => segment.value === s.value);
+              const next = event.key === "Home" ? 0 : event.key === "End" ? segments.length - 1 : (index + direction + segments.length) % segments.length;
+              onChange(segments[next].value);
+              (event.currentTarget.parentElement?.children[next] as HTMLButtonElement | undefined)?.focus();
+            }}
             className={cn(
               "pressable relative shrink-0 whitespace-nowrap font-bold uppercase tracking-[0.12em]",
               size === "sm" ? "h-8 px-3 text-[0.75rem]" : "h-9 px-4 text-[0.8125rem]",
@@ -60,8 +69,8 @@ export function Segmented<T extends string>({
             {active && (
               <motion.span
                 layoutId={`seg-${id}`}
-                className="absolute inset-0 bg-accent shadow-[0_0_16px_rgb(var(--accent)/0.35)]"
-                transition={reduce ? { duration: 0 } : { type: "spring", bounce: 0, duration: 0.35 }}
+                className="absolute inset-0 bg-accent"
+                transition={reduce ? { duration: 0 } : { type: "spring", bounce: 0, duration: 0.25 }}
               />
             )}
             <span className="relative">{s.label}</span>

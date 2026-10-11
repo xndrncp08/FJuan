@@ -19,9 +19,21 @@ interface DashboardSectionProps {
 }
 
 export default function DashboardSection({ standings, nextRace, prediction }: DashboardSectionProps) {
+  const first = standings[0];
+  const second = standings[1];
+  const margin = first && second ? Number(first.points) - Number(second.points) : null;
+  const scoring = standings.filter((driver) => Number(driver.points) > 0).length;
+
   return (
     <Section>
       <SectionHeader eyebrow="Championship" title="Where things stand" />
+      {first && (
+        <dl className="championship-rail mb-7">
+          <div><dt>Championship leader</dt><dd>{first.Driver?.givenName} <span className="font-bold text-paper">{first.Driver?.familyName}</span></dd></div>
+          <div><dt>Margin to second</dt><dd className="font-mono text-paper">{margin === null ? "—" : `+${margin}`} <span className="font-sans text-footnote text-label-3">pts</span></dd></div>
+          <div><dt>Drivers on points</dt><dd className="font-mono text-paper">{scoring} <span className="font-sans text-footnote text-label-3">/ {standings.length}</span></dd></div>
+        </dl>
+      )}
       <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr] lg:gap-5">
         <StandingsCard standings={standings} />
         <PredictionCard prediction={prediction} nextRace={nextRace} />
@@ -45,6 +57,7 @@ function StandingsCard({ standings }: { standings: any[] }) {
         <p className="px-6 pb-8 pt-4 text-subhead text-label-3">Standings will appear after the first race.</p>
       ) : (
         <ol className="px-2 pb-2">
+
           {rows.map((s: any, i: number) => {
             const pts = Number(s.points) || 0;
             const gap = leader - pts;
@@ -53,7 +66,7 @@ function StandingsCard({ standings }: { standings: any[] }) {
               <li key={s.Driver?.driverId ?? i}>
                 <Link
                   href={`/drivers/${s.Driver?.driverId}`}
-                  className="row-interactive grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-md px-3 py-2.5 sm:gap-4 sm:px-4"
+                  className={`row-interactive grid grid-cols-[auto_1fr_auto] items-center gap-3 px-3 py-3 sm:gap-4 sm:px-4 ${i === 0 ? "bg-fill-1" : "border-t border-hairline"}`}
                 >
                   <PositionBadge position={s.position ?? i + 1} />
                   <div className="min-w-0">
@@ -75,7 +88,7 @@ function StandingsCard({ standings }: { standings: any[] }) {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="tabular text-callout font-semibold text-paper">{pts}</div>
+                    <div className="tabular font-mono text-[0.875rem] font-semibold text-paper">{pts}<span className="sr-only"> points</span></div>
                     <div className="tabular text-caption text-label-3">{i === 0 ? "Leader" : `−${gap}`}</div>
                   </div>
                 </Link>

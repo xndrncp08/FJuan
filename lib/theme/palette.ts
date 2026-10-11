@@ -30,7 +30,7 @@ export const SURFACE_3 = "#361E19"; // controls on cards, tooltips
 // ─── Text tiers (PAPER at fixed alphas; all ≥ 4.5:1 on SURFACE_2 but the last) ─
 export const LABEL_1 = PAPER;
 export const LABEL_2 = "rgba(245,233,228,0.72)";
-export const LABEL_3 = "rgba(245,233,228,0.54)";
+export const LABEL_3 = "rgba(245,233,228,0.64)";
 export const LABEL_4 = "rgba(245,233,228,0.32)"; // decorative / disabled only
 
 // ─── Tint: accent readable as small text (≈5:1 on CANVAS) ────────────────
@@ -48,7 +48,7 @@ export const MEDAL = { gold: "#E8C35A", silver: "#C9CDD3", bronze: "#C98A5B" } a
 // ─── Charts ───────────────────────────────────────────────────────────────
 export const CHART = {
   grid: "rgba(245,233,228,0.07)",
-  axis: "rgba(245,233,228,0.54)",
+  axis: "rgba(245,233,228,0.64)",
   tooltipBg: SURFACE_3,
   series: [EMBER, "#F2A541", INFO, PURPLE, SUCCESS, PAPER],
 } as const;

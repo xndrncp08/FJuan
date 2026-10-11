@@ -70,7 +70,7 @@ export default function NextRaceSection({ nextRace }: { nextRace: any }) {
         <Glow />
         <div className="container-page relative py-20 sm:py-28">
           <p className="eyebrow mb-3">Off-season</p>
-          <h1 className="text-display text-paper">The season is over.</h1>
+          <h2 className="text-display text-paper">The season is over.</h2>
           <p className="mt-4 max-w-prose text-body text-label-2">
             Look back at every round, or dig into driver and team history while the cars are in the garage.
           </p>
@@ -101,7 +101,7 @@ export default function NextRaceSection({ nextRace }: { nextRace: any }) {
             <Badge>Round {nextRace.round}</Badge>
           </div>
 
-          <h1 className="text-display text-paper">{nextRace.raceName}</h1>
+          <h2 className="text-display text-paper">{nextRace.raceName}</h2>
 
           <p className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-callout text-label-2">
             <span className="inline-flex items-center gap-1.5">
@@ -119,10 +119,10 @@ export default function NextRaceSection({ nextRace }: { nextRace: any }) {
                   key={unit}
                   className="flex min-w-0 flex-1 flex-col items-center rounded-md bg-fill-1 px-2 py-3 shadow-[inset_0_0_0_1px_var(--hairline)] sm:max-w-[104px] sm:py-4"
                 >
-                  <span className="tabular text-[clamp(1.75rem,6vw,2.75rem)] font-bold leading-none tracking-[-0.04em] text-paper">
+                  <span className="tabular font-mono text-[clamp(1.5rem,5vw,2.5rem)] font-medium leading-none tracking-[-0.04em] text-paper">
                     {remaining ? String(remaining[unit]).padStart(2, "0") : "--"}
                   </span>
-                  <span className="mt-1.5 text-caption capitalize text-label-3">{unit}</span>
+                  <span className="mt-2 label-caps text-[0.6875rem] text-label-3">{unit}</span>
                 </div>
               ))}
             </div>

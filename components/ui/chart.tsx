@@ -8,7 +8,7 @@
 export const AXIS = {
   axisLine: false,
   tickLine: false,
-  tick: { fill: "rgba(245,233,228,0.54)", fontSize: 11, fontFamily: "var(--font-data), monospace" },
+  tick: { fill: "rgba(245,233,228,0.64)", fontSize: 11, fontFamily: "var(--font-data), monospace" },
 } as const;
 
 /**

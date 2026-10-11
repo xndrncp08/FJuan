@@ -107,6 +107,14 @@ export default function LivePage() {
 
       <Section className="pt-0 sm:pt-0">
         <div className="space-y-5">
+          <ol className="workflow-rail" aria-label="Telemetry setup">
+            {[{ label: "Session", complete: !!session }, { label: "Driver", complete: !!driver }, { label: "Explore", complete: !!selected && laps.length > 0 }].map((step, index) => (
+              <li key={step.label} className={step.complete ? "text-paper" : "text-label-3"}>
+                <span className={step.complete ? "text-tint" : "text-label-3"}>{String(index + 1).padStart(2, "0")}</span>
+                {step.label}<span className="sr-only">{step.complete ? ", ready" : ", pending"}</span>
+              </li>
+            ))}
+          </ol>
           {/* Step 1 — session */}
           {session ? (
             <StepSummary

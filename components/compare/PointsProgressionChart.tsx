@@ -17,7 +17,7 @@ export function PointsProgressionChart({ a, b }: { a: DriverStats; b: DriverStat
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: -8 }}>
+      <AreaChart accessibilityLayer data={data} margin={{ top: 8, right: 4, bottom: 0, left: -8 }}>
         <defs>
           {(["a", "b"] as const).map((k) => (
             <linearGradient key={k} id={`cmp-${k}`} x1="0" y1="0" x2="0" y2="1">
@@ -30,8 +30,8 @@ export function PointsProgressionChart({ a, b }: { a: DriverStats; b: DriverStat
         <XAxis dataKey="season" {...AXIS} interval="preserveStartEnd" minTickGap={12} />
         <YAxis {...AXIS} width={44} tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v)} />
         <Tooltip cursor={CURSOR_LINE} content={<ChartTooltip title={(l) => `After ${l}`} />} />
-        <Area type="monotone" dataKey="a" name={a.driver.familyName} stroke={A_COLOR} strokeWidth={2} fill="url(#cmp-a)" activeDot={{ r: 4, strokeWidth: 0 }} />
-        <Area type="monotone" dataKey="b" name={b.driver.familyName} stroke={B_COLOR} strokeWidth={2} fill="url(#cmp-b)" activeDot={{ r: 4, strokeWidth: 0 }} />
+        <Area isAnimationActive={false} type="monotone" dataKey="a" name={a.driver.familyName} stroke={A_COLOR} strokeWidth={2} fill="url(#cmp-a)" activeDot={{ r: 4, strokeWidth: 0 }} />
+        <Area isAnimationActive={false} type="monotone" dataKey="b" strokeDasharray="5 3" name={b.driver.familyName} stroke={B_COLOR} strokeWidth={2} fill="url(#cmp-b)" activeDot={{ r: 4, strokeWidth: 0 }} />
       </AreaChart>
     </ResponsiveContainer>
   );

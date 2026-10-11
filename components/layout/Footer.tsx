@@ -35,7 +35,7 @@ const STATS = [
 
 export default function Footer() {
   return (
-    <footer className="relative mt-16 overflow-hidden border-t border-hairline bg-canvas">
+    <footer className="footer-safe relative mt-16 overflow-hidden border-t border-hairline bg-canvas">
       <div aria-hidden className="absolute inset-x-0 top-0 h-[2px] bg-[linear-gradient(90deg,rgb(var(--accent)),rgb(var(--accent)/0.3)_35%,transparent_70%)]" />
       <span aria-hidden className="watermark absolute -bottom-[0.18em] left-1/2 -translate-x-1/2 text-[clamp(8rem,26vw,22rem)]">
         FJUAN

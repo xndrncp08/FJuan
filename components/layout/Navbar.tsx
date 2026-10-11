@@ -20,6 +20,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Menu, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Logo } from "@/components/ui/Logo";
+import { useFocusScope } from "@/lib/hooks/useFocusScope";
 import { usePagePathname } from "@/lib/hooks/usePagePathname";
 
 const NAV_LINKS = [
@@ -71,6 +72,15 @@ export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const reduce = useReducedMotion();
   const time = useClock();
+  const menuRef = useRef<HTMLDivElement>(null);
+  useFocusScope(menuRef, menuOpen);
+
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const onChange = () => { if (desktop.matches) setMenuOpen(false); };
+    desktop.addEventListener("change", onChange);
+    return () => desktop.removeEventListener("change", onChange);
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 4);
@@ -116,7 +126,7 @@ export default function Navbar() {
         Skip to content
       </a>
 
-      <header className="sticky top-0 z-[100]">
+      <header className="nav-shell sticky top-0 z-[100]">
         <div className={cn("material-bar transition-[box-shadow] duration-300", scrolled || menuOpen ? "shadow-[0_1px_0_0_var(--hairline)]" : "shadow-none")}>
           <nav aria-label="Main" className="container-page flex h-[var(--nav-h)] items-stretch gap-2">
             <Link href="/" aria-label="FJUAN home" className="pressable -ml-1 mr-6 flex items-center px-1">
@@ -159,7 +169,7 @@ export default function Navbar() {
                 onClick={() => setSearchOpen(true)}
                 aria-label="Search"
                 aria-keyshortcuts="Meta+K"
-                className="pressable flex h-9 items-center gap-2 border border-hairline px-3 text-label-3 hover:border-accent/50 hover:text-paper"
+                className="pressable flex h-11 items-center gap-2 border border-separator px-3 text-label-3 hover:border-accent/50 hover:text-paper"
               >
                 <Search className="h-4 w-4" aria-hidden />
                 <span className="hidden text-[0.75rem] font-bold uppercase tracking-[0.14em] sm:inline">Search</span>
@@ -184,7 +194,7 @@ export default function Navbar() {
             <>
               <motion.div
                 key="scrim"
-                className="fixed inset-0 top-[var(--nav-h)] -z-10 bg-black/55 lg:hidden"
+                className="fixed inset-0 top-[var(--nav-offset)] -z-10 bg-black/55 lg:hidden"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -193,9 +203,13 @@ export default function Navbar() {
               />
               <motion.div
                 id="mobile-menu"
+                ref={menuRef}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Navigation"
                 key="menu"
                 className="material-thick absolute inset-x-0 top-full origin-top overflow-y-auto border-b border-accent/40 shadow-popover lg:hidden"
-                style={{ maxHeight: "calc(100dvh - var(--nav-h))" }}
+                style={{ maxHeight: "calc(100dvh - var(--nav-offset))" }}
                 initial={reduce ? { opacity: 0 } : { opacity: 0, y: -12, scaleY: 0.96 }}
                 animate={{ opacity: 1, y: 0, scaleY: 1 }}
                 exit={reduce ? { opacity: 0 } : { opacity: 0, y: -12, scaleY: 0.96 }}
@@ -240,12 +254,15 @@ function SearchPalette({ open, onClose, time }: { open: boolean; onClose: () => 
   const router = useRouter();
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const scopeRef = useRef<HTMLDivElement>(null);
+  useFocusScope(scopeRef, open);
   const reduce = useReducedMotion();
 
   useEffect(() => {
     if (open) {
       setQuery("");
-      requestAnimationFrame(() => inputRef.current?.focus());
+      const frame = requestAnimationFrame(() => inputRef.current?.focus());
+      return () => cancelAnimationFrame(frame);
     }
   }, [open]);
 
@@ -264,7 +281,7 @@ function SearchPalette({ open, onClose, time }: { open: boolean; onClose: () => 
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-[300]" role="dialog" aria-modal="true" aria-label="Search">
+        <div ref={scopeRef} className="fixed inset-0 z-[300]" role="dialog" aria-modal="true" aria-label="Search">
           <motion.div
             className="tex-grid absolute inset-0 bg-[rgb(10_3_2/0.88)] backdrop-blur-xl"
             initial={{ opacity: 0 }}
@@ -285,7 +302,10 @@ function SearchPalette({ open, onClose, time }: { open: boolean; onClose: () => 
                 <span className="live-dot !h-1.5 !w-1.5" aria-hidden />
                 FJUAN / Search
               </span>
-              <span className="tabular-nums text-label-3">{time}</span>
+              <div className="flex items-center gap-4">
+                <span className="tabular-nums text-label-3">{time}</span>
+                <button type="button" onClick={onClose} aria-label="Close search" className="pressable flex h-11 w-11 items-center justify-center border border-separator text-paper hover:bg-fill-2"><X className="h-4 w-4" aria-hidden /></button>
+              </div>
             </div>
 
             <div className="border border-separator border-t-accent bg-surface-1 shadow-popover">

@@ -88,7 +88,7 @@ export default function DriversPage() {
         ) : (
           <div className="space-y-5">
             {rows.length >= 3 && (
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="leader-grid">
                 {rows.slice(0, 3).map((s, i) => (
                   <LeaderCard key={s.Driver.driverId} standing={s} place={i} leader={leader} />
                 ))}
@@ -96,6 +96,10 @@ export default function DriversPage() {
             )}
 
             <Card padding="none" className="overflow-hidden">
+              <div className="classification-heading">
+                <h2 className="text-headline">The classification</h2>
+                <span className="font-mono text-[0.6875rem] uppercase tracking-widest text-label-3">{rows.length} drivers / {season}</span>
+              </div>
               <div className="hidden grid-cols-[2.5rem_minmax(0,1.4fr)_minmax(0,1fr)_3.5rem_6rem_1rem] gap-4 border-b border-hairline px-5 py-3 label-caps text-[0.75rem] text-label-3 sm:grid">
                 <span>Pos</span>
                 <span>Driver</span>
@@ -123,28 +127,30 @@ function LeaderCard({ standing, place, leader }: { standing: any; place: number;
   const pts = parseFloat(standing.points) || 0;
 
   return (
-    <Link href={`/drivers/${d.driverId}`} className="card card-interactive block p-5 sm:p-6">
-      <div className="flex items-center justify-between">
+    <Link href={`/drivers/${d.driverId}`} className="card card-interactive leader-panel group block p-5 sm:p-7">
+      <span className="leader-number" aria-hidden>{d.permanentNumber ?? standing.position}</span>
+      <span className="absolute inset-x-0 top-0 h-[3px]" style={{ background: teamColor(team?.constructorId ?? team?.name) }} aria-hidden />
+      <div className="relative flex items-center justify-between">
         <span className={cn("inline-flex h-8 items-center px-3 text-subhead font-bold", MEDAL_TEXT[place], MEDAL_BG[place])}>
           P{standing.position}
         </span>
-        {d.permanentNumber && <span className="tabular text-title-3 font-bold text-label-3">#{d.permanentNumber}</span>}
+        <ChevronRight className="h-4 w-4 text-label-3 group-hover:text-tint" aria-hidden />
       </div>
-      <div className="mt-6">
+      <div className="relative mt-10">
         <div className="text-callout text-label-2">{d.givenName}</div>
-        <div className="truncate text-title-2 text-paper">{d.familyName}</div>
+        <div className="truncate text-title-2 leading-tight text-paper">{d.familyName}</div>
         <div className="mt-2 flex items-center gap-2 text-footnote text-label-3">
           <TeamMark team={team?.constructorId ?? team?.name} size="sm" />
           {team?.name ?? "—"}
         </div>
       </div>
-      <div className="mt-6 flex items-end justify-between gap-4 border-t border-hairline pt-4">
+      <div className="relative mt-8 flex items-end justify-between gap-4 border-t border-hairline pt-4">
         <div>
-          <div className="tabular text-stat text-paper">{standing.points}</div>
-          <div className="text-caption text-label-3">Points</div>
+          <div className="tabular text-stat-lg text-paper">{standing.points}</div>
+          <div className="label-caps mt-1 text-caption text-label-3">Championship points</div>
         </div>
         <div className="text-right">
-          <div className="tabular text-title-3 font-semibold text-paper">{standing.wins}</div>
+          <div className="tabular font-mono text-[1.125rem] font-semibold text-paper">{standing.wins}</div>
           <div className="text-caption text-label-3">Wins</div>
         </div>
       </div>
