@@ -18,6 +18,8 @@ import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, T
 import { ArrowRight, Crosshair, Pause, Play, RotateCcw } from "lucide-react";
 import { AXIS, ChartTooltip, CURSOR_LINE, GRID, HEAT } from "@/components/ui/chart";
 import { Segmented } from "@/components/ui/Segmented";
+import { InsightNote } from "@/components/ui/InsightNote";
+import { Button } from "@/components/ui/Button";
 import { EmptyState, Spinner } from "@/components/ui/States";
 import { formatLapSeconds } from "@/lib/utils/format";
 import type { SessionTelemetry, TelemetrySample } from "@/lib/telemetry/types";
@@ -148,7 +150,7 @@ function Timeline({ samples, playhead, lapTime, playing, onPlayingChange, rate, 
         </button>
         <Segmented size="sm" aria-label="Playback speed" value={String(rate)} onChange={(v) => onRateChange(Number(v) as (typeof RATES)[number])} segments={RATES.map((r) => ({ value: String(r), label: `${r}×` }))} />
       </div>
-      <div className="relative min-w-0 flex-1">
+      <div className="relative min-w-0 flex-1 focus-within:outline focus-within:outline-2 focus-within:outline-offset-4 focus-within:outline-tint">
         <div className="pointer-events-none absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 opacity-90" style={{ background: gradient }} aria-hidden />
         <div className="pointer-events-none absolute top-1/2 h-5 w-[3px] -translate-x-1/2 -translate-y-1/2 bg-paper shadow-[0_0_10px_rgba(255,255,255,0.8)]" style={{ left: `${distFrac * 100}%` }} aria-hidden />
         <input
@@ -202,7 +204,7 @@ const Traces = memo(function Traces({ samples, playhead }: { samples: TelemetryS
         <div className="relative h-[180px]">
           <CursorOverlay samples={samples} playhead={playhead} />
           <ResponsiveContainer>
-            <AreaChart data={data} margin={MARGIN}>
+            <AreaChart accessibilityLayer data={data} margin={MARGIN}>
               <defs>
                 <linearGradient id="speedFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#EC5C30" stopOpacity={0.55} />
@@ -227,7 +229,7 @@ const Traces = memo(function Traces({ samples, playhead }: { samples: TelemetryS
         <div className="relative h-[180px]">
           <CursorOverlay samples={samples} playhead={playhead} />
           <ResponsiveContainer>
-            <LineChart data={data} margin={MARGIN}>
+            <LineChart accessibilityLayer data={data} margin={MARGIN}>
               <CartesianGrid {...GRID} />
               <XAxis dataKey="km" type="number" domain={["dataMin", "dataMax"]} tickFormatter={km} {...AXIS} />
               <YAxis width={Y_AXIS_W} domain={[0, 100]} ticks={[0, 50, 100]} {...AXIS} />
@@ -295,15 +297,16 @@ export default function TelemetryCockpit({ initialSession }: { initialSession?: 
   const getCursor = useMemo(() => () => (samples?.length ? indexAtTime(samples, playhead.get()) : 0), [samples, playhead]);
 
   if (query.isError && !data) {
-    return <EmptyState title="Telemetry unavailable" description="Neither OpenF1 nor the offline engine could produce a lap. Try again in a moment." />;
+    return <EmptyState title="Telemetry unavailable" description="The lap could not be loaded. Your selection is saved; try again." action={<Button onClick={() => void query.refetch()}>Retry telemetry</Button>} />;
   }
 
   const timedLaps = data?.laps.filter((l) => l.lapTime) ?? [];
 
   return (
     <div className="space-y-4">
+      <InsightNote title="Your guide to the telemetry cockpit">Select a driver and lap, then press play or scrub the timeline. Inputs colors show braking, full throttle and coasting; Speed shows pace around the circuit. Follow keeps the camera on the car. Traces below show recorded speed and pedal inputs by distance.</InsightNote>
       {/* Controls */}
-      <div className="glass flex flex-col gap-3 p-3 sm:p-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="card flex flex-col gap-3 p-3 sm:p-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {data ? (
             <SourceBadge
@@ -319,7 +322,7 @@ export default function TelemetryCockpit({ initialSession }: { initialSession?: 
           {query.isFetching && data && <Spinner className="h-4 w-4" label="Updating" />}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex h-9 items-center gap-2 border border-[var(--glass-edge)] bg-fill-1 pl-3 text-[0.75rem] font-bold uppercase tracking-[0.12em] text-label-3">
+          <label className="flex h-11 items-center gap-2 border border-[var(--glass-edge)] bg-fill-1 pl-3 text-[0.75rem] font-bold uppercase tracking-[0.12em] text-label-3">
             Lap
             <select
               value={data?.lap.lapNumber ?? ""}
@@ -340,7 +343,7 @@ export default function TelemetryCockpit({ initialSession }: { initialSession?: 
             type="button"
             aria-pressed={follow}
             onClick={() => setFollow((v) => !v)}
-            className={cn("pressable flex h-9 items-center gap-2 border px-3 text-[0.75rem] font-bold uppercase tracking-[0.12em]", follow ? "neon border-accent bg-accent/20 text-paper" : "border-[var(--glass-edge)] text-label-2 hover:text-paper")}
+            className={cn("pressable flex h-11 items-center gap-2 border px-3 text-[0.75rem] font-bold uppercase tracking-[0.12em]", follow ? "neon border-accent bg-accent/20 text-paper" : "border-[var(--glass-edge)] text-label-2 hover:text-paper")}
           >
             <Crosshair className="h-4 w-4" aria-hidden />
             Follow
@@ -352,16 +355,25 @@ export default function TelemetryCockpit({ initialSession }: { initialSession?: 
               setSynthetic((v) => !v);
               setLap(undefined);
             }}
-            className={cn("pressable flex h-9 items-center border px-3 text-[0.75rem] font-bold uppercase tracking-[0.12em]", synthetic ? "border-warning/60 bg-warning/10 text-warning" : "border-[var(--glass-edge)] text-label-2 hover:text-paper")}
+            className={cn("pressable flex h-11 items-center border px-3 text-[0.75rem] font-bold uppercase tracking-[0.12em]", synthetic ? "border-warning/60 bg-warning/10 text-warning" : "border-[var(--glass-edge)] text-label-2 hover:text-paper")}
           >
-            Offline engine
+            Simulated data
           </button>
         </div>
       </div>
 
+      {data?.source === "synthetic" && <p className="status-line" role="status">This lap is simulated by the offline engine{data.fallbackReason ? `: ${data.fallbackReason}` : "."} It is an illustration of the model, rather than recorded car telemetry.</p>}
+      {query.isError && data && <p className="status-line" role="status">The new selection couldn’t load. The last loaded lap remains on screen. <Button size="sm" variant="plain" onClick={() => void query.refetch()}>Retry selection</Button></p>}
       {/* Drivers */}
       {data && (
-        <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1" role="radiogroup" aria-label="Driver">
+        <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1" role="radiogroup" aria-label="Driver" onKeyDown={(e) => {
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+          e.preventDefault();
+          const current = data.drivers.findIndex((d) => d.number === data.driver.number);
+          const index = e.key === "Home" ? 0 : e.key === "End" ? data.drivers.length - 1 : (current + (e.key === "ArrowRight" ? 1 : -1) + data.drivers.length) % data.drivers.length;
+          setDriver(data.drivers[index].number); setLap(undefined);
+          e.currentTarget.querySelectorAll<HTMLButtonElement>("[role=radio]")[index]?.focus();
+        }}>
           {data.drivers.map((d) => {
             const active = d.number === data.driver.number;
             return (
@@ -370,11 +382,13 @@ export default function TelemetryCockpit({ initialSession }: { initialSession?: 
                 type="button"
                 role="radio"
                 aria-checked={active}
+                tabIndex={active ? 0 : -1}
+                aria-label={`${d.name} · ${d.team} · Car ${d.number}`}
                 onClick={() => {
                   setDriver(d.number);
                   setLap(undefined);
                 }}
-                className={cn("pressable flex h-10 shrink-0 items-center gap-2 border px-3 font-mono text-[0.8125rem] font-bold", active ? "bg-fill-2 text-paper" : "border-[var(--glass-edge)] text-label-3 hover:text-paper")}
+                className={cn("pressable flex h-11 shrink-0 items-center gap-2 border px-3 font-mono text-[0.8125rem] font-bold", active ? "bg-fill-2 text-paper" : "border-[var(--glass-edge)] text-label-3 hover:text-paper")}
                 style={active ? { borderColor: d.color, boxShadow: `0 0 16px -4px ${d.color}` } : undefined}
                 title={`${d.name} · ${d.team}`}
               >
@@ -434,7 +448,7 @@ export default function TelemetryCockpit({ initialSession }: { initialSession?: 
       </div>
 
       {samples?.length ? (
-        <div className="glass space-y-5 p-4 sm:p-5">
+        <div className="card space-y-5 p-4 sm:p-5">
           <Timeline samples={samples} playhead={playhead} lapTime={lapTime} playing={playing} onPlayingChange={setPlaying} rate={rate} onRateChange={setRate} />
           <Traces samples={samples} playhead={playhead} />
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-hairline pt-4">

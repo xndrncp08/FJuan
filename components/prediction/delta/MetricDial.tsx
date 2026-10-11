@@ -34,7 +34,7 @@ export function MetricDial({
   const reduce = useReducedMotion();
   const f = Math.max(0, Math.min(1, fill));
   return (
-    <figure className="glass flex h-full flex-col items-center justify-center px-3 pb-4 pt-5 text-center">
+    <figure className="card flex h-full flex-col items-center justify-center px-3 pb-4 pt-5 text-center">
       <div className="relative h-[112px] w-[112px]">
         <svg viewBox="0 0 112 112" className="h-full w-full -rotate-[225deg]" aria-hidden>
           <circle cx="56" cy="56" r={R} fill="none" stroke="var(--fill-3)" strokeWidth="7" strokeDasharray={`${ARC} ${CIRC}`} strokeLinecap="round" />
@@ -49,8 +49,7 @@ export function MetricDial({
             strokeDasharray={`${ARC} ${CIRC}`}
             initial={{ strokeDashoffset: reduce ? ARC * (1 - f) : ARC }}
             animate={{ strokeDashoffset: ARC * (1 - f) }}
-            transition={reduce ? { duration: 0 } : { type: "spring", bounce: 0, duration: 1.1 }}
-            style={{ filter: `drop-shadow(0 0 6px ${color})` }}
+            transition={reduce ? { duration: 0 } : { type: "spring", bounce: 0, duration: 0.3 }}
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">

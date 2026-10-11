@@ -645,7 +645,8 @@
   .explore-routes { @apply grid border border-separator sm:grid-cols-2 lg:grid-cols-4; }
   .explore-routes > li { @apply border-b border-separator last:border-b-0 sm:odd:border-r lg:border-b-0 lg:border-r lg:last:border-r-0; }
   .explore-routes a { @apply transition-colors duration-200 hover:bg-fill-1; }
-  .profile-title { font-size: clamp(2.25rem, 5.8vw, 4.5rem); line-height: 1.08; overflow-wrap: anywhere; }
+  .profile-title { font-family: var(--font-display), Impact, sans-serif; font-weight: 400; text-transform: uppercase; letter-spacing: -0.025em; font-size: clamp(2.25rem, 5.8vw, 4.5rem); line-height: 1.08; overflow-wrap: anywhere; }
+  .profile-header figure { width: fit-content; }
   .profile-header { @apply grid items-end gap-6 sm:grid-cols-[minmax(0,1fr)_auto]; }
   .data-table { @apply w-full text-left text-subhead; }
   .data-table th { @apply text-caption font-semibold uppercase tracking-[0.1em] text-label-3; }

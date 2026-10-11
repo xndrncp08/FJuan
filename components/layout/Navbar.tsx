@@ -40,6 +40,7 @@ const MORE_LINKS = [{ href: "/predict/delta", label: "Delta", code: "09", descri
 const SPRING = { type: "spring", bounce: 0, duration: 0.35 } as const;
 
 function isActive(pathname: string, href: string) {
+  if (href === "/predict" && pathname.startsWith("/predict/delta")) return false;
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -141,6 +142,8 @@ export default function Navbar() {
                     <Link
                       href={link.href}
                       aria-current={active ? "page" : undefined}
+                      aria-label={link.href === "/telemetry" ? "3D Telemetry" : undefined}
+                      title={link.description}
                       className={cn(
                         "pressable relative flex items-center gap-1.5 px-3.5 text-[0.8125rem] font-bold uppercase tracking-[0.14em]",
                         active ? "text-paper" : "text-label-3 hover:text-paper",
@@ -181,7 +184,7 @@ export default function Navbar() {
                 aria-expanded={menuOpen}
                 aria-controls="mobile-menu"
                 aria-label={menuOpen ? "Close menu" : "Open menu"}
-                className="pressable -mr-1 flex h-10 w-10 items-center justify-center text-paper hover:bg-fill-1 lg:hidden"
+                className="pressable -mr-1 flex h-11 w-11 items-center justify-center text-paper hover:bg-fill-1 lg:hidden"
               >
                 {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </button>
@@ -228,7 +231,7 @@ export default function Navbar() {
                           <span className={cn("w-5 font-mono text-[0.6875rem]", active ? "text-tint" : "text-label-3")}>{link.code}</span>
                           <span className="min-w-0 flex-1">
                             <span className="flex items-center gap-2 font-display text-[1.125rem] uppercase text-paper">
-                              {link.label}
+                              {link.href === "/telemetry" ? "3D Telemetry" : link.label}
                               {link.href === "/live" && <span className="live-dot !h-1.5 !w-1.5" aria-hidden />}
                             </span>
                             <span className="block text-footnote text-label-3">{link.description}</span>

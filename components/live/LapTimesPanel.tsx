@@ -1,66 +1,47 @@
-/**
- * components/live/LapTimesPanel.tsx
- *
- * Every lap, newest first, with sector times colored against the driver's
- * best in each sector. The fastest lap is marked purple (F1 convention).
- */
+"use client";
 
+import { useState } from "react";
 import { LapData, formatLapTime } from "./types";
+import { SelectField } from "@/components/ui/Fields";
+import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 
 function best(laps: LapData[], key: keyof LapData) {
   const v = laps.map((l) => l[key] as number | null).filter((x): x is number => !!x && x > 0);
   return v.length ? Math.min(...v) : null;
 }
-
-function sectorTone(v: number | null, pb: number | null) {
-  if (!v || !pb) return "text-label-4";
-  const d = v - pb;
-  if (d <= 0.001) return "text-success";
-  if (d < 0.3) return "text-warning";
-  return "text-label-2";
-}
-
 export default function LapTimesPanel({ laps, fastestLap }: { laps: LapData[]; fastestLap: number }) {
-  const rows = [...laps].reverse().slice(0, 60);
+  const [order, setOrder] = useState("recent");
+  const [filter, setFilter] = useState("all");
+  const [limit, setLimit] = useState(60);
+  const eligible = laps.filter((l) => filter === "all" || (!l.is_pit_out_lap && !!l.lap_duration));
+  const sorted = [...eligible].sort((a, b) => order === "fastest" ? (a.lap_duration ?? Infinity) - (b.lap_duration ?? Infinity) : b.lap_number - a.lap_number);
+  const rows = sorted.slice(0, limit);
   const keys = ["duration_sector_1", "duration_sector_2", "duration_sector_3"] as const;
-  const pbs = keys.map((k) => best(laps, k));
+  const pbs = keys.map((k) => best(laps.filter((l) => !l.is_pit_out_lap), k));
 
-  return (
-    <div className="-mx-5 max-h-[560px] overflow-y-auto sm:-mx-6">
-      <table className="w-full text-left">
-        <thead className="sticky top-0 z-10 bg-surface">
-          <tr className="border-b border-hairline label-caps text-[0.75rem] text-label-3">
-            <th scope="col" className="py-2.5 pl-5 pr-2 font-semibold sm:pl-6">Lap</th>
-            {keys.map((_, i) => (
-              <th key={i} scope="col" className="hidden px-2 py-2.5 text-right font-semibold sm:table-cell">
-                S{i + 1}
-              </th>
-            ))}
-            <th scope="col" className="px-2 py-2.5 text-right font-semibold">Time</th>
-            <th scope="col" className="py-2.5 pl-2 pr-5 text-right font-semibold sm:pr-6">Trap</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((lap) => {
-            const fastest = lap.lap_duration !== null && Math.abs(lap.lap_duration - fastestLap) < 0.001;
-            return (
-              <tr key={lap.lap_number} className={cn("border-b border-hairline last:border-0", fastest && "bg-purple/10")}>
-                <td className="font-mono tabular py-2 pl-5 pr-2 text-footnote text-label-3 sm:pl-6">{lap.lap_number}</td>
-                {keys.map((k, i) => (
-                  <td key={k} className={cn("font-mono tabular hidden px-2 py-2 text-right text-footnote sm:table-cell", sectorTone(lap[k] as number | null, pbs[i]))}>
-                    {formatLapTime(lap[k] as number | null)}
-                  </td>
-                ))}
-                <td className={cn("font-mono tabular px-2 py-2 text-right text-subhead", fastest ? "font-bold text-purple" : "text-paper")}>
-                  {lap.is_pit_out_lap ? <span className="text-caption font-semibold text-warning">Pit out</span> : formatLapTime(lap.lap_duration)}
-                </td>
-                <td className="font-mono tabular py-2 pl-2 pr-5 text-right text-footnote text-label-3 sm:pr-6">{lap.st_speed ?? "—"}</td>
-              </tr>
-            );
-          })}
-        </tbody>
+  return <div>
+    <div className="mb-4 grid grid-cols-2 gap-3"><SelectField label="Lap order" value={order} onChange={(e) => setOrder(e.target.value)}><option value="recent">Newest first</option><option value="fastest">Fastest first</option></SelectField><SelectField label="Lap type" value={filter} onChange={(e) => setFilter(e.target.value)}><option value="all">All laps</option><option value="racing">Timed racing laps</option></SelectField></div>
+    <p className="mb-3 text-caption text-label-3">{rows.length} of {eligible.length} laps · Trap speed in km/h. Scroll across for sectors.</p>
+    <div className="table-scroll -mx-5 max-h-[480px] sm:-mx-6" tabIndex={0} role="region" aria-label="Lap timing table">
+      <table className="w-full min-w-[570px] text-left">
+        <caption className="sr-only">Lap times, sector times and speed trap. Best sector values are labeled.</caption>
+        <thead className="sticky top-0 z-10 bg-surface-1"><tr className="border-b border-hairline label-caps text-caption text-label-3"><th scope="col" className="py-3 pl-5 pr-2 font-semibold">Lap</th>{keys.map((_, i) => <th key={i} scope="col" className="px-2 py-3 text-right font-semibold">S{i + 1}</th>)}<th scope="col" className="px-2 py-3 text-right font-semibold">Lap time</th><th scope="col" className="py-3 pl-2 pr-5 text-right font-semibold">Trap</th></tr></thead>
+        <tbody>{rows.map((lap) => {
+          const fastest = !lap.is_pit_out_lap && lap.lap_duration !== null && Math.abs(lap.lap_duration - fastestLap) < 0.001;
+          return <tr key={lap.lap_number} className={cn("border-b border-hairline last:border-0", fastest && "bg-purple/10")}>
+            <th scope="row" className="py-3 pl-5 pr-2 font-mono text-footnote font-normal text-label-3">{lap.lap_number}</th>
+            {keys.map((k, i) => {
+              const value = lap[k] as number | null;
+              const pb = value && pbs[i] && Math.abs(value - pbs[i]!) <= 0.001;
+              return <td key={k} className={cn("px-2 py-3 text-right font-mono text-footnote", pb ? "text-success" : "text-label-2")}>{formatLapTime(value)}{pb && <span className="block font-sans text-caption">Best</span>}</td>;
+            })}
+            <td className={cn("px-2 py-3 text-right font-mono text-footnote", fastest ? "font-semibold text-purple" : "text-paper")}>{lap.is_pit_out_lap ? <span className="text-warning">Pit out</span> : formatLapTime(lap.lap_duration)}{fastest && <span className="block font-sans text-caption">Fastest lap</span>}</td>
+            <td className="py-3 pl-2 pr-5 text-right font-mono text-footnote text-label-3">{lap.st_speed ?? "—"}</td>
+          </tr>;
+        })}</tbody>
       </table>
     </div>
-  );
+    {limit < eligible.length && <Button className="mt-4" onClick={() => setLimit((n) => n + 60)}>Load earlier laps</Button>}
+  </div>;
 }

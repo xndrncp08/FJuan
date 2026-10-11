@@ -11,6 +11,7 @@ import { Search } from "lucide-react";
 import { Session } from "./types";
 import { Segmented } from "@/components/ui/Segmented";
 import { EmptyState, Skeleton } from "@/components/ui/States";
+import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 
 const SESSION_TYPES = ["Race", "Qualifying", "Sprint", "Practice 1", "Practice 2", "Practice 3"] as const;
@@ -24,7 +25,7 @@ const SHORT: Record<string, string> = {
 };
 
 const THIS_YEAR = new Date().getFullYear();
-const YEARS = Array.from({ length: 4 }, (_, i) => String(THIS_YEAR - i));
+const YEARS = Array.from({ length: Math.max(1, THIS_YEAR - 2023 + 1) }, (_, i) => String(THIS_YEAR - i));
 
 interface RaceGroup {
   circuit: string;
@@ -39,6 +40,7 @@ export default function SessionSearch({ onSelect }: { onSelect: (session: Sessio
   const [all, setAll] = useState<Session[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
   const [query, setQuery] = useState("");
   const [type, setType] = useState<string>("Race");
 
@@ -49,7 +51,7 @@ export default function SessionSearch({ onSelect }: { onSelect: (session: Sessio
     setAll([]);
     setQuery("");
     fetch(`https://api.openf1.org/v1/sessions?year=${year}`)
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error("Sessions unavailable"); return r.json(); })
       .then((data: Session[]) => {
         if (!cancelled) setAll(Array.isArray(data) ? data.filter((s) => (SESSION_TYPES as readonly string[]).includes(s.session_name)) : []);
       })
@@ -58,7 +60,7 @@ export default function SessionSearch({ onSelect }: { onSelect: (session: Sessio
     return () => {
       cancelled = true;
     };
-  }, [year]);
+  }, [year, attempt]);
 
   const races = useMemo<RaceGroup[]>(() => {
     const map = new Map<string, RaceGroup>();
@@ -128,9 +130,9 @@ export default function SessionSearch({ onSelect }: { onSelect: (session: Sessio
             ))}
           </div>
         ) : error ? (
-          <EmptyState title="Sessions unavailable" description={error} />
+          <EmptyState title="Sessions unavailable" description={error} action={<Button onClick={() => setAttempt((n) => n + 1)}>Retry sessions</Button>} />
         ) : shown.length === 0 ? (
-          <EmptyState title={q ? `Nothing matches “${query}”` : `No sessions for ${year} yet`} />
+          <EmptyState title={q ? `Nothing matches “${query}”` : `No sessions for ${year} yet`} description="Try another year or clear your circuit filter." action={q ? <Button onClick={() => setQuery("")}>Clear filter</Button> : undefined} />
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {shown.map((race) => {
@@ -144,7 +146,7 @@ export default function SessionSearch({ onSelect }: { onSelect: (session: Sessio
                       type="button"
                       disabled={!session}
                       onClick={() => session && onSelect(session)}
-                      className="pressable block w-full rounded-xs text-left disabled:cursor-not-allowed"
+                      className="pressable block min-h-11 w-full rounded-xs text-left disabled:cursor-not-allowed"
                     >
                       <span className="flex items-center justify-between gap-2">
                         <span className={cn("truncate text-callout font-semibold", upcoming ? "text-label-3" : "text-paper")}>{race.circuit}</span>
@@ -155,6 +157,7 @@ export default function SessionSearch({ onSelect }: { onSelect: (session: Sessio
                         {new Date(race.dateStart).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                       </span>
                     </button>
+                    {!session && !upcoming && <p className="mt-2 text-caption text-label-3">{SHORT[type]} unavailable · Choose a recorded session below.</p>}
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       {available.map((t) => (
                         <button
@@ -165,7 +168,7 @@ export default function SessionSearch({ onSelect }: { onSelect: (session: Sessio
                             onSelect(race.sessions[t]);
                           }}
                           className={cn(
-                            "pressable min-h-9 px-2.5 text-caption font-semibold",
+                            "pressable min-h-11 px-2.5 text-caption font-semibold",
                             t === type ? "bg-accent text-paper" : "bg-fill-2 text-label-2 hover:bg-fill-3 hover:text-paper",
                           )}
                         >

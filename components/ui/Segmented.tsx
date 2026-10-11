@@ -38,7 +38,7 @@ export function Segmented<T extends string>({
 
   return (
     <div
-      role="tablist"
+      role="radiogroup"
       aria-label={ariaLabel}
       className={cn("no-scrollbar inline-flex max-w-full overflow-x-auto border border-separator bg-fill-1 p-0.5", className)}
     >
@@ -48,8 +48,9 @@ export function Segmented<T extends string>({
           <button
             key={s.value}
             type="button"
-            role="tab"
-            aria-selected={active}
+            role="radio"
+            aria-checked={active}
+            tabIndex={active || (!segments.some((segment) => segment.value === value) && s === segments[0]) ? 0 : -1}
             onClick={() => onChange(s.value)}
             onKeyDown={(event) => {
               const direction = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
@@ -62,7 +63,7 @@ export function Segmented<T extends string>({
             }}
             className={cn(
               "pressable relative shrink-0 whitespace-nowrap font-bold uppercase tracking-[0.12em]",
-              size === "sm" ? "h-8 px-3 text-[0.75rem]" : "h-9 px-4 text-[0.8125rem]",
+              size === "sm" ? "h-11 px-3 text-[0.75rem]" : "h-11 px-4 text-[0.8125rem]",
               active ? "text-paper" : "text-label-3 hover:text-paper",
             )}
           >

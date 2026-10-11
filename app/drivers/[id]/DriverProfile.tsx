@@ -110,7 +110,7 @@ export default async function DriverProfile({ driverId }: { driverId: string }) 
                 )}
               </p>
               <h1 className="profile-title text-paper">
-                <span className="block font-semibold text-label-2">{driver.givenName}</span>{" "}
+                <span className="mb-2 block font-sans text-title-3 font-semibold normal-case tracking-normal text-label-2">{driver.givenName}</span>{" "}
                 <span>{driver.familyName}</span>
               </h1>
             </div>

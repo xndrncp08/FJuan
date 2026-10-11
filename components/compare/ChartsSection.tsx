@@ -54,7 +54,7 @@ export function ChartsSection({ a, b }: { a: DriverStats; b: DriverStats }) {
       <div className="mt-5 flex min-h-8 flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-4 text-footnote text-label-2">
           <Key color={A_COLOR} name={a.driver.familyName} />
-          <Key color={B_COLOR} name={b.driver.familyName} dashed={view === "points" || view === "rates"} />
+          <Key color={B_COLOR} name={b.driver.familyName} dashed={view !== "seasons"} />
         </div>
         {view === "seasons" && (
           <Segmented
@@ -91,7 +91,7 @@ export function ChartsSection({ a, b }: { a: DriverStats; b: DriverStats }) {
         {view === "profile" && <PerformanceRadarChart a={a} b={b} />}
       </div>
       <details className="mt-5 border-t border-hairline pt-4">
-        <summary className="cursor-pointer text-footnote font-semibold text-tint">Explore the season values</summary>
+        <summary className="flex min-h-11 cursor-pointer items-center text-footnote font-semibold text-tint">Explore the season values</summary>
         <p className="mt-3 text-caption text-label-3">Season totals from the same career data used in the charts. A dash means the driver did not race that season.</p>
         <div className="mt-3 max-h-72 overflow-auto" tabIndex={0} role="region" aria-label="Season comparison values">
           <table className="w-full text-left text-footnote">
