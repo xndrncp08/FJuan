@@ -136,7 +136,7 @@ export default async function RaceDetail({ season, round, variant }: { season: s
           </div>
         )}
 
-        <div id="weekend-schedule" className="mt-8"><WeekendSchedule race={info} /></div>
+        <div id="weekend-schedule" className="mt-8"><WeekendSchedule race={schedule[idx] ?? info} /></div>
         <nav id="other-rounds" aria-label="Other rounds" className="mt-10 grid gap-3 sm:grid-cols-2">
           {prev ? (
             <Link href={`/races/${season}/${prev.round}`} className="card card-interactive flex items-center gap-3 p-4">

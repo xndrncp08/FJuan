@@ -168,8 +168,8 @@ export default async function ConstructorProfilePage({ params }: { params: Promi
                 {drivers.map((d: any) => (
                   <Link key={d.Driver?.driverId} href={`/drivers/${d.Driver?.driverId}`} className="card card-interactive flex items-center gap-4 p-5">
                     <span
-                      className="tabular flex h-14 w-14 shrink-0 items-center justify-center rounded-md text-title-3 font-bold"
-                      style={{ background: `${team.color}22`, color: team.color }}
+                      className="tabular flex h-14 w-14 shrink-0 items-center justify-center rounded-md text-title-3 font-bold text-paper"
+                      style={{ background: `${team.color}22` }}
                     >
                       {d.Driver?.permanentNumber ?? d.Driver?.code}
                     </span>

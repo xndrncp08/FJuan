@@ -28,6 +28,7 @@ export default function CanvasShell({
   className,
   label,
   decorative = false,
+  interactive = false,
   fallback,
   camera,
   eventSource,
@@ -41,6 +42,8 @@ export default function CanvasShell({
   label: string;
   /** The scene duplicates content that's already in the DOM: hide it from assistive tech. */
   decorative?: boolean;
+  /** HTML controls inside the scene remain available to assistive technology. */
+  interactive?: boolean;
   fallback?: React.ReactNode;
   camera?: CanvasProps["camera"];
   /** Element whose pointer events drive the scene, when DOM content sits on top of the canvas. */
@@ -81,7 +84,7 @@ export default function CanvasShell({
   return (
     <div
       ref={ref}
-      role={decorative ? undefined : "img"}
+      role={decorative ? undefined : interactive ? "group" : "img"}
       aria-label={decorative ? undefined : label}
       aria-hidden={decorative || undefined}
       className={cn("relative h-full w-full", className)}

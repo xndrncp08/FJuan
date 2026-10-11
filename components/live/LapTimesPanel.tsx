@@ -14,8 +14,9 @@ export default function LapTimesPanel({ laps, fastestLap }: { laps: LapData[]; f
   const [order, setOrder] = useState("recent");
   const [filter, setFilter] = useState("all");
   const [limit, setLimit] = useState(60);
-  const eligible = laps.filter((l) => filter === "all" || (!l.is_pit_out_lap && !!l.lap_duration));
-  const sorted = [...eligible].sort((a, b) => order === "fastest" ? (a.lap_duration ?? Infinity) - (b.lap_duration ?? Infinity) : b.lap_number - a.lap_number);
+  const eligible = laps.filter((l) => filter === "all" || (!l.is_pit_out_lap && (l.lap_duration ?? 0) > 0));
+  const timedDuration = (lap: LapData) => !lap.is_pit_out_lap && (lap.lap_duration ?? 0) > 0 ? lap.lap_duration! : Infinity;
+  const sorted = [...eligible].sort((a, b) => order === "fastest" ? timedDuration(a) - timedDuration(b) : b.lap_number - a.lap_number);
   const rows = sorted.slice(0, limit);
   const keys = ["duration_sector_1", "duration_sector_2", "duration_sector_3"] as const;
   const pbs = keys.map((k) => best(laps.filter((l) => !l.is_pit_out_lap), k));

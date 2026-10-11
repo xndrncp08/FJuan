@@ -155,7 +155,7 @@ export function Car3D({
         <div
           className={cn("absolute inset-0 touch-pan-y transition-opacity duration-500", show3D ? "cursor-grab opacity-100 active:cursor-grabbing" : "opacity-0")}
           tabIndex={show3D && mode === "viewer" ? 0 : -1}
-          role="img"
+          role="group"
           aria-label={`${fallback.label}, 3D model built from the official renders. Drag or use arrow keys to rotate.`}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -174,7 +174,7 @@ export function Car3D({
           }}
         >
           {model && (
-            <CanvasShell label={fallback.label} decorative camera={{ position: [4, 1.6, 6], fov: 30 }} onReady={() => setReady(true)} onUnsupported={() => setNoWebGL(true)}>
+            <CanvasShell label={`${fallback.label} model and rule annotations`} decorative={mode !== "viewer"} interactive camera={{ position: [4, 1.6, 6], fov: 30 }} onReady={() => setReady(true)} onUnsupported={() => setNoWebGL(true)}>
               <CarScene3D
                 car={{ team, url: model.file, color: teamColor(team) }}
                 direction={direction}
@@ -193,7 +193,7 @@ export function Car3D({
         <div
           className={cn(
             "pointer-events-none absolute flex flex-wrap items-center gap-1.5",
-            mode === "viewer" ? "inset-x-2 bottom-2 flex-nowrap justify-between sm:inset-x-4 sm:bottom-4" : "right-3 top-3 justify-end sm:right-5 sm:top-5",
+            mode === "viewer" ? "inset-x-2 bottom-2 justify-between sm:inset-x-4 sm:bottom-4 sm:flex-nowrap" : "right-3 top-3 justify-end sm:right-5 sm:top-5",
           )}
         >
           <div className="pointer-events-auto flex items-center gap-1.5">
@@ -201,7 +201,7 @@ export function Car3D({
               type="button"
               aria-pressed={rolling}
               onClick={() => setRolling((v) => !v)}
-              className={cn("pressable glass-strong flex h-9 items-center gap-1.5 px-3 text-[0.75rem] font-bold uppercase tracking-[0.12em]", rolling ? "text-paper" : "text-label-2 hover:text-paper")}
+              className={cn("pressable flex h-11 min-w-11 items-center justify-center gap-1.5 border border-separator bg-surface-1 px-3 text-[0.75rem] font-bold uppercase tracking-[0.12em]", rolling ? "text-paper" : "text-label-2 hover:text-paper")}
             >
               {rolling ? <Pause className="h-3.5 w-3.5" aria-hidden /> : <Play className="h-3.5 w-3.5" aria-hidden />}
               <span className={cn(mode === "viewer" && "sr-only sm:not-sr-only")}>{rolling ? "Stop" : "Roll"}</span>
@@ -211,7 +211,7 @@ export function Car3D({
                 type="button"
                 aria-pressed={showHotspots}
                 onClick={() => setShowHotspots((v) => !v)}
-                className={cn("pressable glass-strong flex h-9 items-center gap-1.5 px-3 text-[0.75rem] font-bold uppercase tracking-[0.12em]", showHotspots ? "text-paper" : "text-label-2 hover:text-paper")}
+                className={cn("pressable flex h-11 min-w-11 items-center justify-center gap-1.5 border border-separator bg-surface-1 px-3 text-[0.75rem] font-bold uppercase tracking-[0.12em]", showHotspots ? "text-paper" : "text-label-2 hover:text-paper")}
               >
                 <Info className="h-3.5 w-3.5" aria-hidden />
                 <span className="sr-only sm:not-sr-only">2026 rules</span>
@@ -219,12 +219,12 @@ export function Car3D({
             )}
           </div>
           {mode === "viewer" && (
-            <div className="pointer-events-auto glass-strong flex" role="group" aria-label="Camera">
+            <div className="pointer-events-auto flex border border-separator bg-surface-1" role="group" aria-label="Camera">
               <span className="hidden items-center pl-2.5 pr-1 text-label-3 sm:flex" aria-hidden>
                 <Rotate3d className="h-4 w-4" />
               </span>
               {PRESETS.map((p) => (
-                <button key={p.id} type="button" onClick={(e) => preset(p, e.timeStamp)} className="pressable h-9 px-2 text-[0.75rem] font-bold uppercase tracking-[0.08em] text-label-2 hover:bg-fill-1 hover:text-paper sm:px-2.5 sm:tracking-[0.1em]">
+                <button key={p.id} type="button" aria-label={`${p.label === "¾" ? "Three quarter" : p.label} camera view`} onClick={(e) => preset(p, e.timeStamp)} className="pressable h-11 min-w-11 px-2 text-[0.75rem] font-bold uppercase tracking-[0.08em] text-label-2 hover:bg-fill-1 hover:text-paper sm:px-2.5 sm:tracking-[0.1em]">
                   {p.label}
                 </button>
               ))}

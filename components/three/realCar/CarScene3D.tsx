@@ -149,14 +149,14 @@ function Hotspots({ items }: { items: Hotspot[] }) {
                 aria-expanded={active}
                 aria-label={h.label}
                 className={cn(
-                  "flex h-7 w-7 items-center justify-center rounded-full border text-[0.875rem] font-bold leading-none text-paper shadow-[0_0_14px_rgba(230,80,27,0.6)] transition-transform duration-150",
+                  "flex h-11 w-11 items-center justify-center rounded-full border text-[0.875rem] font-bold leading-none text-paper transition-transform duration-150",
                   active ? "scale-110 border-paper bg-accent" : "border-paper/60 bg-accent/80 hover:scale-110",
                 )}
               >
                 {active ? "×" : "+"}
               </button>
               {active && (
-                <div className="glass-strong absolute left-1/2 top-9 w-64 -translate-x-1/2 p-3 text-left">
+                <div className="absolute left-1/2 top-12 w-56 -translate-x-1/2 border border-separator bg-surface-1 p-3 text-left">
                   <p className="label-caps text-[0.75rem] text-tint">{h.label}</p>
                   <p className="mt-1 text-footnote text-paper">{h.text}</p>
                 </div>

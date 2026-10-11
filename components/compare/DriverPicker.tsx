@@ -60,7 +60,7 @@ export function DriverPicker({ label, value, onChange, drivers, color }: {
         <div className="absolute inset-x-0 top-full z-30 border border-separator border-t-tint bg-surface-1 shadow-popover">
           <ul id={`${id}-list`} role="listbox" aria-label={`${label} results`} className="max-h-64 overflow-y-auto p-1">
             {shown.map((d, i) => (
-              <li key={d.driverId}>
+              <li key={d.driverId} role="presentation">
                 <button id={`${id}-option-${i}`} type="button" role="option" aria-selected={value === d.driverId} tabIndex={-1} onMouseDown={(e) => e.preventDefault()} onClick={() => choose(d)} className={cn("flex min-h-12 w-full items-center gap-3 px-3 text-left", i === activeIndex ? "bg-fill-2" : "hover:bg-fill-1")}>
                   <span className="min-w-0 flex-1"><span className="block text-callout font-semibold text-paper">{d.givenName} {d.familyName}</span><span className="block text-caption text-label-3">{d.nationality}{d.code && ` · ${d.code}`}</span></span>
                   {value === d.driverId && <Check className="h-4 w-4 shrink-0 text-tint" aria-hidden />}
