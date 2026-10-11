@@ -2,7 +2,8 @@ import TeamStandings from "@/components/teams/TeamStandings";
 import { getConstructorStandings } from "@/lib/api/jolpica";
 import constructorsData from "@/lib/data/constructors.json";
 import { getLiveTeamColours, resolveTeamColour } from "@/lib/api/teamLogos";
-import { teamColor } from "@/lib/theme/teams";
+import { getSeasonCars } from "@/lib/api/cars";
+import { shortTeamName, teamColor } from "@/lib/theme/teams";
 
 export const metadata = { title: "Teams" };
 
@@ -12,9 +13,10 @@ const CURRENT_IDS = ["ferrari", "mercedes", "red_bull", "mclaren", "alpine", "as
 export default async function TeamsPage() {
   const season = String(new Date().getFullYear());
   let standings: any[] = [];
-  const [standingsResult, liveColours] = await Promise.all([
+  const [standingsResult, liveColours, cars] = await Promise.all([
     getConstructorStandings("current").catch(() => []),
     getLiveTeamColours(),
+    getSeasonCars().catch(() => []),
   ]);
   standings = standingsResult ?? [];
 
@@ -39,7 +41,10 @@ export default async function TeamsPage() {
             founded: local?.founded ?? 0,
           };
         })
-      : constructorsData
+      : cars.length ? cars.map((car) => {
+          const local = constructorsData.find((c) => c.id === car.constructorId);
+          return { constructorId: car.constructorId, name: local?.name ?? shortTeamName(null, car.constructorId), nationality: local?.nationality ?? "", position: 0, points: 0, wins: 0, championships: local?.championships ?? 0, color: local?.color ?? teamColor(car.constructorId), base: local?.base ?? "", founded: local?.founded ?? 0 };
+        }) : constructorsData
           .filter((c) => CURRENT_IDS.includes(c.id))
           .map((c) => ({
             constructorId: c.id,

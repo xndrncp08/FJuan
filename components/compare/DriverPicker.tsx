@@ -31,7 +31,7 @@ export function DriverPicker({ label, value, onChange, drivers, color }: {
   };
 
   return (
-    <div className="relative min-w-0 border border-separator bg-surface-1 p-4 sm:p-5" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false); }}>
+    <div className="relative min-w-0 border border-separator bg-surface-1 p-4 focus-within:ring-2 focus-within:ring-tint/60 sm:p-5" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false); }}>
       <label htmlFor={id} className="mb-3 flex items-center gap-2 text-footnote font-semibold" style={{ color }}>
         <span className="h-2 w-2" style={{ background: color }} aria-hidden />{label}
       </label>

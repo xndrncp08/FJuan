@@ -13,12 +13,14 @@ export function EmptyState({
   description,
   action,
   className,
+  as: Heading = "h2",
 }: {
   icon?: React.ReactNode;
   title: React.ReactNode;
   description?: React.ReactNode;
   action?: React.ReactNode;
   className?: string;
+  as?: "h1" | "h2" | "h3";
 }) {
   return (
     <div className={cn("flex flex-col items-center px-6 py-14 text-center", className)}>
@@ -27,7 +29,7 @@ export function EmptyState({
           {icon}
         </div>
       )}
-      <h3 className="text-title-3 text-paper">{title}</h3>
+      <Heading className="text-title-3 text-paper">{title}</Heading>
       {description && <p className="mt-1.5 max-w-sm text-subhead text-label-3">{description}</p>}
       {action && <div className="mt-5">{action}</div>}
     </div>

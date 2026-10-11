@@ -563,7 +563,7 @@ export default function DeltaDashboard() {
           {q.isFetching && <Spinner className="h-4 w-4" label="Updating" />}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex h-11 items-center gap-2 border border-[var(--glass-edge)] bg-fill-1 pl-3 text-[0.75rem] font-bold uppercase tracking-[0.12em] text-label-3">
+          <label className="flex h-11 items-center gap-2 border border-[var(--glass-edge)] bg-fill-1 pl-3 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-tint text-[0.75rem] font-bold uppercase tracking-[0.12em] text-label-3">
             Driver
             <select value={r.driver.number} onChange={(e) => { setDriver(Number(e.target.value)); setInspectedLap(undefined); setHoverLap(null); }} className="h-full bg-transparent pr-2 font-mono text-[0.8125rem] normal-case tracking-normal text-paper outline-none">
               {r.drivers.map((d) => (

@@ -23,7 +23,7 @@ export default function TeamStandings({ teams, season, available }: { teams: Sta
   const [query, setQuery] = useState("");
   const [nationality, setNationality] = useState("");
   const [order, setOrder] = useState("championship");
-  const countries = [...new Set(teams.map((t) => t.nationality))].sort();
+  const countries = [...new Set(teams.map((t) => t.nationality).filter(Boolean))].sort();
   const shown = teams.filter((t) => `${t.name} ${t.base}`.toLowerCase().includes(query.trim().toLowerCase()) && (!nationality || t.nationality === nationality)).sort((a, b) => order === "titles" ? b.championships - a.championships : order === "name" ? a.name.localeCompare(b.name) : a.position - b.position);
   const reset = () => { setQuery(""); setNationality(""); setOrder("championship"); };
   const leader = teams[0]?.points || 1;
@@ -35,7 +35,7 @@ export default function TeamStandings({ teams, season, available }: { teams: Sta
         eyebrow={`${season} season`}
         title={available ? "Constructor Standings" : "Team Directory"}
         watermark="CTORS"
-        description="The constructors’ championship — points, wins, and every team’s title history."
+        description={available ? "The constructors’ championship — points, wins, and every team’s title history." : "Explore the season’s teams, their drivers and the cars they race."}
       />
 
       <Section className="pt-0 sm:pt-0">

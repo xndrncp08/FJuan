@@ -118,7 +118,7 @@ export default function LivePage() {
                 subtitle={driversQuery.isPending ? "Loading drivers…" : `${drivers.length} drivers in this session`}
               />
               {drivers.length ? (
-                <DriverSelector drivers={drivers} selected={selected} onSelect={(number) => { setSelected(number); setDriversOpen(false); }} />
+                <DriverSelector drivers={drivers} selected={selected} onSelect={(number, keepOpen) => { setSelected(number); if (!keepOpen) { setDriversOpen(false); requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('[aria-label="Change Driver"]')?.focus()); } }} />
               ) : driversQuery.isError ? <EmptyState title="Drivers unavailable" description="OpenF1 didn’t respond. Choose another session or retry this one." action={<Button onClick={() => void driversQuery.refetch()}>Retry drivers</Button>} /> : !driversQuery.isPending ? <EmptyState title="No drivers listed" description="This session has no driver data yet. Try another session." /> : (
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-2">
                   {Array.from({ length: 10 }, (_, i) => (
@@ -161,7 +161,7 @@ function StepSummary({ step, title, detail, onChange }: { step: string; title: s
         <p className="truncate text-headline text-paper">{title}</p>
         <p className="truncate text-footnote text-label-3">{detail}</p>
       </div>
-      <Button size="sm" onClick={onChange}>
+      <Button size="sm" aria-label={`Change ${step}`} onClick={onChange}>
         Change
         <ChevronDown className="h-3.5 w-3.5" aria-hidden />
       </Button>

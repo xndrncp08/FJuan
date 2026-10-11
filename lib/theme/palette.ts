@@ -27,11 +27,11 @@ export const SURFACE_1 = "#1F0E0B"; // cards
 export const SURFACE_2 = "#2A1612"; // nested / hovered cards
 export const SURFACE_3 = "#361E19"; // controls on cards, tooltips
 
-// ─── Text tiers (PAPER at fixed alphas; all ≥ 4.5:1 on SURFACE_2 but the last) ─
+// ─── Text tiers (PAPER at fixed alphas; all ≥ 4.5:1 on SURFACE_3) ─
 export const LABEL_1 = PAPER;
 export const LABEL_2 = "rgba(245,233,228,0.72)";
 export const LABEL_3 = "rgba(245,233,228,0.64)";
-export const LABEL_4 = "rgba(245,233,228,0.32)"; // decorative / disabled only
+export const LABEL_4 = "rgba(245,233,228,0.60)"; // quieter supporting text and zero values
 
 // ─── Tint: accent readable as small text (≈5:1 on CANVAS) ────────────────
 export const TINT = "#FF7A52";

@@ -15,7 +15,7 @@ import { Card } from "@/components/ui/Card";
 import { Stat, StatGrid } from "@/components/ui/Stat";
 import { ButtonLink } from "@/components/ui/Button";
 import { PageIndex } from "@/components/ui/PageIndex";
-import { teamColor } from "@/lib/theme/teams";
+import { shortTeamName, teamColor } from "@/lib/theme/teams";
 import { cn } from "@/lib/utils/cn";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import { getSeasonCar } from "@/lib/api/cars";
@@ -44,12 +44,12 @@ export default async function ConstructorProfilePage({ params }: { params: Promi
     getSeasonCar(constructorId).catch(() => null),
   ]);
   const liveTeam = standings.find((s: any) => s.Constructor?.constructorId === constructorId);
-  if (!local && !liveTeam) notFound();
+  if (!local && !liveTeam && !car) notFound();
   const carImage = car ? f1CarImageUrl(constructorId, car.season, "right", 1200) : null;
 
   const entry = standings.find((s: any) => s.Constructor?.constructorId === constructorId);
   const team = {
-    name: entry?.Constructor?.name ?? local?.name ?? constructorId,
+    name: entry?.Constructor?.name ?? local?.name ?? shortTeamName(null, constructorId),
     nationality: entry?.Constructor?.nationality ?? local?.nationality ?? "",
     position: entry ? parseInt(entry.position) : null,
     points: entry ? parseFloat(entry.points) : 0,
@@ -121,16 +121,16 @@ export default async function ConstructorProfilePage({ params }: { params: Promi
           <div className="card mt-8 p-5 sm:p-6">
             <StatGrid min={110}>
               <Stat size="lg" label={`${season} position`} value={team.position ? `P${team.position}` : "—"} />
-              <Stat size="lg" label="Points" value={team.points} />
-              <Stat size="lg" label="Wins" value={team.wins} />
+              <Stat size="lg" label="Points" value={entry ? team.points : "—"} />
+              <Stat size="lg" label="Wins" value={entry ? team.wins : "—"} />
               <Stat size="lg" label="Podiums" value={podiums} />
-              <Stat size="lg" label="Points per race" value={completed ? (team.points / completed).toFixed(1) : "—"} hint="Season points ÷ completed races" />
+              <Stat size="lg" label="Points per race" value={completed && entry ? (team.points / completed).toFixed(1) : "—"} hint="Season points ÷ completed races" />
             </StatGrid>
           </div>
         </div>
       </header>
 
-      <div className="container-page"><PageIndex items={[...(car ? [{ href: "#team-car", label: "The car" }] : []), { href: "#team-season", label: "Season performance" }, { href: "#team-drivers", label: "Drivers" }, { href: "#team-races", label: "Race record" }]} /></div>
+      <div className="container-page"><PageIndex items={[...(car ? [{ href: "#team-car", label: "The car" }] : []), ...(series.length ? [{ href: "#team-season", label: "Season performance" }] : []), ...(drivers.length ? [{ href: "#team-drivers", label: "Drivers" }] : []), ...(races.length ? [{ href: "#team-races", label: "Race record" }] : [])]} /></div>
       <Section className="pt-6 sm:pt-8">
         <div className="space-y-5">
           {car && (

@@ -46,7 +46,7 @@
     /* Text tiers — paper at fixed alpha */
     --label-2: rgb(var(--paper) / 0.72);
     --label-3: rgb(var(--paper) / 0.64);
-    --label-4: rgb(var(--paper) / 0.32);
+    --label-4: rgb(var(--paper) / 0.60);
 
     /* Lines and fills */
     --hairline: rgb(var(--paper) / 0.08);

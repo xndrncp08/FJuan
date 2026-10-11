@@ -1,4 +1,5 @@
 export function PageIndex({ items, label = "On this page" }: { items: { href: string; label: string }[]; label?: string }) {
+  if (!items.length) return null;
   return (
     <nav aria-label={label} className="page-index">
       <span className="shrink-0 text-caption font-semibold uppercase tracking-widest text-label-3">{label}</span>
