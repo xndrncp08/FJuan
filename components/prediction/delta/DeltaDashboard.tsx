@@ -20,7 +20,6 @@
 import { memo, useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Area,
   Bar,
@@ -38,6 +37,10 @@ import {
 } from "recharts";
 import { ArrowDown, ArrowRight, ArrowUp, Check, Minus, TrendingDown, TrendingUp, X } from "lucide-react";
 import { AXIS, ChartTooltip, CURSOR_BAR, CURSOR_LINE, GRID, SERIES } from "@/components/ui/chart";
+import { InsightNote } from "@/components/ui/InsightNote";
+import { SelectField } from "@/components/ui/Fields";
+import { Button } from "@/components/ui/Button";
+import { PageIndex } from "@/components/ui/PageIndex";
 import { Segmented } from "@/components/ui/Segmented";
 import { EmptyState, Skeleton, Spinner } from "@/components/ui/States";
 import { TeamLogo } from "@/components/ui/TeamLogo";
@@ -66,7 +69,7 @@ async function getJson<T>(url: string): Promise<T> {
 
 function Panel({ title, subtitle, accessory, children, className }: { title: string; subtitle?: React.ReactNode; accessory?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
-    <section className={cn("glass p-4 sm:p-5", className)}>
+    <section className={cn("card p-4 sm:p-5", className)}>
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-title-3 text-paper">{title}</h2>
@@ -101,27 +104,17 @@ function Legend({ items }: { items: { label: string; color: string; dashed?: boo
 // ─── Live delta ──────────────────────────────────────────────────────────────
 
 function LiveDelta({ report, lap }: { report: DeltaReport; lap: number | null }) {
-  const reduce = useReducedMotion();
   const row = report.laps.find((l) => l.lap === lap) ?? null;
   const d = row?.delta ?? null;
   const optimistic = d !== null && d < 0;
   return (
-    <div className="glass relative flex h-full flex-col justify-between overflow-hidden p-5" aria-live="polite">
+    <div className="card relative flex h-full flex-col justify-between overflow-hidden p-5" id="lap-inspection" aria-live="off">
       <div aria-hidden className="absolute inset-0 opacity-60" style={{ background: `radial-gradient(120% 90% at 100% 0%, ${optimistic ? SERIES.actual : SERIES.predicted}22, transparent 60%)` }} />
       <div className="relative">
-        <div className="label-caps text-[0.75rem] text-label-3">Live delta · lap {row?.lap ?? "—"}</div>
-        <AnimatePresence mode="popLayout" initial={false}>
-          <motion.div
-            key={`${row?.lap}`}
-            initial={reduce ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduce ? undefined : { opacity: 0, y: -8 }}
-            transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-            className="mt-2 font-display text-[clamp(2.2rem,5vw,3.1rem)] leading-none tabular-nums text-paper"
-          >
-            {d === null ? "—" : formatDelta(d)}
-          </motion.div>
-        </AnimatePresence>
+        <div className="label-caps text-[0.75rem] text-label-3">Selected delta · lap {row?.lap ?? "—"}</div>
+        <div className="mt-2 font-display text-[clamp(2.2rem,5vw,3.1rem)] leading-none tabular-nums text-paper">
+          {d === null ? "—" : formatDelta(d)}
+        </div>
         {d !== null && (
           <p className="mt-2 flex items-center gap-1.5 text-subhead text-label-2">
             {optimistic ? <TrendingDown className="h-4 w-4 text-tint" aria-hidden /> : <TrendingUp className="h-4 w-4 text-info" aria-hidden />}
@@ -230,7 +223,7 @@ const LapTimesChart = memo(function LapTimesChart({
       {view === "overlay" ? (
         <div className="h-[300px]">
           <ResponsiveContainer>
-            <ComposedChart data={data} margin={{ top: 16, right: 12, bottom: 0, left: 0 }} {...handlers}>
+            <ComposedChart accessibilityLayer data={data} margin={{ top: 16, right: 12, bottom: 0, left: 0 }} {...handlers}>
               {gradient}
               <CartesianGrid {...GRID} />
               {xAxis}
@@ -251,7 +244,7 @@ const LapTimesChart = memo(function LapTimesChart({
               </figcaption>
               <div className="h-[260px]">
                 <ResponsiveContainer>
-                  <ComposedChart data={data} margin={{ top: 16, right: 12, bottom: 0, left: 0 }} syncId="delta-split" {...handlers}>
+                  <ComposedChart accessibilityLayer data={data} margin={{ top: 16, right: 12, bottom: 0, left: 0 }} syncId="delta-split" {...handlers}>
                     {gradient}
                     <CartesianGrid {...GRID} />
                     {xAxis}
@@ -372,7 +365,7 @@ const CornerChart = memo(function CornerChart({ report }: { report: DeltaReport 
   return (
     <div className="h-[240px]">
       <ResponsiveContainer>
-        <BarChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }} barGap={2}>
+        <BarChart accessibilityLayer data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }} barGap={2}>
           <CartesianGrid {...GRID} />
           <XAxis dataKey="name" {...AXIS} />
           <YAxis width={44} {...AXIS} />
@@ -456,7 +449,7 @@ function Classification() {
       </div>
     );
   }
-  if (q.isError) return <EmptyState title="Backtest unavailable" description={(q.error as Error).message} />;
+  if (q.isError) return <EmptyState title="Backtest unavailable" description={(q.error as Error).message} action={<Button onClick={() => void q.refetch()}>Retry race result</Button>} />;
   const b = q.data;
   return (
     <div>
@@ -474,8 +467,10 @@ function Classification() {
           </div>
         ))}
       </div>
-      <div className="overflow-x-auto">
+      <p className="mb-3 text-caption text-label-3">Position MAE is the average finishing-position error. Rank correlation approaches 1 for a better match. Scroll across for the full classification.</p>
+      <div className="table-scroll" tabIndex={0} role="region" aria-label="Predicted and actual race classification">
         <table className="w-full min-w-[460px] text-left">
+          <caption className="sr-only">Predicted and actual finishing positions and their differences</caption>
           <caption className="sr-only">Predicted versus actual finishing positions, {b.raceName}</caption>
           <thead>
             <tr className="label-caps border-b border-hairline text-[0.6875rem] text-label-3">
@@ -527,6 +522,7 @@ export default function DeltaDashboard() {
   const [synthetic, setSynthetic] = useState(false);
   const [view, setView] = useState<"overlay" | "split">("overlay");
   const [hoverLap, setHoverLap] = useState<number | null>(null);
+  const [inspectedLap, setInspectedLap] = useState<number | undefined>();
 
   const q = useQuery({
     queryKey: ["delta", driver, synthetic],
@@ -536,7 +532,7 @@ export default function DeltaDashboard() {
   });
   const r = q.data;
 
-  if (q.isError && !r) return <EmptyState title="Report unavailable" description={(q.error as Error).message} />;
+  if (q.isError && !r) return <EmptyState title="Report unavailable" description="Race telemetry could not be loaded. Try the request again." action={<Button onClick={() => void q.refetch()}>Retry report</Button>} />;
 
   if (!r) {
     return (
@@ -555,21 +551,23 @@ export default function DeltaDashboard() {
   }
 
   const lastScored = [...r.laps].reverse().find((l) => l.clean && !l.training && l.delta !== null)?.lap ?? null;
-  const activeLap = hoverLap ?? lastScored;
+  const activeLap = hoverLap ?? (r.laps.some((l) => l.lap === inspectedLap) ? inspectedLap! : lastScored);
   const sectorMae = r.stats.sectors.reduce((s, x) => s + x.mae, 0) / 3;
 
   return (
     <div className="space-y-4">
+      <PageIndex label="Explore report" items={[{ href: "#review-pace", label: "Lap pace" }, { href: "#review-strategy", label: "Pit strategy" }, { href: "#review-sectors", label: "Sectors" }, { href: "#review-result", label: "Race result" }]} />
+      <InsightNote title="What do accuracy, MAE and bias mean?">MAE is mean absolute error: the average size of the prediction’s error, without direction. Smaller is better. Bias is signed error: a positive value means the model was slower than reality. Calibration laps and unclean laps are excluded from scoring. The gauge arcs are visual cues; use the printed values to compare reports.</InsightNote>
       {/* Controls */}
-      <div className="glass flex flex-col gap-3 p-3 sm:p-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="card flex flex-col gap-3 p-3 sm:p-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <SourceBadge source={r.source} detail={`${r.session.circuit} ${r.session.year} · ${r.session.name}`} reason={r.fallbackReason} />
           {q.isFetching && <Spinner className="h-4 w-4" label="Updating" />}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex h-9 items-center gap-2 border border-[var(--glass-edge)] bg-fill-1 pl-3 text-[0.75rem] font-bold uppercase tracking-[0.12em] text-label-3">
+          <label className="flex h-11 items-center gap-2 border border-[var(--glass-edge)] bg-fill-1 pl-3 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-tint text-[0.75rem] font-bold uppercase tracking-[0.12em] text-label-3">
             Driver
-            <select value={r.driver.number} onChange={(e) => setDriver(Number(e.target.value))} className="h-full bg-transparent pr-2 font-mono text-[0.8125rem] normal-case tracking-normal text-paper outline-none">
+            <select value={r.driver.number} onChange={(e) => { setDriver(Number(e.target.value)); setInspectedLap(undefined); setHoverLap(null); }} className="h-full bg-transparent pr-2 font-mono text-[0.8125rem] normal-case tracking-normal text-paper outline-none">
               {r.drivers.map((d) => (
                 <option key={d.number} value={d.number} className="bg-surface-2">
                   {d.code} · {d.name}
@@ -580,14 +578,17 @@ export default function DeltaDashboard() {
           <button
             type="button"
             aria-pressed={synthetic}
-            onClick={() => setSynthetic((v) => !v)}
-            className={cn("pressable flex h-9 items-center border px-3 text-[0.75rem] font-bold uppercase tracking-[0.12em]", synthetic ? "border-warning/60 bg-warning/10 text-warning" : "border-[var(--glass-edge)] text-label-2 hover:text-paper")}
+            onClick={() => { setSynthetic((v) => !v); setInspectedLap(undefined); setHoverLap(null); }}
+            className={cn("pressable flex h-11 items-center border px-3 text-[0.75rem] font-bold uppercase tracking-[0.12em]", synthetic ? "border-warning/60 bg-warning/10 text-warning" : "border-[var(--glass-edge)] text-label-2 hover:text-paper")}
           >
-            Offline engine
+            Simulated data
           </button>
         </div>
       </div>
 
+      {r.source === "synthetic" && <p role="status" className="status-line">This report uses simulated telemetry{r.fallbackReason ? `: ${r.fallbackReason}` : "."} Model error against a simulation is not a validation against measured telemetry.</p>}
+      {q.isError && <p role="status" className="status-line">The new selection couldn’t load; the previous report remains visible. <Button size="sm" variant="plain" onClick={() => void q.refetch()}>Retry report</Button></p>}
+      <div className="grid items-end gap-3 sm:grid-cols-[minmax(200px,300px)_1fr]"><SelectField label="Inspect a lap" value={inspectedLap ?? ""} aria-describedby="lap-inspection" onChange={(e) => { setInspectedLap(e.target.value ? Number(e.target.value) : undefined); setHoverLap(null); }}><option value="">Latest scored lap ({lastScored ?? "—"})</option>{r.laps.map((l) => <option key={l.lap} value={l.lap}>Lap {l.lap}{l.training ? " · Calibration" : !l.clean ? " · Excluded" : " · Scored"}</option>)}</SelectField><p className="pb-2 text-footnote text-label-3">Choose a lap to inspect its exact values. Hover or focus a chart to explore the trace.</p></div>
       {/* Dials + live delta */}
       <div className="grid gap-3 lg:grid-cols-[1fr_minmax(260px,320px)]">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -599,7 +600,7 @@ export default function DeltaDashboard() {
         <LiveDelta report={r} lap={activeLap} />
       </div>
 
-      <Panel
+      <div id="review-pace"><Panel
         title="Lap Times"
         subtitle={`${r.driver.name} · predicted from lap ${r.model.trainingLaps[r.model.trainingLaps.length - 1] ?? 1} onward`}
         accessory={
@@ -610,20 +611,20 @@ export default function DeltaDashboard() {
         }
       >
         <LapTimesChart report={r} view={view} onHover={setHoverLap} />
-      </Panel>
+      </Panel></div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="Lap Deltas" subtitle="Predicted minus actual, scored laps only" accessory={<Legend items={[{ label: "Model faster", color: SERIES.actual, swatch: "box" }, { label: "Model slower", color: SERIES.predicted, swatch: "box" }]} />}>
           <LapDeltaBars report={r} onHover={setHoverLap} />
         </Panel>
-        <Panel title="Pit Strategy" subtitle="Actual stints vs the model's optimal one-stop window">
+        <div id="review-strategy"><Panel title="Pit Strategy" subtitle="Actual stints vs the model's optimal one-stop window">
           <Strategy report={r} />
-        </Panel>
+        </Panel></div>
       </div>
 
-      <Panel title="Sector Deltas" subtitle="Mean sector times on scored laps. Tyre wear is weighted toward braking-heavy sectors.">
+      <div id="review-sectors"><Panel title="Sector Deltas" subtitle="Mean sector times on scored laps. Tyre wear is weighted toward braking-heavy sectors.">
         <Sectors report={r} />
-      </Panel>
+      </Panel></div>
 
       <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
         <Panel
@@ -655,9 +656,9 @@ export default function DeltaDashboard() {
         </Panel>
       </div>
 
-      <Panel title="Race Result" subtitle="Classification engine backtest on the latest finished race">
+      <div id="review-result"><Panel title="Race Result" subtitle="Classification engine backtest on the latest finished race">
         <Classification />
-      </Panel>
+      </Panel></div>
 
       <div className="flex justify-end">
         <Link href="/telemetry" className="pressable inline-flex h-10 items-center gap-2 border border-accent/60 px-4 text-[0.8125rem] font-bold uppercase tracking-[0.14em] text-paper hover:bg-accent/15">

@@ -9,11 +9,12 @@ import { useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeftRight, UserX } from "lucide-react";
 import { useDrivers, useDriverStats, useDriverStandings } from "@/lib/hooks/useDrivers";
-import type { DriverStats } from "@/lib/types/driver";
+import type { Driver, DriverStats } from "@/lib/types/driver";
 import { A_COLOR, B_COLOR, ChartsSection, DriverPicker, HeadToHead, StatsBattle } from "@/components/compare";
 import { battleRows, leader } from "@/components/compare/StatsBattle";
 import { PageHeader, Section } from "@/components/ui/Section";
-import { IconButton } from "@/components/ui/Button";
+import { Button, IconButton } from "@/components/ui/Button";
+import { InsightNote } from "@/components/ui/InsightNote";
 import { EmptyState, Skeleton } from "@/components/ui/States";
 
 const DEFAULT_A = "max_verstappen";
@@ -24,7 +25,7 @@ function currentTeam(stats: DriverStats, standings: any[]): string {
   return s?.Constructors?.[0]?.name ?? stats.seasonResults?.[0]?.team ?? stats.currentTeam?.name ?? "—";
 }
 
-export default function CompareClient() {
+export default function CompareClient({ historicalDrivers }: { historicalDrivers: Driver[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -32,19 +33,19 @@ export default function CompareClient() {
   const bId = params.get("b") || (aId === DEFAULT_B ? DEFAULT_A : DEFAULT_B);
 
   const setPair = useCallback(
-    (a: string, b: string) => router.replace(`${pathname}?a=${a}&b=${b}`, { scroll: false }),
+    (a: string, b: string) => router.replace(`${pathname}?${new URLSearchParams({ a, b })}`, { scroll: false }),
     [router, pathname],
   );
 
   const { data: drivers } = useDrivers();
   const { data: standings } = useDriverStandings();
-  const { data: a, isLoading: aLoading } = useDriverStats(aId);
+  const { data: a, isLoading: aLoading, refetch: reloadA } = useDriverStats(aId);
   // Load B after A: each driver is a burst of paginated Jolpica calls, and
   // firing both at once trips the API's per-second limit.
-  const { data: b, isLoading: bLoading } = useDriverStats(bId, !aLoading);
+  const { data: b, isLoading: bLoading, refetch: reloadB } = useDriverStats(bId, !aLoading);
 
   // Make sure the selected drivers are pickable even if they're not on this season's grid.
-  const options = [...(drivers ?? [])];
+  const options = [...new Map([...(drivers ?? []), ...historicalDrivers].map((d) => [d.driverId, d])).values()];
   for (const s of [a, b]) {
     if (s && !options.some((d) => d.driverId === s.driver.driverId)) options.unshift(s.driver);
   }
@@ -78,6 +79,7 @@ export default function CompareClient() {
           </div>
         ) : a && b ? (
           <div className="space-y-5">
+            <InsightNote title="How to read a career comparison">Totals reflect each driver’s full career. Use rates to account for different numbers of races. Championship points systems changed across eras; accumulated points alone do not measure relative ability.</InsightNote>
             <HeadToHead a={a} b={b} teamA={currentTeam(a, standings ?? [])} teamB={currentTeam(b, standings ?? [])} leadsA={leadsA} leadsB={leadsB} />
             <ChartsSection a={a} b={b} />
             <div>
@@ -87,7 +89,7 @@ export default function CompareClient() {
           </div>
         ) : (
           <div className="card">
-            <EmptyState icon={<UserX />} title="Couldn’t load these drivers" description="The stats service didn’t respond. Try another pair, or refresh in a moment." />
+            <EmptyState icon={<UserX />} title="Couldn’t load these drivers" description="The stats service didn’t respond. Your driver selection is saved; try loading it again." action={<Button variant="filled" onClick={() => { void reloadA(); void reloadB(); }}>Reload comparison</Button>} />
           </div>
         )}
       </Section>

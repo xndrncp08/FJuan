@@ -1,0 +1,3 @@
+# Analytical tools
+
+Pace exploration precedes detailed lap tables. Explain recorded samples, excluded laps, win probabilities, MAE and bias next to the control they inform. Never imply simulated telemetry is measured data. Use complete source labels and a visible simulation explanation. Support native keyboard lap inspection alongside chart hover. Disable decorative plot animation and provide line patterns for second-series identity. Distinguish loading, no records, partial request failures and total request failures; preserve selections and offer a retry. Historical comparison searches the existing daily driver index, with current-grid suggestions first.

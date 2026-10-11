@@ -82,7 +82,7 @@ export default function ConstructorProfileCharts({
       <div className="h-[240px] sm:h-[280px]">
         <ResponsiveContainer width="100%" height="100%">
           {view === "race" ? (
-            <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -16 }} barCategoryGap="24%">
+            <BarChart accessibilityLayer data={data} margin={{ top: 4, right: 4, bottom: 0, left: -16 }} barCategoryGap="24%">
               <CartesianGrid {...GRID} />
               <XAxis dataKey="tick" {...AXIS} interval="preserveStartEnd" minTickGap={8} />
               <YAxis {...AXIS} width={40} allowDecimals={false} />
@@ -90,14 +90,14 @@ export default function ConstructorProfileCharts({
                 cursor={CURSOR_BAR}
                 content={<ChartTooltip title={title} format={(p) => [{ label: "Points", value: p[0].value, color: teamColor }]} />}
               />
-              <Bar dataKey="points" radius={[6, 6, 2, 2]} maxBarSize={28}>
+              <Bar isAnimationActive={false} dataKey="points" radius={[6, 6, 2, 2]} maxBarSize={28}>
                 {data.map((r) => (
                   <Cell key={r.round} fill={teamColor} fillOpacity={r.points > 0 ? 0.9 : 0.2} />
                 ))}
               </Bar>
             </BarChart>
           ) : view === "total" ? (
-            <AreaChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: -16 }}>
+            <AreaChart accessibilityLayer data={data} margin={{ top: 8, right: 4, bottom: 0, left: -16 }}>
               <defs>
                 <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={teamColor} stopOpacity={0.35} />
@@ -111,13 +111,13 @@ export default function ConstructorProfileCharts({
                 cursor={CURSOR_LINE}
                 content={<ChartTooltip title={title} format={(p) => [{ label: "Total", value: p[0].value, color: teamColor }]} />}
               />
-              <Area type="monotone" dataKey="cumPoints" stroke={teamColor} strokeWidth={2} fill={`url(#${gradId})`} activeDot={{ r: 4, strokeWidth: 0 }} />
+              <Area isAnimationActive={false} type="linear" dataKey="cumPoints" stroke={teamColor} strokeWidth={2} fill={`url(#${gradId})`} activeDot={{ r: 4, strokeWidth: 0 }} />
             </AreaChart>
           ) : (
-            <LineChart data={data.filter((r) => r.bestPos !== null)} margin={{ top: 8, right: 4, bottom: 0, left: -16 }}>
+            <LineChart accessibilityLayer data={data.filter((r) => r.bestPos !== null)} margin={{ top: 8, right: 4, bottom: 0, left: -16 }}>
               <CartesianGrid {...GRID} />
               <XAxis dataKey="tick" {...AXIS} interval="preserveStartEnd" minTickGap={8} />
-              <YAxis {...AXIS} reversed domain={[1, 20]} ticks={[1, 3, 10, 20]} width={40} tickFormatter={(v) => `P${v}`} />
+              <YAxis {...AXIS} reversed domain={[1, Math.max(20, ...raceSeries.map((r) => r.bestPos ?? 0))]} ticks={[1, 3, 10, Math.max(20, ...raceSeries.map((r) => r.bestPos ?? 0))]} width={40} tickFormatter={(v) => `P${v}`} />
               <ReferenceLine y={3} stroke={MEDAL.gold} strokeOpacity={0.35} strokeDasharray="4 4" />
               <ReferenceLine y={10} stroke="rgba(245,233,228,0.15)" strokeDasharray="4 4" />
               <Tooltip
@@ -125,7 +125,8 @@ export default function ConstructorProfileCharts({
                 content={<ChartTooltip title={title} format={(p) => [{ label: "Best finish", value: `P${p[0].value}`, color: teamColor }]} />}
               />
               <Line
-                type="monotone"
+                isAnimationActive={false}
+                type="linear"
                 dataKey="bestPos"
                 stroke={teamColor}
                 strokeWidth={2}

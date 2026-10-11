@@ -41,7 +41,7 @@ export function SeasonPicker({
       {older.length > 0 && (
         <label
           className={cn(
-            "pressable relative inline-flex h-10 items-center border pl-4 pr-9 text-[0.8125rem] font-bold uppercase tracking-[0.12em]",
+            "pressable relative inline-flex h-12 items-center border focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-tint pl-4 pr-9 text-[0.8125rem] font-bold uppercase tracking-[0.12em]",
             isOlder ? "border-accent bg-accent text-paper" : "border-hairline bg-fill-1 text-label-3 hover:text-paper",
           )}
         >

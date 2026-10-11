@@ -7,6 +7,9 @@
  */
 "use client";
 
+import Link from "next/link";
+import { PageIndex } from "@/components/ui/PageIndex";
+import { InsightNote } from "@/components/ui/InsightNote";
 import { useState } from "react";
 import { Activity, ChevronDown, CloudRain, RefreshCw, Sparkles, Thermometer, TriangleAlert, Wind, Zap } from "lucide-react";
 import type { DriverPrediction, RacePrediction } from "@/lib/types/prediction";
@@ -94,7 +97,7 @@ export default function PredictionClient({
             <Sparkles className="h-3.5 w-3.5" aria-hidden />
             Race prediction
           </p>
-          <h1 className="text-title-1 text-paper sm:text-display">{prediction.raceName}</h1>
+          <h1 className="profile-title text-paper">{prediction.raceName}</h1>
           <p className="mt-3 text-callout text-label-2">
             {prediction.circuitName} <span className="text-label-3">· {date}</span>
           </p>
@@ -134,8 +137,10 @@ export default function PredictionClient({
         </div>
       </header>
 
-      <Section className="pt-0 sm:pt-0">
+      <div className="container-page mb-6"><PageIndex items={[{ href: "#forecast-picks", label: "Leading contenders" }, { href: "#forecast-field", label: "Full forecast" }, { href: "#forecast-method", label: "How it works" }]} /></div>
+      <Section id="forecast-picks" className="pt-0 sm:pt-0">
         <div className="space-y-5">
+          <InsightNote title="How to read this forecast">Model scores combine eight weighted factors on a 0–100 scale. Win chances are normalized across the ten scored contenders and sum to approximately 100% after rounding. The leading three are the model’s preferred order; their win percentages are not probabilities of finishing on the podium.</InsightNote>
           {p1 && <PickCard driver={p1} field={field} isWet={isWet} isSprint={isSprint} />}
 
           <div className="grid gap-4 md:grid-cols-2 md:gap-5">
@@ -146,13 +151,13 @@ export default function PredictionClient({
         </div>
       </Section>
 
-      <Section className="pt-0 sm:pt-0">
+      <Section id="forecast-field" className="pt-0 sm:pt-0">
         <h2 className="mb-1 text-title-3 text-paper">Full forecast</h2>
         <p className="mb-4 text-footnote text-label-3">Win probability across the model’s top ten. Scores are out of 100.</p>
         <Forecast drivers={field.slice(0, 10)} />
       </Section>
 
-      <Section className="pt-0 sm:pt-0">
+      <Section id="forecast-method" className="pt-0 sm:pt-0">
         <Methodology isWet={isWet} isSprint={isSprint} />
       </Section>
     </>
@@ -163,7 +168,7 @@ function DriverName({ d, size = "md" }: { d: DriverPrediction; size?: "md" | "lg
   return (
     <>
       <div className={cn("text-label-2", size === "lg" ? "text-body" : "text-callout")}>{d.givenName}</div>
-      <div className={cn("truncate text-paper", size === "lg" ? "text-title-1" : "text-title-2")}>{d.familyName}</div>
+      <div className={cn("text-paper", size === "lg" ? "text-title-1" : "text-title-2")}>{d.familyName}</div>
       <div className="mt-2 flex items-center gap-2 text-footnote text-label-3">
         <TeamMark team={d.constructorId} size="sm" />
         {d.constructorName}
@@ -247,7 +252,7 @@ function PodiumCard({
         </div>
         <div className="text-right">
           <div className="tabular text-stat text-paper">{d.podiumProbability}%</div>
-          <div className="text-caption text-label-3">Score {d.score.toFixed(1)}</div>
+          <div className="text-caption text-label-3">Win chance</div><div className="mt-1 text-caption text-label-3">Score {d.score.toFixed(1)}</div>
         </div>
       </div>
       {d.insight && <p className="mt-5 text-subhead text-label-2">{d.insight}</p>}
@@ -268,6 +273,7 @@ function Forecast({ drivers }: { drivers: DriverPrediction[] }) {
   const top = Math.max(1, ...drivers.map((d) => d.podiumProbability));
   return (
     <Card padding="none" className="overflow-hidden">
+      <div className="hidden grid-cols-[2rem_minmax(0,14rem)_1fr_3.5rem_3.5rem] gap-4 border-b border-hairline px-5 py-3 text-caption font-semibold uppercase tracking-widest text-label-3 sm:grid"><span>Rank</span><span>Driver</span><span>Win chance</span><span className="text-right">Score</span><span className="text-right">%</span></div>
       <ol>
         {drivers.map((d, i) => (
           <li
@@ -278,7 +284,7 @@ function Forecast({ drivers }: { drivers: DriverPrediction[] }) {
             <div className="min-w-0">
               <div className="flex items-center gap-2 truncate text-callout">
                 <TeamMark team={d.constructorId} size="sm" />
-                <span className="font-semibold text-paper">{d.familyName}</span>
+                <Link href={`/drivers/${d.driverId}`} className="inline-flex min-h-11 items-center font-semibold text-paper hover:text-tint">{d.familyName}</Link>
                 {d.factors.gridPenalty < 50 && <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-warning" aria-label="Grid penalty" />}
               </div>
               <div className="mt-1.5 h-1.5 overflow-hidden bg-fill-1 sm:hidden" aria-hidden>

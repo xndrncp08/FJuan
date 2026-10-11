@@ -11,6 +11,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CalendarX, ChevronRight } from "lucide-react";
+import { Segmented } from "@/components/ui/Segmented";
+import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/States";
 import { cn } from "@/lib/utils/cn";
@@ -35,6 +37,7 @@ function relativeDays(start: Date, now: number) {
 
 export default function RaceGrid({ races, season }: { races: any[]; season: string }) {
   // Time-dependent UI is resolved after mount so server and client agree.
+  const [period, setPeriod] = useState<"all" | "upcoming" | "complete">("all");
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => setNow(Date.now()), []);
 
@@ -49,8 +52,9 @@ export default function RaceGrid({ races, season }: { races: any[]; season: stri
   const isDone = (r: any) => now !== null && raceStart(r).getTime() + RACE_DURATION_MS < now;
   const nextIndex = now === null ? -1 : races.findIndex((r) => !isDone(r));
 
+  const visible = now === null || period === "all" ? races : races.filter((r) => period === "complete" ? isDone(r) : !isDone(r));
   const months: { key: string; label: string; races: any[] }[] = [];
-  for (const r of races) {
+  for (const r of visible) {
     const d = new Date(`${r.date}T00:00:00Z`);
     const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
     const label = d.toLocaleDateString("en-US", { month: "long", timeZone: "UTC" });
@@ -60,6 +64,12 @@ export default function RaceGrid({ races, season }: { races: any[]; season: stri
 
   return (
     <div className="space-y-8">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-y border-hairline py-4">
+        <Segmented aria-label="Calendar rounds" value={period} onChange={setPeriod} segments={[{ value: "all", label: "All rounds" }, { value: "upcoming", label: "Upcoming" }, { value: "complete", label: "Completed" }]} />
+        {nextIndex >= 0 && period !== "complete" && <a href={`#round-${races[nextIndex].round}`} className="pressable inline-flex min-h-11 items-center gap-2 text-subhead font-semibold text-tint">Jump to next race<ChevronRight className="h-4 w-4" aria-hidden /></a>}
+      </div>
+      <p role="status" className="text-footnote text-label-3">{visible.length} of {races.length} rounds · {period === "all" ? "Full season" : period === "upcoming" ? "Races still to come" : "Finished race weekends"}</p>
+      {!visible.length && <div className="card"><EmptyState title={period === "upcoming" ? "This season is complete" : "No completed rounds yet"} description="The full calendar remains available." action={<Button onClick={() => setPeriod("all")}>Show all rounds</Button>} /></div>}
       {months.map((m) => (
         <section className="calendar-month" key={m.key} aria-labelledby={`m-${m.key}`}>
           <h2 id={`m-${m.key}`} className="calendar-month-title mb-3 text-title-3 text-paper">
@@ -71,11 +81,11 @@ export default function RaceGrid({ races, season }: { races: any[]; season: stri
               const done = isDone(r);
               const next = idx === nextIndex;
               const d = new Date(`${r.date}T00:00:00Z`);
-              const href = done ? `/races/${season}/${r.round}` : `/tracks/${r.Circuit?.circuitId}`;
+              const href = `/races/${season}/${r.round}`;
               const sprint = !!r.Sprint;
 
               return (
-                <li key={r.round} className="border-b border-hairline last:border-0">
+                <li id={`round-${r.round}`} key={r.round} className="border-b border-hairline last:border-0">
                   <Link
                     href={href}
                     className={cn(
@@ -94,7 +104,7 @@ export default function RaceGrid({ races, season }: { races: any[]; season: stri
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className={cn("truncate text-callout font-semibold", done ? "text-label-2" : "text-paper")}>{r.raceName}</span>
+                        <span className={cn("text-callout font-semibold", done ? "text-label-2" : "text-paper")}>{r.raceName}</span>
                         {sprint && <Badge className="hidden sm:inline-flex">Sprint</Badge>}
                       </div>
                       <div className="mt-0.5 truncate text-footnote text-label-3">

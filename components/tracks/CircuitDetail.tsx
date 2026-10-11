@@ -11,9 +11,10 @@
 
 import { notFound } from "next/navigation";
 import { ArrowUpRight, Timer } from "lucide-react";
-import { getCircuit } from "@/lib/api/jolpica";
+import { getCircuit, getRaceSchedule } from "@/lib/api/jolpica";
 import circuitsData from "@/lib/data/circuits.json";
 import { DetailFrame, type DetailVariant } from "@/components/ui/DetailFrame";
+import { PageIndex } from "@/components/ui/PageIndex";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Stat, StatGrid } from "@/components/ui/Stat";
 import { ButtonLink } from "@/components/ui/Button";
@@ -26,12 +27,9 @@ export default async function CircuitDetail({ circuitId, variant }: { circuitId:
   const c = circuitsData.find((x) => x.id === circuitId);
   if (!c) notFound();
 
-  let apiCircuit: any = null;
-  try {
-    apiCircuit = await getCircuit(circuitId);
-  } catch {
-    // local data is enough
-  }
+  const season = String(new Date().getFullYear());
+  const [apiCircuit, schedule] = await Promise.all([getCircuit(circuitId).catch(() => null), getRaceSchedule(season).catch(() => [])]);
+  const weekend = schedule.find((r: any) => r.Circuit?.circuitId === circuitId);
 
   const details = [
     { label: "Country", value: c.country },
@@ -53,12 +51,14 @@ export default async function CircuitDetail({ circuitId, variant }: { circuitId:
       title={c.name}
       description={c.description || undefined}
     >
+        <div className="mb-6"><PageIndex items={[{ href: "#circuit-layout", label: "Track layout" }, { href: "#circuit-record", label: "Lap record & facts" }, ...(weekend ? [{ href: "#circuit-weekend", label: "Race weekend" }] : [])]} /></div>
         <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr] lg:gap-5">
-          <Card padding="none" className="overflow-hidden">
-            <div className="flex aspect-[16/10] items-center justify-center bg-surface-2/50 p-4 sm:p-8">
+          <Card id="circuit-layout" padding="none" className="overflow-hidden">
+            <figure className="tex-grid flex aspect-[16/10] items-center justify-center bg-surface-2/50 p-4 sm:p-8">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={c.layoutUrl} alt={`${c.name} track layout`} className="circuit-map h-full w-full object-contain" />
-            </div>
+              <figcaption className="sr-only">{c.name} circuit layout</figcaption>
+            </figure>
             <div className="border-t border-hairline p-5 sm:p-6">
               <StatGrid min={100}>
                 <Stat size="md" label="Lap length" value={c.length} />
@@ -68,12 +68,12 @@ export default async function CircuitDetail({ circuitId, variant }: { circuitId:
             </div>
           </Card>
 
-          <div className="space-y-4 lg:space-y-5">
+          <div id="circuit-record" className="space-y-4 lg:space-y-5">
             {c.lapRecord && (
               <Card>
                 <p className="flex items-center gap-2 label-caps text-[0.75rem] text-tint">
                   <Timer className="h-4 w-4" aria-hidden />
-                  Lap record
+                  Race lap record
                 </p>
                 <p className="tabular mt-2 text-stat-lg text-paper">{c.lapRecord}</p>
                 <p className="mt-2 text-subhead text-label-2">
@@ -108,6 +108,7 @@ export default async function CircuitDetail({ circuitId, variant }: { circuitId:
           </div>
         </div>
 
+        {weekend && <div id="circuit-weekend" className="mt-6 border-y border-hairline py-6"><p className="eyebrow mb-2">{season} · Round {weekend.round}</p><div className="flex flex-wrap items-center justify-between gap-4"><div><h2 className="text-title-3 text-paper">{weekend.raceName}</h2><p className="mt-2 text-subhead text-label-2">{new Date(`${weekend.date}T00:00:00Z`).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })}</p></div><ButtonLink href={`/races/${season}/${weekend.round}`} variant="filled">Weekend schedule & results</ButtonLink></div></div>}
         {variant === "page" && (
           <div className="mt-8">
             <ButtonLink href="/tracks">All circuits</ButtonLink>

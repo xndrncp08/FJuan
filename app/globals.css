@@ -46,7 +46,7 @@
     /* Text tiers — paper at fixed alpha */
     --label-2: rgb(var(--paper) / 0.72);
     --label-3: rgb(var(--paper) / 0.64);
-    --label-4: rgb(var(--paper) / 0.32);
+    --label-4: rgb(var(--paper) / 0.60);
 
     /* Lines and fills */
     --hairline: rgb(var(--paper) / 0.08);
@@ -631,4 +631,33 @@
 @media (max-width: 639px) {
   .championship-rail { grid-template-columns: 1fr 1fr; gap: 1.25rem; }
   .championship-rail > div:first-child { grid-column: 1 / -1; }
+}
+
+/* Precision controls and wayfinding, derived from the existing broadcast system. */
+@layer components {
+  .field-label { @apply mb-2 block text-caption font-semibold uppercase tracking-[0.12em] text-label-3; }
+  .field-control { @apply min-h-11 min-w-0 border border-separator bg-surface-1 text-[1rem] text-paper transition-colors placeholder:text-label-3 hover:border-paper/25; }
+  .field-control:focus-visible { border-color: rgb(var(--tint)); }
+  .field-control option { background: rgb(var(--surface-1)); }
+  .filter-toolbar { @apply mb-5 grid gap-4 border-y border-hairline py-5 sm:grid-cols-[minmax(0,1fr)_minmax(140px,200px)_minmax(140px,200px)]; }
+  .page-index { @apply flex flex-wrap items-center gap-x-6 gap-y-1 border-y border-hairline py-2; }
+  .insight-note { @apply border-y border-hairline px-1; }
+  .explore-routes { @apply grid border border-separator sm:grid-cols-2 lg:grid-cols-4; }
+  .explore-routes > li { @apply border-b border-separator last:border-b-0 sm:odd:border-r lg:border-b-0 lg:border-r lg:last:border-r-0; }
+  .explore-routes a { @apply transition-colors duration-200 hover:bg-fill-1; }
+  .profile-title { font-family: var(--font-display), Impact, sans-serif; font-weight: 400; text-transform: uppercase; letter-spacing: -0.025em; font-size: clamp(2.25rem, 5.8vw, 4.5rem); line-height: 1.08; overflow-wrap: anywhere; }
+  .profile-header figure { width: fit-content; }
+  .profile-header { @apply grid items-end gap-6 sm:grid-cols-[minmax(0,1fr)_auto]; }
+  .data-table { @apply w-full text-left text-subhead; }
+  .data-table th { @apply text-caption font-semibold uppercase tracking-[0.1em] text-label-3; }
+  .data-table th, .data-table td { @apply border-b border-hairline px-4 py-3; }
+  .data-table tbody tr:last-child > * { @apply border-b-0; }
+  .data-table td { @apply text-label-2; }
+  .data-table tbody tr:hover { @apply bg-fill-1; }
+  .table-scroll { @apply overflow-auto; scrollbar-width: thin; scrollbar-color: rgb(var(--label-4)) transparent; }
+  .table-scroll:focus-visible { outline-offset: -3px; }
+  .status-line { @apply border-l-2 border-tint bg-fill-1 px-4 py-3 text-subhead text-label-2; }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .explore-routes > li:nth-last-child(-n+2) { border-bottom: 0; }
 }

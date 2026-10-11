@@ -17,6 +17,8 @@ import { ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/States";
 import { TeamMark } from "@/components/ui/TeamMark";
 import { shortTeamName } from "@/lib/theme/teams";
+import { PageIndex } from "@/components/ui/PageIndex";
+import { WeekendSchedule } from "./WeekendSchedule";
 import ResultsTables from "./ResultsTables";
 import { cn } from "@/lib/utils/cn";
 
@@ -80,21 +82,23 @@ export default async function RaceDetail({ season, round, variant }: { season: s
         </>
       }
     >
+        <div className="mb-6"><PageIndex items={[...(results.length || quali.length ? [{ href: "#race-classification", label: "Classification" }] : []), { href: "#weekend-schedule", label: "Weekend schedule" }, { href: "#other-rounds", label: "Other rounds" }]} /></div>
         {!results.length && !quali.length ? (
           <Card>
-            <EmptyState icon={<Flag />} title="No results yet" description="Results appear here once the session has been classified." />
+            <EmptyState icon={<Flag />} title="Results will appear here" description="The weekend schedule is below. Official results become available once the session has been classified." action={<ButtonLink href={`/tracks/${info.Circuit?.circuitId}`}>Explore the circuit</ButtonLink>} />
           </Card>
         ) : (
           <div className="space-y-8">
             {results.length >= 3 && (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-4 sm:grid-cols-3">
                 {results.slice(0, 3).map((r, i) => (
-                  <Link key={r.position} href={`/drivers/${r.Driver?.driverId}`} className="card card-interactive block p-5">
-                    <div className={cn("flex items-center gap-1.5 text-footnote font-semibold", MEDAL_TEXT[i])}>
+                  <Link key={r.position} href={`/drivers/${r.Driver?.driverId}`} className="card card-interactive relative block overflow-hidden p-5 sm:p-6">
+                    <span className="leader-number !text-[5rem]" aria-hidden>{i + 1}</span>
+                    <div className={cn("relative flex items-center gap-1.5 text-footnote font-semibold", MEDAL_TEXT[i])}>
                       {i === 0 && <Trophy className="h-3.5 w-3.5" aria-hidden />}
                       {i === 0 ? "Winner" : `P${i + 1}`}
                     </div>
-                    <div className="mt-3 truncate text-title-3 text-paper">{r.Driver?.familyName}</div>
+                    <div className="relative mt-6 text-title-3 text-paper">{r.Driver?.familyName}</div>
                     <div className="mt-1 flex items-center gap-1.5 text-footnote text-label-3">
                       <TeamMark team={r.Constructor?.constructorId} size="sm" />
                       {shortTeamName(r.Constructor?.name, r.Constructor?.constructorId)}
@@ -102,7 +106,7 @@ export default async function RaceDetail({ season, round, variant }: { season: s
                     <div className="tabular mt-4 text-subhead text-label-2">{r.Time?.time ?? r.status}</div>
                   </Link>
                 ))}
-                <Card padding="sm" className="flex flex-col justify-center gap-4 p-5">
+                <div className="flex flex-wrap gap-x-10 gap-y-4 border-y border-hairline py-5 sm:col-span-3">
                   {fastest && (
                     <div>
                       <div className="flex items-center gap-1.5 text-footnote font-semibold text-purple">
@@ -124,15 +128,16 @@ export default async function RaceDetail({ season, round, variant }: { season: s
                       </div>
                     </div>
                   )}
-                </Card>
+                </div>
               </div>
             )}
 
-            <ResultsTables results={results} qualifying={quali} />
+            <div id="race-classification"><ResultsTables results={results} qualifying={quali} /></div>
           </div>
         )}
 
-        <nav aria-label="Other rounds" className="mt-10 grid gap-3 sm:grid-cols-2">
+        <div id="weekend-schedule" className="mt-8"><WeekendSchedule race={schedule[idx] ?? info} /></div>
+        <nav id="other-rounds" aria-label="Other rounds" className="mt-10 grid gap-3 sm:grid-cols-2">
           {prev ? (
             <Link href={`/races/${season}/${prev.round}`} className="card card-interactive flex items-center gap-3 p-4">
               <ChevronLeft className="h-5 w-5 shrink-0 text-label-3" aria-hidden />

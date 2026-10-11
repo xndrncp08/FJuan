@@ -19,11 +19,11 @@ export function SourceBadge({ source, detail, reason, className }: { source: Tel
   const m = META[source];
   const Icon = m.icon;
   return (
-    <span className={cn("inline-flex max-w-full items-center gap-2 border bg-fill-1 px-2.5 py-1 text-[0.75rem] font-bold uppercase tracking-[0.12em]", m.tone, className)}>
+    <span data-source={source} className={cn("inline-flex flex-wrap max-w-full items-center gap-2 border bg-fill-1 px-2.5 py-1 text-[0.75rem] font-bold uppercase tracking-[0.12em]", m.tone, className)}>
       <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
       <span className="shrink-0">{m.label}</span>
-      {detail && <span className="truncate font-semibold normal-case tracking-normal text-label-2">· {detail}</span>}
-      {reason && <span className="truncate font-semibold normal-case tracking-normal text-label-3">({reason})</span>}
+      {detail && <span className="font-semibold normal-case tracking-normal text-label-2">· {detail}</span>}
+      {reason && <span className="font-semibold normal-case tracking-normal text-label-3">({reason})</span>}
     </span>
   );
 }

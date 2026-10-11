@@ -33,8 +33,8 @@ export function Stat({
       >
         {value}
       </div>
-      <div className="label-caps mt-1.5 truncate text-[0.75rem] text-label-3">{label}</div>
-      {hint && <div className="mt-0.5 truncate text-caption text-label-3">{hint}</div>}
+      <div className="label-caps mt-1.5 text-[0.75rem] text-label-3">{label}</div>
+      {hint && <div className="mt-1 text-caption leading-relaxed text-label-3">{hint}</div>}
     </div>
   );
 }

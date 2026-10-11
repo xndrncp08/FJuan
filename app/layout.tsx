@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Rajdhani, Russo_One } from "next/font/google";
 import "./globals.css";
@@ -75,8 +76,6 @@ export default async function RootLayout({
   /** Floating windows for detail pages (app/@modal). */
   modal: React.ReactNode;
 }) {
-  const prediction = await getNextRacePrediction();
-
   return (
     <html lang="en" className={`dark ${display.variable} ${ui.variable} ${mono.variable}`}>
       <body>
@@ -87,8 +86,12 @@ export default async function RootLayout({
           {modal}
         </Providers>
 
-        {prediction && <PredictionChat prediction={prediction} />}
+        <Suspense fallback={null}><PredictionAssistant /></Suspense>
       </body>
     </html>
   );
+}
+async function PredictionAssistant() {
+  const prediction = await getNextRacePrediction();
+  return prediction ? <PredictionChat prediction={prediction} /> : null;
 }

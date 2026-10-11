@@ -1,0 +1,3 @@
+# Profiles and detail pages
+
+Preserve livery-tinted headers and watermarks. Use Russo One for the main title, a smaller UI first name and a stable portrait. Put the comparison action near driver identity. Provide a local index on long pages. Show full career seasons through a metric preview plus an expandable semantic table; name scroll regions and retain every mobile column. Team profiles combine live constructor identity with local historical metadata. Car specifications use native disclosure, with the first group open. Circuit maps remain the visual anchor, linked to real calendar weekends. Detail windows use h2 under their dialog heading; direct pages use h1.

@@ -14,6 +14,8 @@ import { Section, HeaderBackdrop } from "@/components/ui/Section";
 import { Card } from "@/components/ui/Card";
 import { Stat, StatGrid } from "@/components/ui/Stat";
 import { ButtonLink } from "@/components/ui/Button";
+import { PageIndex } from "@/components/ui/PageIndex";
+import { shortTeamName, teamColor } from "@/lib/theme/teams";
 import { cn } from "@/lib/utils/cn";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import { getSeasonCar } from "@/lib/api/cars";
@@ -32,7 +34,6 @@ export default async function ConstructorProfilePage({ params }: { params: Promi
   const { constructorId } = await params;
 
   const local = constructorsData.find((c) => c.id === constructorId);
-  if (!local) notFound();
 
   const season = new Date().getFullYear().toString();
 
@@ -42,19 +43,21 @@ export default async function ConstructorProfilePage({ params }: { params: Promi
     getDriverStandings("current").catch(() => []),
     getSeasonCar(constructorId).catch(() => null),
   ]);
+  const liveTeam = standings.find((s: any) => s.Constructor?.constructorId === constructorId);
+  if (!local && !liveTeam && !car) notFound();
   const carImage = car ? f1CarImageUrl(constructorId, car.season, "right", 1200) : null;
 
   const entry = standings.find((s: any) => s.Constructor?.constructorId === constructorId);
   const team = {
-    name: entry?.Constructor?.name ?? local.name,
-    nationality: entry?.Constructor?.nationality ?? local.nationality,
+    name: entry?.Constructor?.name ?? local?.name ?? shortTeamName(null, constructorId),
+    nationality: entry?.Constructor?.nationality ?? local?.nationality ?? "",
     position: entry ? parseInt(entry.position) : null,
     points: entry ? parseFloat(entry.points) : 0,
     wins: entry ? parseInt(entry.wins) : 0,
-    championships: local.championships,
-    color: local.color,
-    base: local.base,
-    founded: local.founded,
+    championships: local?.championships ?? 0,
+    color: local?.color ?? teamColor(constructorId),
+    base: local?.base ?? "",
+    founded: local?.founded ?? 0,
   };
 
   const drivers = driverStandings.filter((d: any) => d.Constructors?.some((c: any) => c.constructorId === constructorId));
@@ -91,7 +94,7 @@ export default async function ConstructorProfilePage({ params }: { params: Promi
         <div className="container-page relative pb-8 pt-8 sm:pb-12 sm:pt-12">
           <Link
             href="/teams"
-            className="pressable -ml-1 mb-6 inline-flex h-9 items-center gap-1.5 px-1 text-[0.8125rem] font-bold uppercase tracking-[0.16em] text-label-3 hover:text-paper"
+            className="pressable -ml-1 mb-6 inline-flex h-11 items-center gap-1.5 px-1 text-[0.8125rem] font-bold uppercase tracking-[0.16em] text-label-3 hover:text-paper"
           >
             <ChevronRight className="h-4 w-4 rotate-180" aria-hidden />
             Teams
@@ -105,7 +108,7 @@ export default async function ConstructorProfilePage({ params }: { params: Promi
           </p>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
             <TeamLogo team={constructorId} season={Number(season)} color={team.color} size="xl" />
-            <h1 className="text-title-1 text-paper sm:text-display">{team.name}</h1>
+            <h1 className="profile-title text-paper">{team.name}</h1>
           </div>
 
           {team.championships > 0 && (
@@ -118,20 +121,21 @@ export default async function ConstructorProfilePage({ params }: { params: Promi
           <div className="card mt-8 p-5 sm:p-6">
             <StatGrid min={110}>
               <Stat size="lg" label={`${season} position`} value={team.position ? `P${team.position}` : "—"} />
-              <Stat size="lg" label="Points" value={team.points} />
-              <Stat size="lg" label="Wins" value={team.wins} />
+              <Stat size="lg" label="Points" value={entry ? team.points : "—"} />
+              <Stat size="lg" label="Wins" value={entry ? team.wins : "—"} />
               <Stat size="lg" label="Podiums" value={podiums} />
-              <Stat size="lg" label="Points per race" value={completed ? (team.points / completed).toFixed(1) : "—"} />
+              <Stat size="lg" label="Points per race" value={completed && entry ? (team.points / completed).toFixed(1) : "—"} hint="Season points ÷ completed races" />
             </StatGrid>
           </div>
         </div>
       </header>
 
-      <Section className="pt-2 sm:pt-4">
+      <div className="container-page"><PageIndex items={[...(car ? [{ href: "#team-car", label: "The car" }] : []), ...(series.length ? [{ href: "#team-season", label: "Season performance" }] : []), ...(drivers.length ? [{ href: "#team-drivers", label: "Drivers" }] : []), ...(races.length ? [{ href: "#team-races", label: "Race record" }] : [])]} /></div>
+      <Section className="pt-6 sm:pt-8">
         <div className="space-y-5">
           {car && (
             <Link
-              href={`/teams/${constructorId}/car`}
+              id="team-car" href={`/teams/${constructorId}/car`}
               scroll={false}
               className="card card-interactive group relative grid items-center gap-4 overflow-hidden p-5 sm:grid-cols-[1fr_1.4fr] sm:p-6"
             >
@@ -155,17 +159,17 @@ export default async function ConstructorProfilePage({ params }: { params: Promi
             </Link>
           )}
 
-          <ConstructorProfileCharts raceSeries={series} teamColor={team.color} season={season} />
+          <div id="team-season"><ConstructorProfileCharts raceSeries={series} teamColor={team.color} season={season} /></div>
 
           {drivers.length > 0 && (
-            <div>
+            <div id="team-drivers">
               <h2 className="mb-4 text-title-3 text-paper">Drivers</h2>
               <div className="grid gap-4 sm:grid-cols-2">
                 {drivers.map((d: any) => (
                   <Link key={d.Driver?.driverId} href={`/drivers/${d.Driver?.driverId}`} className="card card-interactive flex items-center gap-4 p-5">
                     <span
-                      className="tabular flex h-14 w-14 shrink-0 items-center justify-center rounded-md text-title-3 font-bold"
-                      style={{ background: `${team.color}22`, color: team.color }}
+                      className="tabular flex h-14 w-14 shrink-0 items-center justify-center rounded-md text-title-3 font-bold text-paper"
+                      style={{ background: `${team.color}22` }}
                     >
                       {d.Driver?.permanentNumber ?? d.Driver?.code}
                     </span>
@@ -186,7 +190,7 @@ export default async function ConstructorProfilePage({ params }: { params: Promi
           )}
 
           {races.length > 0 && (
-            <div>
+            <div id="team-races">
               <h2 className="mb-4 text-title-3 text-paper">Round by round</h2>
               <Card padding="none" className="overflow-hidden">
                 <table className="w-full text-left">

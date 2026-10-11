@@ -13,6 +13,7 @@ import { getCarArticle, getSeasonCar } from "@/lib/api/cars";
 import { f1CarImageUrl } from "@/lib/api/teamLogos";
 import { shortTeamName, teamColor } from "@/lib/theme/teams";
 import { DetailFrame, type DetailVariant } from "@/components/ui/DetailFrame";
+import { PageIndex } from "@/components/ui/PageIndex";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Stat, StatGrid } from "@/components/ui/Stat";
 import { ButtonLink } from "@/components/ui/Button";
@@ -72,7 +73,8 @@ export default async function CarDetail({ constructorId, variant }: { constructo
       aside={<TeamLogo team={constructorId} season={car.season} color={color} size="xl" className="hidden sm:inline-block" />}
     >
       <div className="space-y-5">
-        <CarViewer
+        <PageIndex items={[{ href: "#car-view", label: "3D view" }, ...(article?.summary.length ? [{ href: "#car-story", label: "About the car" }] : []), { href: "#car-specs", label: "Specification" }]} />
+        <div id="car-view"><CarViewer
           car={{
             id: constructorId,
             label: `${title} — official render`,
@@ -80,7 +82,7 @@ export default async function CarDetail({ constructorId, variant }: { constructo
             left: f1CarImageUrl(constructorId, car.season, "left"),
             right: f1CarImageUrl(constructorId, car.season, "right"),
           }}
-        />
+        /></div>
 
         <Card>
           <StatGrid min={120}>
@@ -94,7 +96,7 @@ export default async function CarDetail({ constructorId, variant }: { constructo
         <div className="grid gap-5 lg:grid-cols-[1.25fr_1fr]">
           <div className="space-y-5">
             {article?.summary.length ? (
-              <Card>
+              <Card id="car-story">
                 <CardHeader title="About the car" />
                 <div className="space-y-3 text-body text-label-2">
                   {article.summary.map((p, i) => (
@@ -131,12 +133,12 @@ export default async function CarDetail({ constructorId, variant }: { constructo
             )}
           </div>
 
-          <div className="space-y-5">
+          <div id="car-specs" className="space-y-5">
             {groups.length ? (
               groups.map((g) => (
-                <Card key={g.title}>
-                  <CardHeader title={g.title} as="h3" />
-                  <dl className="divide-y divide-hairline">
+                <details key={g.title} className="card group p-5 sm:p-6" open={g === groups[0]}>
+                  <summary className="cursor-pointer text-headline text-paper">{g.title}</summary>
+                  <dl className="mt-5 divide-y divide-hairline">
                     {g.rows.map((r) => (
                       <div key={r.label} className="grid grid-cols-[minmax(0,9rem)_1fr] gap-4 py-2.5 first:pt-0 last:pb-0">
                         <dt className="text-subhead text-label-3">{r.label}</dt>
@@ -151,7 +153,7 @@ export default async function CarDetail({ constructorId, variant }: { constructo
                       </div>
                     ))}
                   </dl>
-                </Card>
+                </details>
               ))
             ) : (
               <Card>

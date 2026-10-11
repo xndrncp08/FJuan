@@ -16,11 +16,11 @@ export default function DriverSelector({
 }: {
   drivers: Driver[];
   selected: number | null;
-  onSelect: (n: number) => void;
+  onSelect: (n: number, keepOpen?: boolean) => void;
 }) {
   return (
     <div role="radiogroup" aria-label="Driver" className="grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-2">
-      {drivers.map((d) => {
+      {drivers.map((d, index) => {
         const active = selected === d.driver_number;
         const color = teamColor(d.team_colour);
         return (
@@ -29,6 +29,15 @@ export default function DriverSelector({
             type="button"
             role="radio"
             aria-checked={active}
+            aria-label={`${d.full_name} · ${d.team_name} · Car ${d.driver_number}`}
+            tabIndex={active || (selected === null && index === 0) ? 0 : -1}
+            onKeyDown={(e) => {
+              if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(e.key)) return;
+              e.preventDefault();
+              const next = e.key === "Home" ? 0 : e.key === "End" ? drivers.length - 1 : (index + (["ArrowRight", "ArrowDown"].includes(e.key) ? 1 : -1) + drivers.length) % drivers.length;
+              onSelect(drivers[next].driver_number, true);
+              (e.currentTarget.parentElement?.children[next] as HTMLButtonElement | undefined)?.focus();
+            }}
             onClick={() => onSelect(d.driver_number)}
             className={cn(
               "pressable relative overflow-hidden rounded-md p-3 text-left",

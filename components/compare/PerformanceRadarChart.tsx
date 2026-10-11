@@ -54,8 +54,8 @@ export function PerformanceRadarChart({ a, b }: { a: DriverStats; b: DriverStats
             />
           }
         />
-        <Radar name={a.driver.familyName} dataKey="a" stroke={A_COLOR} strokeWidth={2} fill={A_COLOR} fillOpacity={0.18} />
-        <Radar name={b.driver.familyName} dataKey="b" stroke={B_COLOR} strokeWidth={2} fill={B_COLOR} fillOpacity={0.14} />
+        <Radar isAnimationActive={false} name={a.driver.familyName} dataKey="a" stroke={A_COLOR} strokeWidth={2} fill={A_COLOR} fillOpacity={0.18} />
+        <Radar strokeDasharray="5 4" isAnimationActive={false} name={b.driver.familyName} dataKey="b" stroke={B_COLOR} strokeWidth={2} fill={B_COLOR} fillOpacity={0.14} />
       </RadarChart>
     </ResponsiveContainer>
   );
