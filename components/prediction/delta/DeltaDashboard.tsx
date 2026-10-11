@@ -449,7 +449,7 @@ function Classification() {
       </div>
     );
   }
-  if (q.isError) return <EmptyState title="Backtest unavailable" description={(q.error as Error).message} />;
+  if (q.isError) return <EmptyState title="Backtest unavailable" description={(q.error as Error).message} action={<Button onClick={() => void q.refetch()}>Retry race result</Button>} />;
   const b = q.data;
   return (
     <div>
@@ -467,8 +467,10 @@ function Classification() {
           </div>
         ))}
       </div>
-      <div className="overflow-x-auto">
+      <p className="mb-3 text-caption text-label-3">Position MAE is the average finishing-position error. Rank correlation approaches 1 for a better match. Scroll across for the full classification.</p>
+      <div className="table-scroll" tabIndex={0} role="region" aria-label="Predicted and actual race classification">
         <table className="w-full min-w-[460px] text-left">
+          <caption className="sr-only">Predicted and actual finishing positions and their differences</caption>
           <caption className="sr-only">Predicted versus actual finishing positions, {b.raceName}</caption>
           <thead>
             <tr className="label-caps border-b border-hairline text-[0.6875rem] text-label-3">

@@ -43,6 +43,6 @@ export default function LapTimesPanel({ laps, fastestLap }: { laps: LapData[]; f
         })}</tbody>
       </table>
     </div>
-    {limit < eligible.length && <Button className="mt-4" onClick={() => setLimit((n) => n + 60)}>Load earlier laps</Button>}
+    {limit < eligible.length && <Button className="mt-4" onClick={() => setLimit((n) => n + 60)}>Show more laps</Button>}
   </div>;
 }

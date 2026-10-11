@@ -197,8 +197,8 @@ function Dashboard({
         <LapTrendChart laps={laps} fastestLap={fastestLap} />
       </Card>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <div className="space-y-5">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <div className="min-w-0 space-y-5">
           <Card>
             <CardHeader title="Car" subtitle="Most recent sample" />
             <TelemetryPanel car={car} />
@@ -212,10 +212,10 @@ function Dashboard({
             <SectorDeltaPanel laps={laps} />
           </Card>
         </div>
-        <Card className="self-start">
+        <Card className="min-w-0 self-start">
           <CardHeader
             title="Lap times"
-            subtitle="Newest first"
+            subtitle="Timing, sectors and trap speed"
             accessory={
               <span className="flex items-center gap-3 text-caption text-label-3">
                 <span className="inline-flex items-center gap-1">
