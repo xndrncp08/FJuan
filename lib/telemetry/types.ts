@@ -70,6 +70,8 @@ export interface DriverInfo {
   name: string;
   team: string;
   color: string;
+  /** Classified position in the session, when OpenF1 has published it. */
+  position?: number;
 }
 
 /** Everything the telemetry cockpit needs for one driver in one session. */

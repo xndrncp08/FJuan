@@ -7,7 +7,7 @@
  */
 
 import Link from "next/link";
-import { ArrowLeftRight, ChevronRight, UserX } from "lucide-react";
+import { ArrowLeftRight, ChevronRight, UserX } from "@/components/ui/icons";
 import { getDriverStats } from "@/lib/api/fetchers";
 import { getDriverPhoto } from "@/lib/api/driverPhotos";
 import { DriverPortrait } from "@/components/ui/DriverPortrait";

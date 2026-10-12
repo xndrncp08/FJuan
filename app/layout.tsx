@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Rajdhani, Russo_One } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { TabBar } from "@/components/layout/TabBar";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import PageTransition from "@/components/PageTransition";
@@ -83,6 +84,7 @@ export default async function RootLayout({
           <Navbar />
           <PageTransition>{children}</PageTransition>
           <Footer />
+          <TabBar />
           {modal}
         </Providers>
 

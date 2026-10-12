@@ -8,7 +8,7 @@
  */
 
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft } from "@/components/ui/icons";
 import { HeaderBackdrop, Section } from "@/components/ui/Section";
 import { cn } from "@/lib/utils/cn";
 

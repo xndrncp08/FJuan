@@ -65,11 +65,19 @@
     /* --font-display / --font-ui / --font-data are set by next/font in app/layout.tsx */
 
     --nav-h: 64px;
+    /* Bottom tab bar on phones/tablets (components/layout/TabBar.tsx); 0 from lg up. */
+    --tabbar-h: 0px;
     --nav-offset: calc(var(--nav-h) + env(safe-area-inset-top, 0px));
     --gutter: clamp(1rem, 4vw, 2rem);
     --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   }
 }
+
+@media (max-width: 1023px) {
+  :root { --tabbar-h: 60px; }
+  body { padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px)); }
+}
+.tabbar { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
 /* ─── Base ────────────────────────────────────────────────────────────────── */
 @layer base {
@@ -382,7 +390,15 @@
 
   /* F1's circuit maps are dark lines on transparent — flip lightness for a
      dark surface while hue-rotate keeps the sector colors recognisable. */
+  /* Shown as a clean monochrome blueprint; colour (sectors, DRS zones)
+     comes back on hover or focus of the card that holds it. */
   .circuit-map {
+    filter: invert(1) hue-rotate(180deg) grayscale(1) contrast(1.15) brightness(1.05);
+    transition: filter 0.4s var(--ease-out), transform 0.5s var(--ease-out);
+  }
+  .group:hover .circuit-map,
+  .group:focus-visible .circuit-map,
+  .circuit-map--color {
     filter: invert(1) hue-rotate(180deg) saturate(0.9);
   }
 
@@ -438,7 +454,62 @@
   animation: fade-up 0.25s var(--ease-out) backwards;
 }
 
+/* ─── Entrances ───────────────────────────────────────────────────────────── */
+/* List rows rise in one after another; set --i on each row (capped by the caller). */
+.stagger-in {
+  animation: fade-up 0.4s var(--ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 35ms);
+}
+/* Calendar round strip: segments grow up from the baseline. */
+.strip-seg {
+  transform-origin: bottom;
+  animation: seg-in 0.45s var(--ease-out) backwards;
+}
+/* A light sweep across the next circuit map, like a timing-screen refresh. */
+.calendar-scan {
+  left: -35%;
+  background: linear-gradient(90deg, transparent, rgb(var(--tint) / 0.12), transparent);
+  animation: scan-x 4.5s var(--ease-out) infinite;
+}
+/* Compare face-off: each driver slides in from their own side, VS pops. */
+.slide-in-l { animation: slide-in-l 0.5s var(--ease-out) backwards; }
+.slide-in-r { animation: slide-in-r 0.5s var(--ease-out) backwards; }
+.vs-pop { animation: vs-pop 0.45s var(--ease-out) 0.15s backwards; }
+/* Prediction archive slope lines draw themselves left to right (paths use pathLength=1). */
+.slope-draw {
+  stroke-dasharray: 1;
+  animation: draw-line 0.9s var(--ease-out) backwards;
+}
+/* Nacho Bot idles: a slow bob with a little tilt. */
+.nacho-idle {
+  animation: nacho-bob 3.2s ease-in-out infinite;
+}
+
 /* ─── Keyframes (shared with inline animation strings) ─────────────────────── */
+@keyframes slide-in-l {
+  from { opacity: 0; transform: translateX(-24px); }
+}
+@keyframes slide-in-r {
+  from { opacity: 0; transform: translateX(24px); }
+}
+@keyframes vs-pop {
+  from { opacity: 0; transform: scale(1.6); }
+}
+@keyframes draw-line {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes seg-in {
+  from { transform: scaleY(0); }
+}
+@keyframes scan-x {
+  from { transform: translateX(0); }
+  60%, to { transform: translateX(420%); }
+}
+@keyframes nacho-bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-2px) rotate(-6deg); }
+}
 @keyframes fade-up {
   from {
     opacity: 0;
@@ -596,7 +667,7 @@
   .nav-shell { padding-top: env(safe-area-inset-top, 0px); }
   .footer-safe { padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px)); }
   .section-action { border-bottom: 1px solid var(--separator); }
-  .hero { height: calc(100svh - var(--nav-offset)); min-height: 620px; }
+  .hero { height: calc(100svh - var(--nav-offset) - var(--tabbar-h)); min-height: 620px; }
   .hero-intro { max-width: 35ch; font-size: 1.125rem; line-height: 1.4; color: var(--label-2); }
   .hero-scroll { display: inline-flex; align-items: center; gap: 0.75rem; min-height: 44px; }
   .hero-scroll::before { content: ""; width: 24px; height: 1px; background: rgb(var(--accent)); }
@@ -642,9 +713,6 @@
   .filter-toolbar { @apply mb-5 grid gap-4 border-y border-hairline py-5 sm:grid-cols-[minmax(0,1fr)_minmax(140px,200px)_minmax(140px,200px)]; }
   .page-index { @apply flex flex-wrap items-center gap-x-6 gap-y-1 border-y border-hairline py-2; }
   .insight-note { @apply border-y border-hairline px-1; }
-  .explore-routes { @apply grid border border-separator sm:grid-cols-2 lg:grid-cols-4; }
-  .explore-routes > li { @apply border-b border-separator last:border-b-0 sm:odd:border-r lg:border-b-0 lg:border-r lg:last:border-r-0; }
-  .explore-routes a { @apply transition-colors duration-200 hover:bg-fill-1; }
   .profile-title { font-family: var(--font-display), Impact, sans-serif; font-weight: 400; text-transform: uppercase; letter-spacing: -0.025em; font-size: clamp(2.25rem, 5.8vw, 4.5rem); line-height: 1.08; overflow-wrap: anywhere; }
   .profile-header figure { width: fit-content; }
   .profile-header { @apply grid items-end gap-6 sm:grid-cols-[minmax(0,1fr)_auto]; }
@@ -659,5 +727,4 @@
   .status-line { @apply border-l-2 border-tint bg-fill-1 px-4 py-3 text-subhead text-label-2; }
 }
 @media (min-width: 640px) and (max-width: 1023px) {
-  .explore-routes > li:nth-last-child(-n+2) { border-bottom: 0; }
 }

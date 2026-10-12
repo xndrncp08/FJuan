@@ -6,7 +6,7 @@
  */
 
 import Link from "next/link";
-import { ChevronRight, CloudRain, Sparkles, Thermometer, Wind } from "lucide-react";
+import { ChevronRight, CloudRain, Sparkles, Thermometer, Wind } from "@/components/ui/icons";
 import { Section, SectionHeader, SeeAll } from "@/components/ui/Section";
 import { Card } from "@/components/ui/Card";
 import { PositionBadge } from "@/components/ui/Badge";

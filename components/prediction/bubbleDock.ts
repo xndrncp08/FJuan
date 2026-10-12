@@ -34,10 +34,12 @@ export function cornerPoint(corner: Corner, lift = 0) {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const margin = vw >= 640 ? 24 : 16;
-  const nav = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--nav-h")) || 64;
+  const root = getComputedStyle(document.documentElement);
+  const nav = parseFloat(root.getPropertyValue("--nav-h")) || 64;
+  const tabs = parseFloat(root.getPropertyValue("--tabbar-h")) || 0;
   return {
     x: isLeft(corner) ? margin : vw - margin - BUBBLE_SIZE,
-    y: isTop(corner) ? nav + 12 : vh - BUBBLE_SIZE - Math.max(20, safeAreaBottom() + 12) - lift,
+    y: isTop(corner) ? nav + 12 : vh - BUBBLE_SIZE - Math.max(20, safeAreaBottom() + 12) - tabs - lift,
   };
 }
 

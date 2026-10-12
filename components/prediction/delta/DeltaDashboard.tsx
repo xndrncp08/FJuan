@@ -35,7 +35,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ArrowDown, ArrowRight, ArrowUp, Check, Minus, TrendingDown, TrendingUp, X } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, Check, Minus, TrendingDown, TrendingUp, X } from "@/components/ui/icons";
 import { AXIS, ChartTooltip, CURSOR_BAR, CURSOR_LINE, GRID, SERIES } from "@/components/ui/chart";
 import { InsightNote } from "@/components/ui/InsightNote";
 import { SelectField } from "@/components/ui/Fields";

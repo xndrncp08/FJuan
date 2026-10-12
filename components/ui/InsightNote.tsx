@@ -1,4 +1,4 @@
-import { Info, ChevronDown } from "lucide-react";
+import { Info, ChevronDown } from "@/components/ui/icons";
 
 export function InsightNote({ title, children }: { title: string; children: React.ReactNode }) {
   return (

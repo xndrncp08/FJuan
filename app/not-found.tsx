@@ -1,4 +1,4 @@
-import { Compass } from "lucide-react";
+import { Compass } from "@/components/ui/icons";
 import { ButtonLink } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Section";
 

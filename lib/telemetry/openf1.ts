@@ -183,8 +183,13 @@ export async function getSessionTelemetry(opts: { sessionKey?: number; driverNum
   const key = session.session_key;
   const sessionStart = Date.parse(session.date_start);
 
-  const rawDrivers = await get<RawDriver[]>("/drivers", { session_key: key }, 3600);
+  const [rawDrivers, result] = await Promise.all([
+    get<RawDriver[]>("/drivers", { session_key: key }, 3600),
+    // Classification order is a nicety (winner opens first); without it, car numbers.
+    get<{ driver_number: number; position: number | null }[]>("/session_result", { session_key: key }, 3600).catch(() => []),
+  ]);
   if (!rawDrivers.length) throw new OpenF1Error("Session has no drivers");
+  const position = new Map(result.filter((r) => r.position).map((r) => [r.driver_number, r.position as number]));
   const drivers: DriverInfo[] = rawDrivers
     .map((d) => ({
       number: d.driver_number,
@@ -192,8 +197,9 @@ export async function getSessionTelemetry(opts: { sessionKey?: number; driverNum
       name: d.full_name,
       team: d.team_name,
       color: d.team_colour ? `#${d.team_colour}` : teamColor(d.team_name),
+      position: position.get(d.driver_number),
     }))
-    .sort((a, b) => a.number - b.number);
+    .sort((a, b) => (a.position ?? 100 + a.number) - (b.position ?? 100 + b.number));
   const driver = drivers.find((d) => d.number === opts.driverNumber) ?? drivers[0];
 
   const [rawLaps, rawStints, weather] = await Promise.all([

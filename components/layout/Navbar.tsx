@@ -17,7 +17,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, Menu, Search, X } from "lucide-react";
+import { ArrowRight, Menu, Search, X } from "@/components/ui/icons";
 import { cn } from "@/lib/utils/cn";
 import { Logo } from "@/components/ui/Logo";
 import { useFocusScope } from "@/lib/hooks/useFocusScope";
@@ -35,12 +35,15 @@ const NAV_LINKS = [
 ];
 
 /** Reachable from search and the menu, but not the desktop bar. */
-const MORE_LINKS = [{ href: "/predict/delta", label: "Delta", code: "09", description: "Model predictions vs what actually happened" }];
+const MORE_LINKS = [
+  { href: "/predict/history", label: "Archive", code: "09", description: "Past races: our prediction vs the result" },
+  { href: "/predict/delta", label: "Delta", code: "10", description: "Lap-by-lap race-pace model review" },
+];
 
 const SPRING = { type: "spring", bounce: 0, duration: 0.35 } as const;
 
 function isActive(pathname: string, href: string) {
-  if (href === "/predict" && pathname.startsWith("/predict/delta")) return false;
+  if (href === "/predict" && /^\/predict\/(delta|history)/.test(pathname)) return false;
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 }
 

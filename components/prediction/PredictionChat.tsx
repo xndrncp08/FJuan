@@ -17,7 +17,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from "framer-motion";
-import { ArrowUp, MessageCircle, RotateCcw, X } from "lucide-react";
+import { ArrowUp, NachoIcon, RotateCcw, X } from "@/components/ui/icons";
 import type { RacePrediction } from "@/lib/types/prediction";
 import { cn } from "@/lib/utils/cn";
 import { BUBBLE_SIZE, CORNERS, cornerInDirection, cornerPoint, isLeft, isTop, loadCorner, nearestCorner, project, saveCorner, type Corner } from "./bubbleDock";
@@ -37,7 +37,7 @@ interface Message {
   content: string;
 }
 
-const SUGGESTIONS = ["Who’s most likely to win?", "Why is the favourite favoured?", "Who has the best record here?", "How does the model work?"];
+const SUGGESTIONS = ["Who wins?", "Why the favourite?", "Best record here?", "How does the model work?"];
 
 const SEEN_KEY = "nachobot-seen";
 
@@ -248,7 +248,7 @@ export default function PredictionChat({ prediction }: { prediction: RacePredict
                     top: `calc(var(--nav-h) + ${BUBBLE_SIZE + 24}px)`,
                     height: `min(560px, calc(100dvh - var(--nav-h) - ${BUBBLE_SIZE + 40}px - ${lift}))`,
                   }
-                : { bottom: `calc(5.5rem + env(safe-area-inset-bottom) + ${lift})`, height: `min(560px, calc(100dvh - 8rem - ${lift}))` }
+                : { bottom: `calc(5.5rem + var(--tabbar-h) + env(safe-area-inset-bottom) + ${lift})`, height: `min(560px, calc(100dvh - 8rem - var(--tabbar-h) - ${lift}))` }
             }
             initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: isTop(corner) ? -12 : 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -256,8 +256,8 @@ export default function PredictionChat({ prediction }: { prediction: RacePredict
             transition={{ type: "spring", bounce: 0, duration: 0.32 }}
           >
             <header className="flex items-center gap-3 border-b border-hairline px-4 py-3">
-              <span className="flex h-9 w-9 items-center justify-center bg-accent text-paper">
-                <MessageCircle className="h-4 w-4" aria-hidden />
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent">
+                <NachoIcon className="h-7 w-7" />
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-callout font-semibold text-paper">Nacho Bot</p>
@@ -268,7 +268,7 @@ export default function PredictionChat({ prediction }: { prediction: RacePredict
                   type="button"
                   onClick={() => setMessages([])}
                   aria-label="Clear conversation"
-                  className="pressable flex h-9 w-9 items-center justify-center text-label-3 hover:bg-fill-1 hover:text-paper"
+                  className="pressable flex h-11 w-11 items-center justify-center text-label-3 hover:bg-fill-1 hover:text-paper"
                 >
                   <RotateCcw className="h-4 w-4" />
                 </button>
@@ -277,7 +277,7 @@ export default function PredictionChat({ prediction }: { prediction: RacePredict
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close"
-                className="pressable flex h-9 w-9 items-center justify-center text-label-3 hover:bg-fill-1 hover:text-paper"
+                className="pressable flex h-11 w-11 items-center justify-center text-label-3 hover:bg-fill-1 hover:text-paper"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -295,7 +295,7 @@ export default function PredictionChat({ prediction }: { prediction: RacePredict
                         key={s}
                         type="button"
                         onClick={() => send(s)}
-                        className="pressable bg-fill-2 px-3 py-2 text-left text-footnote text-paper hover:bg-fill-3"
+                        className="pressable min-h-11 bg-fill-2 px-3 py-2 text-left text-footnote text-paper hover:bg-fill-3"
                       >
                         {s}
                       </button>
@@ -341,13 +341,13 @@ export default function PredictionChat({ prediction }: { prediction: RacePredict
                 aria-label="Message"
                 disabled={streaming}
                 enterKeyHint="send"
-                className="h-10 min-w-0 flex-1 bg-fill-1 px-4 text-paper outline-none placeholder:text-label-4 focus:bg-fill-2 disabled:opacity-60"
+                className="h-11 min-w-0 flex-1 bg-fill-1 px-4 text-paper outline-none placeholder:text-label-4 focus:bg-fill-2 disabled:opacity-60"
               />
               <button
                 type="submit"
                 disabled={streaming || !input.trim()}
                 aria-label="Send"
-                className="pressable flex h-10 w-10 shrink-0 items-center justify-center bg-accent text-paper disabled:bg-fill-2 disabled:text-label-4"
+                className="pressable flex h-11 w-11 shrink-0 items-center justify-center bg-accent text-paper disabled:bg-fill-2 disabled:text-label-4"
               >
                 <ArrowUp className="h-5 w-5" />
               </button>
@@ -365,12 +365,12 @@ export default function PredictionChat({ prediction }: { prediction: RacePredict
               "material-thick fixed z-[399] hidden px-4 py-2 text-footnote text-paper shadow-popover sm:block",
               isLeft(corner) ? "left-24 origin-left" : "right-24 origin-right",
             )}
-            style={isTop(corner) ? { top: "calc(var(--nav-h) + 22px)" } : { bottom: "calc(2.25rem + env(safe-area-inset-bottom))" }}
+            style={isTop(corner) ? { top: "calc(var(--nav-h) + 22px)" } : { bottom: "calc(2.25rem + var(--tabbar-h) + env(safe-area-inset-bottom))" }}
             initial={{ opacity: 0, x: isLeft(corner) ? -8 : 8 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: isLeft(corner) ? -8 : 8 }}
           >
-            Psst. Ask me anything, ese. 🏎️
+            Psst. Quick question? Ask me.
           </motion.button>
         )}
       </AnimatePresence>
@@ -462,7 +462,7 @@ export default function PredictionChat({ prediction }: { prediction: RacePredict
           )}
           style={{ x, y }}
         >
-          {open ? <X className="h-5 w-5" /> : <MessageCircle className="h-6 w-6" />}
+          {open ? <X className="h-5 w-5" /> : <NachoIcon className="nacho-idle h-10 w-10 drop-shadow-[0_2px_2px_rgba(0,0,0,0.35)]" />}
         </motion.button>
       )}
     </>

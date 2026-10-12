@@ -6,7 +6,7 @@
  */
 
 import Link from "next/link";
-import { ArrowRight, ChevronLeft } from "lucide-react";
+import { ArrowRight, ChevronLeft } from "@/components/ui/icons";
 import { cn } from "@/lib/utils/cn";
 
 export function Container({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
@@ -77,7 +77,7 @@ export function BackLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className="pressable -ml-1 mb-6 inline-flex h-9 items-center gap-1.5 px-1 text-[0.8125rem] font-bold uppercase tracking-[0.16em] text-label-3 hover:text-paper"
+      className="pressable -ml-1 mb-6 flex h-11 w-fit items-center gap-1.5 px-1 text-[0.8125rem] font-bold uppercase tracking-[0.16em] text-label-3 hover:text-paper"
     >
       <ChevronLeft className="h-4 w-4" aria-hidden />
       {label}

@@ -7,7 +7,7 @@
  */
 
 import Link from "next/link";
-import { Trophy } from "lucide-react";
+import { Trophy } from "@/components/ui/icons";
 import { Section, SectionHeader } from "@/components/ui/Section";
 import { Card } from "@/components/ui/Card";
 import { TeamMark } from "@/components/ui/TeamMark";

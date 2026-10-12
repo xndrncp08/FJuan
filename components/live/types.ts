@@ -27,6 +27,19 @@ export interface LapData {
   i2_speed: number | null;
   st_speed: number | null;
   is_pit_out_lap: boolean;
+  date_start?: string | null;
+}
+
+export interface PositionPoint {
+  date: string;
+  position: number;
+}
+
+/** Race intervals: numbers in seconds, or strings such as "+1 LAP" for lapped cars. */
+export interface IntervalPoint {
+  date: string;
+  gap_to_leader: number | string | null;
+  interval: number | string | null;
 }
 
 export interface Stint {
@@ -42,16 +55,6 @@ export interface PitStop {
   lap_number: number;
   pit_duration: number;
   date: string;
-}
-
-export interface CarTelemetry {
-  date: string;
-  speed: number;
-  rpm: number;
-  n_gear: number;
-  throttle: number;
-  brake: number;
-  drs: number;
 }
 
 export const TYRE_COLORS: Record<string, string> = {

@@ -26,33 +26,43 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, use, useEffect, useRef, useState } from "react";
 import { AnimatePresence, animate, motion, useReducedMotion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight } from "@/components/ui/icons";
 import { WORDMARK } from "@/lib/theme/wordmark";
 import { cn } from "@/lib/utils/cn";
+import type { HeroHud } from "@/lib/api/heroHud";
 import { useLightsSequence } from "./lightsSequence";
 
 const CanvasShell = dynamic(() => import("@/components/three/CanvasShell"), { ssr: false });
 const WordmarkScene = dynamic(() => import("./WordmarkScene"), { ssr: false });
 
-const TICKER = [
-  "2026 season live",
-  "24 races · 11 teams · 22 drivers",
-  "Real-time telemetry available",
-  "Statistical prediction engine v4",
-  "Historical data back to 1950",
-  "Compare any two drivers head to head",
+const TICKER_STATIC = [
+  "Session telemetry from 2023 onward",
+  "Results back to 1950",
+  "Any two drivers, head to head",
+  "Data · Jolpica + OpenF1",
   "Built by Xander Rancap",
-  "Powered by Jolpica + OpenF1",
 ];
 
-const CTAS = [
-  { href: "/drivers", label: "Standings", primary: true },
-  { href: "/predict", label: "Predict" },
-  { href: "/telemetry", label: "3D Telemetry" },
-  { href: "/compare", label: "Compare" },
+function tickerItems(h: HeroHud | null) {
+  if (!h) return TICKER_STATIC;
+  return [
+    h.next && `Next · R${h.next.round} ${h.next.name} · ${h.next.locality}`,
+    h.leader && `Leader · ${h.leader.code} ${h.leader.points} pts${h.leader.gap !== null ? ` (+${h.leader.gap})` : ""}`,
+    h.last && `Last win · ${h.last.winnerCode} · ${h.last.name}`,
+    `${h.season} · ${h.roundsDone} of ${h.roundsTotal} rounds run`,
+    ...TICKER_STATIC,
+  ].filter(Boolean) as string[];
+}
+
+const LINKS = [
+  { href: "/predict", label: "Predict", code: "02" },
+  { href: "/telemetry", label: "3D Telemetry", code: "03" },
+  { href: "/compare", label: "Compare", code: "04" },
 ];
+
+const coord = (v: number, pos: string, neg: string) => `${Math.abs(v).toFixed(4)}°${v >= 0 ? pos : neg}`;
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 
@@ -84,7 +94,7 @@ function useCountUp(target: number, run: boolean, delay = 0, reduce = false) {
 
 type CanvasState = "pending" | "ready" | "unsupported";
 
-export default function HeroSection() {
+export default function HeroSection({ hud }: { hud: Promise<HeroHud | null> }) {
   const reduce = useReducedMotion();
   const sectionRef = useRef<HTMLElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -182,9 +192,6 @@ export default function HeroSection() {
     };
   }, [reduce]);
 
-  const drivers = useCountUp(22, revealed, 0.05, !!reduce);
-  const rounds = useCountUp(24, revealed, 0.12, !!reduce);
-  const seasons = useCountUp(77, revealed, 0.19, !!reduce);
 
   /** What each DOM letter shows: hidden under the 3D scene, or the 2D sequence. */
   const letterState = (i: number) => {
@@ -263,6 +270,8 @@ export default function HeroSection() {
         <div className="hero-scan absolute inset-x-0 h-20" />
         {/* Telemetry traces */}
         <div className="hero-parallax-soft absolute inset-x-0 bottom-9">
+          <span className="absolute left-[10%] top-0 hidden font-mono text-[0.625rem] tracking-[0.2em] text-accent/70 sm:inline">SPD</span>
+          <span className="absolute left-[13%] top-0 hidden font-mono text-[0.625rem] tracking-[0.2em] text-ember/60 sm:inline">THR</span>
           <svg viewBox="0 0 1400 100" preserveAspectRatio="none" width="100%" height="110">
             <defs>
               <linearGradient id="heroSpeed" x1="0" y1="0" x2="1" y2="0">
@@ -376,43 +385,46 @@ export default function HeroSection() {
           <span className="hidden h-px w-7 bg-accent/50 sm:block" aria-hidden />
         </div>
 
-        <motion.p {...reveal(0)} className="hero-intro mt-5">Every lap tells a story. Get closer to the race.</motion.p>
-        <div className="mt-6 flex flex-col items-center gap-5" style={{ pointerEvents: revealed ? "auto" : "none" }}>
-          {/* Stats */}
-          <motion.dl {...reveal(0)} className="glass flex divide-x divide-[var(--glass-edge)]">
-            {[
-              { label: "Drivers", value: drivers },
-              { label: "Rounds", value: rounds },
-              { label: "Seasons", value: seasons },
-            ].map((d, i) => (
-              <div key={d.label} className={cn("flex min-w-[84px] flex-col-reverse px-5 py-3", i === 0 && "shadow-[inset_0_2px_0_rgb(var(--accent))]")}>
-                <dt className="label-caps mt-1.5 text-[0.75rem] text-label-3">{d.label}</dt>
-                <dd className="font-display text-[1.5rem] leading-none tabular-nums text-paper">{d.value}</dd>
-              </div>
-            ))}
-          </motion.dl>
+        <motion.div {...reveal(0)} className="mt-7 w-full max-w-3xl sm:mt-8" style={{ pointerEvents: revealed ? "auto" : "none" }}>
+          <Suspense fallback={<SpecStripSkeleton />}>
+            <SpecStrip hud={hud} run={revealed} reduce={!!reduce} />
+          </Suspense>
+        </motion.div>
 
-          {/* CTAs */}
-          <motion.nav {...reveal(0.07)} aria-label="Start here" className="flex flex-wrap justify-center gap-2">
-            {CTAS.map(({ href, label, primary }) => (
-              <Link
-                key={href}
-                href={href}
-                tabIndex={revealed ? undefined : -1}
-                className={cn(
-                  "pressable flex h-11 items-center gap-2 px-5 text-[0.8125rem] font-bold uppercase tracking-[0.12em]",
-                  primary
-                    ? "bg-accent text-paper hover:bg-[#D5170F] hover:shadow-[0_0_24px_rgb(var(--accent)/0.5)]"
-                    : "glass text-label-2 hover:border-paper/30 hover:text-paper",
-                )}
-              >
-                {label}
-                {primary && <ArrowRight className="h-4 w-4" aria-hidden />}
-              </Link>
+        <motion.nav {...reveal(0.08)} aria-label="Start here" className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:gap-0" style={{ pointerEvents: revealed ? "auto" : "none" }}>
+          <Link
+            href="/drivers"
+            tabIndex={revealed ? undefined : -1}
+            className="pressable group flex h-12 items-center gap-3 bg-accent px-6 text-[0.8125rem] font-bold uppercase tracking-[0.14em] text-paper hover:bg-[#D5170F] hover:shadow-[0_0_28px_rgb(var(--accent)/0.5)]"
+          >
+            <span className="font-mono text-[0.6875rem] text-paper">01</span>
+            Standings
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+          <ul className="flex flex-wrap justify-center sm:ml-2 sm:border-l sm:border-paper/15 sm:pl-2">
+            {LINKS.map(({ href, label, code }) => (
+              <li key={href}>
+                <Link href={href} tabIndex={revealed ? undefined : -1} className="pressable group flex h-12 items-center gap-2 px-3.5 text-[0.75rem] font-bold uppercase tracking-[0.14em] text-label-2 hover:text-paper">
+                  <span className="font-mono text-[0.625rem] text-label-3 group-hover:text-tint">{code}</span>
+                  {label}
+                </Link>
+              </li>
             ))}
-          </motion.nav>
-        </div>
+          </ul>
+        </motion.nav>
       </div>
+
+      {/* Instrument frame: corner brackets, an edge ruler that tracks the pointer, and live readouts. */}
+      <motion.div {...reveal(0.2)} aria-hidden className="pointer-events-none absolute inset-0 z-[5] hidden sm:block">
+        <span className="hero-bracket left-6 top-6 border-l border-t" />
+        <span className="hero-bracket right-6 top-6 border-r border-t" />
+        <span className="hero-bracket bottom-[4.5rem] left-6 border-b border-l" />
+        <span className="hero-bracket bottom-[4.5rem] right-6 border-b border-r" />
+        <div className="hero-ruler absolute bottom-[6rem] left-8 top-24 w-3" />
+        <Suspense fallback={null}>
+          <HudCorners hud={hud} />
+        </Suspense>
+      </motion.div>
 
       {/* Skip (only while the lights are running) */}
       <AnimatePresence>
@@ -431,26 +443,16 @@ export default function HeroSection() {
         )}
       </AnimatePresence>
 
-      {/* Scroll cue */}
-      <motion.div {...reveal(0.3)} className="absolute bottom-12 left-4 z-[5] sm:left-8">
-        <a href="#grid" tabIndex={revealed ? 0 : -1} className="hero-scroll font-mono text-[0.625rem] uppercase tracking-[0.18em] text-label-2 hover:text-paper">Explore the grid <ArrowRight className="h-3 w-3 rotate-90" aria-hidden /></a>
-      </motion.div>
-
       {/* LIVE ticker */}
       <div className="relative z-10 flex h-8 shrink-0 overflow-hidden bg-maroon/50 backdrop-blur-sm">
         <div className="flex shrink-0 items-center gap-1.5 bg-accent px-3.5">
           <span className="hero-live-dot h-1.5 w-1.5 rounded-full bg-paper" aria-hidden />
-          <span className="font-mono text-[0.75rem] font-bold tracking-[0.2em] text-paper">LIVE</span>
+          <span className="font-mono text-[0.75rem] font-bold tracking-[0.2em] text-paper">FEED</span>
         </div>
         <div className="flex flex-1 items-center overflow-hidden">
-          <div className="hero-ticker flex whitespace-nowrap">
-            {[...TICKER, ...TICKER].map((item, i) => (
-              <span key={i} aria-hidden={i >= TICKER.length || undefined} className="px-10 font-mono text-[0.75rem] uppercase tracking-[0.14em] text-label-3">
-                {item}
-                <span className="ml-10 text-ember">·</span>
-              </span>
-            ))}
-          </div>
+          <Suspense fallback={<Ticker items={TICKER_STATIC} />}>
+            <LiveTicker hud={hud} />
+          </Suspense>
         </div>
       </div>
 
@@ -468,6 +470,18 @@ export default function HeroSection() {
         @keyframes heroIgnite { to { color: rgb(var(--paper)); -webkit-text-stroke-color: transparent; } }
         @keyframes heroIgniteU { to { color: rgb(var(--ember)); -webkit-text-stroke-color: transparent; } }
 
+        .hero-bracket { position: absolute; width: 22px; height: 22px; border-color: rgb(var(--paper) / 0.28); }
+        .hero-ruler {
+          background-image: repeating-linear-gradient(180deg, rgb(var(--paper) / 0.22) 0 1px, transparent 1px 12px), repeating-linear-gradient(180deg, rgb(var(--paper) / 0.32) 0 1px, transparent 1px 60px);
+          background-size: 6px 100%, 12px 100%;
+          background-repeat: no-repeat;
+        }
+        .hero-ruler::after {
+          content: ""; position: absolute; left: 0; width: 18px; height: 2px; background: rgb(var(--accent));
+          top: calc(var(--my) * 100%); box-shadow: 0 0 10px rgb(var(--accent) / 0.8); transition: top 0.25s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .hero-spec-bar { transform-origin: left; animation: heroBar 0.9s cubic-bezier(0.23, 1, 0.32, 1) backwards; }
+        @keyframes heroBar { from { transform: scaleX(0); } }
         .hero-glow { background: radial-gradient(760px circle at calc(var(--mx) * 100%) calc(var(--my) * 100%), rgb(var(--ember) / 0.1), transparent 55%); }
         .hero-parallax { transform: translate3d(calc((var(--mx) - 0.5) * -16px), calc((var(--my) - 0.5) * -10px), 0); transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1); }
         .hero-parallax-soft { transform: translate3d(calc((var(--mx) - 0.5) * -6px), 0, 0); transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1); }
@@ -487,5 +501,122 @@ export default function HeroSection() {
         }
       `}</style>
     </section>
+  );
+}
+
+// ─── Live data (streamed from the server; the hero never waits on it) ────────
+
+function useClock(run = true) {
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    if (!run) return;
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [run]);
+  return now;
+}
+
+function countdown(ms: number) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const d = Math.floor(s / 86400);
+  const hh = String(Math.floor((s % 86400) / 3600)).padStart(2, "0");
+  const mm = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+  const ss = String(s % 60).padStart(2, "0");
+  return `T−${d}D ${hh}:${mm}:${ss}`;
+}
+
+function SpecCell({ index, label, value, sub, bar, delay }: { index: string; label: string; value: React.ReactNode; sub?: React.ReactNode; bar?: number; delay: number }) {
+  return (
+    <div className="relative min-w-0 px-4 py-3 text-left">
+      <span aria-hidden className="hero-spec-bar absolute inset-x-0 top-0 h-px bg-accent/70" style={{ animationDelay: `${delay}ms` }} />
+      <dt className="flex items-center gap-1.5 font-mono text-[0.625rem] uppercase tracking-[0.18em] text-label-3">
+        <span className="text-tint">{index}</span>
+        {label}
+      </dt>
+      <dd className="mt-1.5 truncate font-display text-[1.25rem] uppercase leading-none text-paper sm:text-[1.375rem]">{value}</dd>
+      {sub && <dd className="mt-1 truncate font-mono text-[0.6875rem] tabular-nums text-label-2">{sub}</dd>}
+      {bar !== undefined && (
+        <dd aria-hidden className="mt-2 h-[3px] bg-paper/10">
+          <span className="hero-spec-bar block h-full bg-accent" style={{ width: `${bar * 100}%`, animationDelay: `${delay + 200}ms` }} />
+        </dd>
+      )}
+    </div>
+  );
+}
+
+// Hairline grid: 1px gaps over a light backing, cells on a dark translucent fill.
+const specGrid = "grid grid-cols-2 gap-px border border-paper/10 bg-paper/10 backdrop-blur-md sm:grid-cols-4 [&>*]:bg-[rgb(var(--canvas)/0.72)]";
+
+function SpecStrip({ hud, run, reduce }: { hud: Promise<HeroHud | null>; run: boolean; reduce: boolean }) {
+  const h = use(hud);
+  const now = useClock(!!h?.next);
+  const points = useCountUp(h?.leader?.points ?? 0, run, 0.1, reduce);
+  const done = useCountUp(h?.roundsDone ?? 0, run, 0.2, reduce);
+  if (!h) return null;
+  return (
+    <dl className={specGrid}>
+      <SpecCell
+        index="01"
+        label={h.next ? `Next · R${h.next.round}` : "Next"}
+        value={h.next?.locality ?? "Season over"}
+        sub={h.next ? (now === null ? "T−" : countdown(new Date(h.next.start).getTime() - now)) : undefined}
+        delay={0}
+      />
+      <SpecCell index="02" label="Leader" value={h.leader?.code ?? "—"} sub={h.leader ? `${points} PTS${h.leader.gap !== null ? ` · +${h.leader.gap}` : ""}` : undefined} delay={80} />
+      <SpecCell index="03" label={h.last ? `Last win · R${h.last.round}` : "Last win"} value={h.last?.winnerCode ?? "—"} sub={h.last?.name.replace(/ Grand Prix.*/, " GP")} delay={160} />
+      <SpecCell index="04" label={`Season ${h.season}`} value={<>{done}<span className="text-label-3">/{h.roundsTotal}</span></>} bar={h.roundsTotal ? h.roundsDone / h.roundsTotal : 0} delay={240} />
+    </dl>
+  );
+}
+
+function SpecStripSkeleton() {
+  return (
+    <div className={specGrid} aria-hidden>
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="px-4 py-3">
+          <div className="skeleton h-2.5 w-16" />
+          <div className="skeleton mt-2 h-5 w-20" />
+          <div className="skeleton mt-1.5 h-2.5 w-24" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function HudCorners({ hud }: { hud: Promise<HeroHud | null> }) {
+  const h = use(hud);
+  const now = useClock();
+  const utc = now === null ? "--:--:--" : new Date(now).toISOString().slice(11, 19);
+  return (
+    <>
+      <div className="absolute left-12 top-9 font-mono text-[0.625rem] uppercase leading-relaxed tracking-[0.18em] text-label-3">
+        <p className="text-label-2">FJUAN / Race intelligence</p>
+        <p>UTC {utc}{h ? ` · ${h.drivers} drivers tracked` : ""}</p>
+      </div>
+      {h?.next && (
+        <div className="absolute right-12 top-9 text-right font-mono text-[0.625rem] uppercase leading-relaxed tracking-[0.18em] text-label-3">
+          <p className="text-label-2">Target · {h.next.locality}, {h.next.country}</p>
+          <p className="tabular-nums">{coord(h.next.lat, "N", "S")} {coord(h.next.long, "E", "W")}</p>
+        </div>
+      )}
+    </>
+  );
+}
+
+function LiveTicker({ hud }: { hud: Promise<HeroHud | null> }) {
+  return <Ticker items={tickerItems(use(hud))} />;
+}
+
+function Ticker({ items }: { items: string[] }) {
+  return (
+    <div className="hero-ticker flex whitespace-nowrap">
+      {[...items, ...items].map((item, i) => (
+        <span key={i} aria-hidden={i >= items.length || undefined} className="px-10 font-mono text-[0.75rem] uppercase tracking-[0.14em] text-label-3">
+          {item}
+          <span className="ml-10 text-ember">·</span>
+        </span>
+      ))}
+    </div>
   );
 }

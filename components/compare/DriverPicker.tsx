@@ -1,14 +1,14 @@
 "use client";
 
 import { useId, useMemo, useRef, useState } from "react";
-import { Check, ChevronsUpDown, Search } from "lucide-react";
+import { Check, ChevronsUpDown, Search } from "@/components/ui/icons";
 import type { Driver } from "@/lib/types/driver";
 import { cn } from "@/lib/utils/cn";
 
 const fold = (s: string) => s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
 
-export function DriverPicker({ label, value, onChange, drivers, color }: {
-  label: string; value: string; onChange: (id: string) => void; drivers: Driver[]; color: string;
+export function DriverPicker({ label, value, onChange, drivers, color, autoFocus }: {
+  label: string; value: string; onChange: (id: string) => void; drivers: Driver[]; color: string; autoFocus?: boolean;
 }) {
   const id = useId();
   const input = useRef<HTMLInputElement>(null);
@@ -38,7 +38,7 @@ export function DriverPicker({ label, value, onChange, drivers, color }: {
       <div className="flex min-h-11 items-center gap-2 border-b border-separator focus-within:border-tint">
         <Search className="h-4 w-4 shrink-0 text-label-3" aria-hidden />
         <input
-          ref={input} id={id} role="combobox" autoComplete="off" aria-autocomplete="list" aria-expanded={open}
+          ref={input} id={id} role="combobox" autoFocus={autoFocus} autoComplete="off" aria-autocomplete="list" aria-expanded={open}
           aria-controls={`${id}-list`} aria-activedescendant={open && shown.length ? `${id}-option-${activeIndex}` : undefined}
           value={open ? query : current ? `${current.givenName} ${current.familyName}` : value.replaceAll("_", " ")}
           placeholder="Find any driver in F1 history"

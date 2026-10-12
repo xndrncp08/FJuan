@@ -1,4 +1,4 @@
-import { Search, ChevronDown } from "lucide-react";
+import { Search, ChevronDown } from "@/components/ui/icons";
 import { cn } from "@/lib/utils/cn";
 
 export function SearchField({ label, className, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {

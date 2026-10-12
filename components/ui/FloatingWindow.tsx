@@ -20,7 +20,7 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, animate, motion, useDragControls, useMotionValue, useReducedMotion } from "framer-motion";
-import { Maximize2, Minimize2, SquareArrowOutUpRight, X } from "lucide-react";
+import { Maximize2, Minimize2, SquareArrowOutUpRight, X } from "@/components/ui/icons";
 import { cn } from "@/lib/utils/cn";
 
 const SPRING = { type: "spring", bounce: 0, duration: 0.32 } as const;

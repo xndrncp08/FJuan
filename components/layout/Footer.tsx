@@ -17,7 +17,8 @@ const EXPLORE = [
   { href: "/predict", label: "Predict", code: "06" },
   { href: "/live", label: "Live", code: "07" },
   { href: "/telemetry", label: "3D Telemetry", code: "08" },
-  { href: "/predict/delta", label: "Delta", code: "09" },
+  { href: "/predict/history", label: "Archive", code: "09" },
+  { href: "/predict/delta", label: "Delta", code: "10" },
 ];
 
 const DATA = [
@@ -27,7 +28,7 @@ const DATA = [
 ];
 
 const STATS = [
-  { value: "76", label: "Seasons" },
+  { value: String(new Date().getFullYear() - 1949), label: "Seasons" },
   { value: "1100+", label: "Races" },
   { value: "880+", label: "Drivers" },
   { value: "77", label: "Circuits" },

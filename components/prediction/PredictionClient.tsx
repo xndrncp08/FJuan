@@ -7,11 +7,13 @@
  */
 "use client";
 
+import dynamic from "next/dynamic";
+
 import Link from "next/link";
 import { PageIndex } from "@/components/ui/PageIndex";
 import { InsightNote } from "@/components/ui/InsightNote";
 import { useState } from "react";
-import { Activity, ChevronDown, CloudRain, RefreshCw, Sparkles, Thermometer, TriangleAlert, Wind, Zap } from "lucide-react";
+import { Activity, ChevronDown, CloudRain, RefreshCw, Sparkles, Thermometer, TriangleAlert, Wind, Zap } from "@/components/ui/icons";
 import type { DriverPrediction, RacePrediction } from "@/lib/types/prediction";
 import { usePrediction } from "@/lib/hooks/usePrediction";
 import { teamColor } from "@/lib/theme/teams";
@@ -125,9 +127,9 @@ export default function PredictionClient({
                 </Badge>
               </>
             )}
-            <ButtonLink href="/predict/delta" size="sm" variant="plain" className="ml-auto">
+            <ButtonLink href="/predict/history" size="sm" variant="plain" className="ml-auto">
               <Activity className="h-3.5 w-3.5" aria-hidden />
-              Model vs actual
+              Past calls
             </ButtonLink>
             <Button size="sm" variant="plain" onClick={refresh} disabled={isLoading}>
               <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} aria-hidden />
@@ -140,7 +142,7 @@ export default function PredictionClient({
       <div className="container-page mb-6"><PageIndex items={[{ href: "#forecast-picks", label: "Leading contenders" }, { href: "#forecast-field", label: "Full forecast" }, { href: "#forecast-method", label: "How it works" }]} /></div>
       <Section id="forecast-picks" className="pt-0 sm:pt-0">
         <div className="space-y-5">
-          <InsightNote title="How to read this forecast">Model scores combine eight weighted factors on a 0–100 scale. Win chances are normalized across the ten scored contenders and sum to approximately 100% after rounding. The leading three are the model’s preferred order; their win percentages are not probabilities of finishing on the podium.</InsightNote>
+          {p1 && p2 && p3 && <ProjectedPodium top={[p1, p2, p3]} />}
           {p1 && <PickCard driver={p1} field={field} isWet={isWet} isSprint={isSprint} />}
 
           <div className="grid gap-4 md:grid-cols-2 md:gap-5">
@@ -148,6 +150,7 @@ export default function PredictionClient({
               <PodiumCard key={d.driverId} driver={d} place={i + 1} field={field} isWet={isWet} isSprint={isSprint} />
             ))}
           </div>
+          <InsightNote title="How to read this forecast">Scores combine eight weighted factors on a 0–100 scale. Win chances are normalised across the top ten and sum to about 100%. They are chances of winning, not of a podium.</InsightNote>
         </div>
       </Section>
 
@@ -346,6 +349,33 @@ function Methodology({ isWet, isSprint }: { isWet: boolean; isSprint: boolean })
       <p className="mt-8 border-t border-hairline pt-5 text-footnote text-label-3">
         Data from the Jolpica F1 API, Open-Meteo forecasts, and OpenF1 race control messages. A prediction is a probability, not a promise.
       </p>
+    </Card>
+  );
+}
+
+const Podium3D = dynamic(() => import("./Podium3D"), { ssr: false, loading: () => <div className="h-full" /> });
+
+/** The top three on a 3D podium, with names and odds as text under each step. */
+function ProjectedPodium({ top }: { top: DriverPrediction[] }) {
+  const order = [top[1], top[0], top[2]];
+  return (
+    <Card padding="none" className="overflow-hidden">
+      <div className="tex-grid relative h-56 sm:h-72">
+        <Podium3D steps={top.map((d) => ({ code: d.driverCode, color: teamColor(d.constructorId) }))} />
+        <p className="eyebrow absolute left-5 top-4">Projected podium</p>
+      </div>
+      <ol className="grid grid-cols-3 border-t border-hairline">
+        {order.map((d) => {
+          const place = top.indexOf(d) + 1;
+          return (
+            <li key={d.driverId} className={cn("stagger-in px-2 py-3 text-center sm:py-4", place === 1 && "bg-fill-1")} style={{ ["--i" as string]: place }}>
+              <span className={cn("block font-mono text-caption", MEDAL_TEXT[place - 1])}>P{place}</span>
+              <span className="block font-display text-[1.25rem] uppercase leading-tight text-paper">{d.driverCode}</span>
+              <span className="tabular block text-footnote text-label-3">{d.podiumProbability}% win</span>
+            </li>
+          );
+        })}
+      </ol>
     </Card>
   );
 }

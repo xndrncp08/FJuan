@@ -9,7 +9,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronRight, MapPin, Sparkles } from "lucide-react";
+import { CalendarDays, ChevronRight, MapPin, Sparkles } from "@/components/ui/icons";
 import { ButtonLink } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";

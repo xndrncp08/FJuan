@@ -13,7 +13,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, ChevronLeft, ChevronRight, Cpu } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, Cpu } from "@/components/ui/icons";
 import { SectionHeader } from "@/components/ui/Section";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import type { StageCar } from "@/components/teams/CarStage";

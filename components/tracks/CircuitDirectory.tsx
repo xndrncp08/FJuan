@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, Timer } from "lucide-react";
+import { ArrowUpRight, Timer } from "@/components/ui/icons";
 import type circuitsData from "@/lib/data/circuits.json";
 import { PageHeader, Section } from "@/components/ui/Section";
 import { SearchField, SelectField } from "@/components/ui/Fields";
@@ -59,7 +59,7 @@ function CircuitCard({ circuit: c, index }: { circuit: Circuit; index: number })
           src={c.layoutUrl}
           alt={`${c.name} layout`}
           loading="lazy"
-          className="circuit-map h-full w-full object-contain p-8 pt-12 opacity-90 transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+          className="circuit-map h-full w-full object-contain p-8 pt-12 opacity-90 group-hover:scale-[1.03]"
         />
       </div>
       <div className="flex flex-1 flex-col p-5">

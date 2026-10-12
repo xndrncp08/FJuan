@@ -9,7 +9,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Users } from "lucide-react";
+import { ChevronRight, Users } from "@/components/ui/icons";
 import { useSeasonChoice } from "@/lib/hooks/useSeasonChoice";
 import { SearchField, SelectField } from "@/components/ui/Fields";
 import { Button, ButtonLink } from "@/components/ui/Button";

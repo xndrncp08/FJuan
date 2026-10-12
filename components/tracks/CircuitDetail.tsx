@@ -10,7 +10,7 @@
  */
 
 import { notFound } from "next/navigation";
-import { ArrowUpRight, Timer } from "lucide-react";
+import { ArrowUpRight, Timer } from "@/components/ui/icons";
 import { getCircuit, getRaceSchedule } from "@/lib/api/jolpica";
 import circuitsData from "@/lib/data/circuits.json";
 import { DetailFrame, type DetailVariant } from "@/components/ui/DetailFrame";
@@ -56,7 +56,7 @@ export default async function CircuitDetail({ circuitId, variant }: { circuitId:
           <Card id="circuit-layout" padding="none" className="overflow-hidden">
             <figure className="tex-grid flex aspect-[16/10] items-center justify-center bg-surface-2/50 p-4 sm:p-8">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={c.layoutUrl} alt={`${c.name} track layout`} className="circuit-map h-full w-full object-contain" />
+              <img src={c.layoutUrl} alt={`${c.name} track layout`} className="circuit-map circuit-map--color h-full w-full object-contain" />
               <figcaption className="sr-only">{c.name} circuit layout</figcaption>
             </figure>
             <div className="border-t border-hairline p-5 sm:p-6">

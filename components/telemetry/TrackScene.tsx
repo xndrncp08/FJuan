@@ -2,32 +2,39 @@
  * components/telemetry/TrackScene.tsx
  *
  * 3D circuit built from telemetry x/y/z: a ribbon mesh following the racing
- * line, colored per sample, with a translucent curtain down to the ground
+ * line, coloured per sample, with a translucent curtain down to the ground
  * so elevation reads at a glance (elevation is exaggerated to stay visible
  * at circuit scale).
  *
- * Heat modes:
+ * Colour modes:
  *   inputs — red braking, green full throttle, cyan coasting/partial.
  *            Braking is also drawn raised and wider, so it doesn't rely on
  *            red vs green alone.
  *   speed  — one-hue sequential ramp, slow (dark) → fast (bright).
+ *   delta  — each mini-sector in the colour of whichever lap was quicker
+ *            through it (needs a reference lap).
  *
- * A glowing car marker sits at `getCursor()` (a fractional sample index,
- * read every frame so playback never re-renders React) and the camera can
- * follow it.
+ * Markers: start/finish and sector posts, a T-number tag at every detected
+ * corner apex, a short red post at each braking point. The car (and the
+ * reference "ghost") sit at fractional sample indices read every frame, so
+ * playback never re-renders React. Four camera rigs: free orbit, chase,
+ * top-down and a slow helicopter orbit around the car.
  */
 
 "use client";
 
-import { Grid, Html, OrbitControls } from "@react-three/drei";
+import { Grid, Html, OrbitControls, Trail } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { HEAT } from "@/components/ui/chart";
+import type { Corner } from "@/lib/telemetry/analysis";
 import type { TelemetrySample } from "@/lib/telemetry/types";
+import { indexAtDistance } from "./playhead";
 
-export type HeatMode = "inputs" | "speed";
+export type HeatMode = "inputs" | "speed" | "delta";
+export type CameraMode = "orbit" | "chase" | "top" | "heli";
 
 const SPAN = 12; // circuit fits in a 12-unit square
 const RIBBON = 0.09;
@@ -47,6 +54,7 @@ const HEAT_COLORS = {
 };
 const SPEED_LO = new THREE.Color("#3a0c06");
 const SPEED_HI = new THREE.Color("#FFB08A");
+const LEVEL = new THREE.Color("#5a4a46");
 
 export interface TrackLayout {
   points: THREE.Vector3[];
@@ -71,15 +79,34 @@ export function layoutTrack(samples: TelemetrySample[]): TrackLayout {
   return { points, tangents, scale, elevation };
 }
 
-function sampleColor(s: TelemetrySample, mode: HeatMode, maxSpeed: number) {
-  if (mode === "speed") return SPEED_LO.clone().lerp(SPEED_HI, Math.pow(s.speed / maxSpeed, 1.6));
-  return HEAT_COLORS[driveState(s)];
+export interface Comparison {
+  samples: TelemetrySample[];
+  getCursor: () => number;
+  /** Mini-sector winners, in lap order: -1 = main lap, 1 = reference, 0 = level. */
+  mini: (-1 | 0 | 1)[];
+  colorA: string;
+  colorB: string;
 }
 
-function useRibbon(samples: TelemetrySample[], layout: TrackLayout, mode: HeatMode, widthScale: number, raise: boolean) {
+function colorFor(samples: TelemetrySample[], mode: HeatMode, cmp: Comparison | undefined) {
+  const maxSpeed = Math.max(...samples.map((s) => s.speed)) || 1;
+  const total = samples[samples.length - 1].distance || 1;
+  const a = new THREE.Color(cmp?.colorA ?? "#fff");
+  const b = new THREE.Color(cmp?.colorB ?? "#fff");
+  return (s: TelemetrySample) => {
+    if (mode === "speed") return SPEED_LO.clone().lerp(SPEED_HI, Math.pow(s.speed / maxSpeed, 1.6));
+    if (mode === "delta" && cmp?.mini.length) {
+      const w = cmp.mini[Math.min(cmp.mini.length - 1, Math.floor((s.distance / total) * cmp.mini.length))];
+      return w === -1 ? a : w === 1 ? b : LEVEL;
+    }
+    return HEAT_COLORS[driveState(s)];
+  };
+}
+
+function useRibbon(samples: TelemetrySample[], layout: TrackLayout, mode: HeatMode, cmp: Comparison | undefined, widthScale: number, raise: boolean) {
   return useMemo(() => {
     const n = samples.length;
-    const maxSpeed = Math.max(...samples.map((s) => s.speed)) || 1;
+    const color = colorFor(samples, mode, cmp);
     const pos = new Float32Array(n * 2 * 3);
     const col = new Float32Array(n * 2 * 3);
     const idx: number[] = [];
@@ -93,7 +120,7 @@ function useRibbon(samples: TelemetrySample[], layout: TrackLayout, mode: HeatMo
       const l = p.clone().addScaledVector(side, w);
       const r = p.clone().addScaledVector(side, -w);
       pos.set([l.x, l.y + lift, l.z, r.x, r.y + lift, r.z], i * 6);
-      const c = sampleColor(samples[i], mode, maxSpeed);
+      const c = color(samples[i]);
       col.set([c.r, c.g, c.b, c.r, c.g, c.b], i * 6);
       if (i < n - 1) {
         const a = i * 2;
@@ -106,20 +133,20 @@ function useRibbon(samples: TelemetrySample[], layout: TrackLayout, mode: HeatMo
     g.setIndex(idx);
     g.computeVertexNormals();
     return g;
-  }, [samples, layout, mode, widthScale, raise]);
+  }, [samples, layout, mode, cmp, widthScale, raise]);
 }
 
-function useCurtain(samples: TelemetrySample[], layout: TrackLayout, mode: HeatMode) {
+function useCurtain(samples: TelemetrySample[], layout: TrackLayout, mode: HeatMode, cmp: Comparison | undefined) {
   return useMemo(() => {
     const n = samples.length;
-    const maxSpeed = Math.max(...samples.map((s) => s.speed)) || 1;
+    const color = colorFor(samples, mode, cmp);
     const pos = new Float32Array(n * 2 * 3);
     const col = new Float32Array(n * 2 * 3);
     const idx: number[] = [];
     for (let i = 0; i < n; i++) {
       const p = layout.points[i];
       pos.set([p.x, p.y, p.z, p.x, 0, p.z], i * 6);
-      const c = sampleColor(samples[i], mode, maxSpeed);
+      const c = color(samples[i]);
       col.set([c.r, c.g, c.b, 0, 0, 0], i * 6);
       if (i < n - 1) {
         const a = i * 2;
@@ -131,7 +158,7 @@ function useCurtain(samples: TelemetrySample[], layout: TrackLayout, mode: HeatM
     g.setAttribute("color", new THREE.BufferAttribute(col, 3));
     g.setIndex(idx);
     return g;
-  }, [samples, layout, mode]);
+  }, [samples, layout, mode, cmp]);
 }
 
 /** Position + heading at a fractional sample index. */
@@ -146,7 +173,7 @@ export function poseAt(layout: TrackLayout, cursor: number) {
   };
 }
 
-function CarMarker({ layout, getCursor, color }: { layout: TrackLayout; getCursor: () => number; color: string }) {
+function CarMarker({ layout, getCursor, color, ghost = false, trail = false }: { layout: TrackLayout; getCursor: () => number; color: string; ghost?: boolean; trail?: boolean }) {
   const group = useRef<THREE.Group>(null);
   const ring = useRef<THREE.Mesh>(null);
   useFrame((state) => {
@@ -157,51 +184,77 @@ function CarMarker({ layout, getCursor, color }: { layout: TrackLayout; getCurso
     if (ring.current) {
       const k = (state.clock.elapsedTime * 1.4) % 1;
       ring.current.scale.setScalar(0.6 + k * 1.6);
-      (ring.current.material as THREE.MeshBasicMaterial).opacity = 0.7 * (1 - k);
+      (ring.current.material as THREE.MeshBasicMaterial).opacity = (ghost ? 0.4 : 0.7) * (1 - k);
     }
   });
+  const body = (
+    <mesh position={[0, 0.12, 0]} rotation={[Math.PI / 2, 0, 0]}>
+      <coneGeometry args={[0.11, 0.34, 4]} />
+      <meshBasicMaterial color={color} toneMapped={false} transparent={ghost} opacity={ghost ? 0.55 : 1} wireframe={ghost} />
+    </mesh>
+  );
   return (
     <group ref={group}>
-      <mesh position={[0, 0.12, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <coneGeometry args={[0.11, 0.34, 4]} />
-        <meshBasicMaterial color={color} toneMapped={false} />
-      </mesh>
-      <mesh position={[0, 0.12, 0]}>
-        <sphereGeometry args={[0.07, 16, 12]} />
-        <meshBasicMaterial color="#ffffff" toneMapped={false} />
-      </mesh>
+      {trail ? (
+        <Trail width={0.55} length={5} color={color} attenuation={(w) => w * w} decay={1.5}>
+          {body}
+        </Trail>
+      ) : (
+        body
+      )}
+      {!ghost && (
+        <mesh position={[0, 0.12, 0]}>
+          <sphereGeometry args={[0.07, 16, 12]} />
+          <meshBasicMaterial color="#ffffff" toneMapped={false} />
+        </mesh>
+      )}
       <mesh ref={ring} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
         <ringGeometry args={[0.16, 0.2, 40]} />
         <meshBasicMaterial color={color} transparent depthWrite={false} toneMapped={false} />
       </mesh>
-      <pointLight color={color} intensity={3} distance={2.5} position={[0, 0.4, 0]} />
+      {!ghost && <pointLight color={color} intensity={3} distance={2.5} position={[0, 0.4, 0]} />}
     </group>
   );
 }
 
-function FollowCamera({ layout, getCursor, enabled }: { layout: TrackLayout; getCursor: () => number; enabled: boolean }) {
+const HOME = { pos: new THREE.Vector3(0, 9.5, 9.5), target: new THREE.Vector3(0, 0, 0) };
+const TOP = { pos: new THREE.Vector3(0, 17, 0.01), target: new THREE.Vector3(0, 0, 0) };
+
+function CameraRig({ layout, getCursor, mode }: { layout: TrackLayout; getCursor: () => number; mode: CameraMode }) {
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
   const { camera } = useThree();
-  const home = useMemo(() => ({ pos: new THREE.Vector3(0, 9.5, 9.5), target: new THREE.Vector3(0, 0, 0) }), []);
-  const wasEnabled = useRef(enabled);
+  // Portrait viewports pull the overview camera back so the whole circuit fits the width.
+  const aspect = useThree((s) => s.size.width / Math.max(1, s.size.height));
+  const fit = Math.min(2.6, Math.max(1, 1.4 / aspect));
+  // Every switch eases to the new rig; orbit and top settle once, then hand control back.
+  const settling = useRef(false);
+  useEffect(() => {
+    settling.current = true;
+  }, [mode, fit]);
 
-  useFrame((_, dt) => {
+  useFrame((state, dt) => {
     if (!controls) return;
     const k = 1 - Math.exp(-dt * 4);
-    if (enabled) {
+    let pos: THREE.Vector3 | null = null;
+    let target: THREE.Vector3 | null = null;
+    if (mode === "chase" || mode === "heli") {
       const { position, tangent } = poseAt(layout, getCursor());
-      const goal = position.clone().addScaledVector(tangent, -2.4).add(new THREE.Vector3(0, 1.3, 0));
-      camera.position.lerp(goal, k);
-      controls.target.lerp(position, k * 1.5);
-      controls.update();
-    } else if (wasEnabled.current) {
-      // Ease back to the overview once when follow is turned off.
-      camera.position.lerp(home.pos, k);
-      controls.target.lerp(home.target, k);
-      controls.update();
-      if (camera.position.distanceTo(home.pos) < 0.05) wasEnabled.current = false;
+      target = position;
+      if (mode === "chase") pos = position.clone().addScaledVector(tangent, -2.4).add(new THREE.Vector3(0, 1.3, 0));
+      else {
+        const a = state.clock.elapsedTime * 0.35;
+        pos = position.clone().add(new THREE.Vector3(Math.sin(a) * 3.6, 2.6, Math.cos(a) * 3.6));
+      }
+    } else if (settling.current) {
+      const rig = mode === "top" ? TOP : HOME;
+      pos = rig.pos.clone().multiplyScalar(fit);
+      target = rig.target;
+      if (camera.position.distanceTo(pos) < 0.05) settling.current = false;
     }
-    if (enabled) wasEnabled.current = true;
+    if (!pos || !target) return;
+    camera.position.lerp(pos, k);
+    controls.target.lerp(target, Math.min(1, k * 1.5));
+    controls.update();
   });
   return null;
 }
@@ -211,20 +264,24 @@ export default function TrackScene({
   sectorSplits,
   getCursor,
   mode,
-  follow,
+  camera,
   color,
+  corners,
+  comparison,
 }: {
   samples: TelemetrySample[];
   sectorSplits: [number, number];
   getCursor: () => number;
   mode: HeatMode;
-  follow: boolean;
+  camera: CameraMode;
   color: string;
+  corners: Corner[];
+  comparison?: Comparison;
 }) {
   const layout = useMemo(() => layoutTrack(samples), [samples]);
-  const ribbon = useRibbon(samples, layout, mode, 1, true);
-  const glow = useRibbon(samples, layout, mode, 2.8, false);
-  const curtain = useCurtain(samples, layout, mode);
+  const ribbon = useRibbon(samples, layout, mode, comparison, 1, true);
+  const glow = useRibbon(samples, layout, mode, comparison, 2.8, false);
+  const curtain = useCurtain(samples, layout, mode, comparison);
   useEffect(() => () => [ribbon, glow, curtain].forEach((g) => g.dispose()), [ribbon, glow, curtain]);
 
   const total = samples[samples.length - 1]?.distance || 1;
@@ -241,10 +298,26 @@ export default function TrackScene({
     [samples, sectorSplits, layout, total],
   );
 
+  // The reference car rides the main lap's racing line at its own distance fraction.
+  const ghostCursor = useMemo(() => {
+    if (!comparison) return null;
+    const ref = comparison.samples;
+    const refTotal = ref[ref.length - 1].distance || 1;
+    return () => {
+      const i = Math.max(0, Math.min(ref.length - 1, Math.floor(comparison.getCursor())));
+      const j = Math.min(ref.length - 1, i + 1);
+      const f = comparison.getCursor() - i;
+      const d = ref[i].distance + (ref[j].distance - ref[i].distance) * f;
+      return indexAtDistance(samples, (d / refTotal) * total);
+    };
+  }, [comparison, samples, total]);
+
+  const carColor = comparison ? comparison.colorA : color;
+
   return (
     <>
       <color attach="background" args={["#0b0403"]} />
-      <fog attach="fog" args={["#0b0403", 14, 32]} />
+      <fog attach="fog" args={["#0b0403", 18, 48]} />
       <ambientLight intensity={0.6} />
       <directionalLight position={[6, 10, 4]} intensity={1.2} />
 
@@ -264,15 +337,35 @@ export default function TrackScene({
             <boxGeometry args={[0.025, m.position.y + 0.5, 0.025]} />
             <meshBasicMaterial color={m.label === "S/F" ? "#F5E9E4" : "#FF7A52"} toneMapped={false} />
           </mesh>
-          <Html position={[0, m.position.y + 0.65, 0]} center distanceFactor={12} zIndexRange={[10, 0]}>
-            <span className="pointer-events-none select-none whitespace-nowrap border border-[var(--glass-edge)] bg-[rgb(20_6_5/0.8)] px-1.5 py-0.5 font-mono text-[11px] font-bold text-paper">
+          <Html position={[0, m.position.y + 0.65, 0]} center zIndexRange={[10, 0]}>
+            <span className="pointer-events-none select-none whitespace-nowrap border border-[var(--glass-edge)] bg-[rgb(20_6_5/0.8)] px-1.5 py-0.5 font-mono text-[10px] font-bold text-paper">
               {m.label}
             </span>
           </Html>
         </group>
       ))}
 
-      <CarMarker layout={layout} getCursor={getCursor} color={color} />
+      {corners.map((c) => {
+        const apex = layout.points[c.apexIndex];
+        const brake = layout.points[c.brakeIndex];
+        return (
+          <group key={c.number}>
+            <mesh position={[brake.x, brake.y + 0.09, brake.z]}>
+              <boxGeometry args={[0.035, 0.18, 0.035]} />
+              <meshBasicMaterial color={HEAT.brake} toneMapped={false} />
+            </mesh>
+            <Html position={[apex.x, apex.y + 0.32, apex.z]} center zIndexRange={[9, 0]}>
+              <span className="pointer-events-none select-none whitespace-nowrap font-mono text-[10px] font-bold leading-none text-paper/80 [text-shadow:0_1px_2px_#000]">
+                T{c.number}
+                <span className="ml-1 font-normal text-paper/50">{Math.round(c.apexSpeed)}</span>
+              </span>
+            </Html>
+          </group>
+        );
+      })}
+
+      {comparison && ghostCursor && <CarMarker layout={layout} getCursor={ghostCursor} color={comparison.colorB} ghost />}
+      <CarMarker layout={layout} getCursor={getCursor} color={carColor} trail />
 
       <Grid
         position={[0, 0, 0]}
@@ -288,8 +381,8 @@ export default function TrackScene({
         infiniteGrid
       />
 
-      <OrbitControls makeDefault enableDamping minDistance={3} maxDistance={26} maxPolarAngle={Math.PI / 2.1} />
-      <FollowCamera layout={layout} getCursor={getCursor} enabled={follow} />
+      <OrbitControls makeDefault enableDamping minDistance={3} maxDistance={40} maxPolarAngle={Math.PI / 2.1} />
+      <CameraRig layout={layout} getCursor={getCursor} mode={camera} />
     </>
   );
 }

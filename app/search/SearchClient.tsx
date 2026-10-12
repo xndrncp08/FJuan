@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { ChevronRight, MapPin, Search, Trophy, User } from "lucide-react";
+import { ChevronRight, MapPin, Search, Trophy, User } from "@/components/ui/icons";
 import { PageHeader, Section } from "@/components/ui/Section";
 import { Button } from "@/components/ui/Button";
 import { SearchField } from "@/components/ui/Fields";
@@ -45,7 +45,7 @@ export default function SearchClient({ index }: { index: SearchIndex }) {
   const more = Math.max(category === "all" || category === "drivers" ? drivers.length : 0, category === "all" || category === "teams" ? teams.length : 0, category === "all" || category === "circuits" ? circuits.length : 0) > limit;
 
   return <>
-    <PageHeader eyebrow="The F1 archive" title="Find Your Subject" watermark="SEARCH" description={`${index.drivers.length.toLocaleString()} drivers, ${index.teams.length} teams and ${index.circuits.length} circuits. Search by name, nationality, location or driver code.`}>
+    <PageHeader eyebrow="The F1 archive" title="Search Everything" watermark="SEARCH" description={`${index.drivers.length.toLocaleString()} drivers, ${index.teams.length} teams and ${index.circuits.length} circuits. Search by name, nationality, location or driver code.`}>
       <SearchField label="Search the archive" value={query} onChange={(e) => update("q", e.target.value)} placeholder="Try Senna, Monza or Ferrari" enterKeyHint="search" />
       <div className="mt-4"><Segmented aria-label="Result type" value={category} onChange={(v) => update("type", v)} segments={[{ value: "all", label: "All" }, { value: "drivers", label: "Drivers" }, { value: "teams", label: "Teams" }, { value: "circuits", label: "Circuits" }]} /></div>
     </PageHeader>

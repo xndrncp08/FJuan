@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import ExploreRoutes from "@/components/home/ExploreRoutes";
 import { RouteLoading } from "@/components/ui/RouteLoading";
 import { getF1News } from "@/lib/api/news-fetcher";
 import { getCurrentStandings } from "@/lib/api/fetchers";
@@ -7,6 +6,7 @@ import { getConstructorStandings, getNextRace, getLastRace } from "@/lib/api/jol
 import { getSeasonCars } from "@/lib/api/cars";
 import { generateRacePrediction } from "@/lib/prediction/engine";
 import HeroSection from "@/components/home/HeroSection";
+import { getHeroHud } from "@/lib/api/heroHud";
 import CarShowcase from "@/components/home/CarShowcase";
 import NextRaceSection from "@/components/home/NextRaceSection";
 import DashboardSection from "@/components/home/DashboardSection";
@@ -17,8 +17,8 @@ export const dynamic = "force-dynamic";
 
 export default function Home() {
   return <>
-    <HeroSection />
-    <ExploreRoutes />
+    {/* Not awaited: the hero paints immediately and its data strip streams in. */}
+    <HeroSection hud={getHeroHud()} />
     <Suspense fallback={<RouteLoading label="Loading the paddock" />}><HomeData /></Suspense>
   </>;
 }

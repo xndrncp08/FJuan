@@ -18,7 +18,7 @@
 import dynamic from "next/dynamic";
 import { useRef, useState } from "react";
 import { useReducedMotion } from "framer-motion";
-import { Info, Play, Pause, Rotate3d } from "lucide-react";
+import { Info, Play, Pause, Rotate3d } from "@/components/ui/icons";
 import { CAR_MODEL_LICENSE, carModelFor } from "@/lib/data/carModels";
 import { teamColor } from "@/lib/theme/teams";
 import { createRig, type Hotspot, type Rig } from "@/components/three/realCar/rig";

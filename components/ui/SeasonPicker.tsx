@@ -7,7 +7,7 @@
  * <select> (which gets the platform wheel picker on phones).
  */
 
-import { ChevronDown } from "lucide-react";
+import { ChevronDown } from "@/components/ui/icons";
 import { Segmented } from "./Segmented";
 import { cn } from "@/lib/utils/cn";
 
@@ -31,7 +31,7 @@ export function SeasonPicker({
   const isOlder = !recent.includes(value);
 
   return (
-    <div className={cn("flex flex-wrap items-center gap-2", className)}>
+    <div className={cn("flex items-center gap-2", className)}>
       <Segmented
         aria-label="Season"
         segments={recent.map((y) => ({ value: y, label: y }))}
@@ -41,12 +41,12 @@ export function SeasonPicker({
       {older.length > 0 && (
         <label
           className={cn(
-            "pressable relative inline-flex h-12 items-center border focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-tint pl-4 pr-9 text-[0.8125rem] font-bold uppercase tracking-[0.12em]",
+            "pressable relative inline-flex h-12 shrink-0 items-center border focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-tint pl-3 pr-8 sm:pl-4 sm:pr-9 text-[0.8125rem] font-bold uppercase tracking-[0.12em]",
             isOlder ? "border-accent bg-accent text-paper" : "border-hairline bg-fill-1 text-label-3 hover:text-paper",
           )}
         >
-          <span>{isOlder ? value : "Earlier"}</span>
-          <ChevronDown className="pointer-events-none absolute right-3 h-4 w-4" aria-hidden />
+          <span>{isOlder ? value : <><span className="sm:hidden">More</span><span className="hidden sm:inline">Earlier</span></>}</span>
+          <ChevronDown className="pointer-events-none absolute right-2.5 h-4 w-4 sm:right-3" aria-hidden />
           <select
             aria-label="Earlier season"
             value={isOlder ? value : ""}

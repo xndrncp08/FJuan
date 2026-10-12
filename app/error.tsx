@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "@/components/ui/icons";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Section";
 

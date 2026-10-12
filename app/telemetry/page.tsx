@@ -3,7 +3,8 @@
  *
  * 3D track telemetry: circuit elevation ribbon with a braking/throttle
  * heatmap and a car marker synced to a lap timeline. Optional
- * ?session=<OpenF1 session_key>; defaults to the latest completed race.
+ * ?session=<OpenF1 session_key>&driver=<car number>; defaults to the
+ * latest completed race and its winner.
  */
 
 import { PageHeader, Section } from "@/components/ui/Section";
@@ -11,22 +12,23 @@ import TelemetryCockpit from "@/components/telemetry/TelemetryCockpit";
 
 export const metadata = {
   title: "3D telemetry",
-  description: "Interactive 3D circuit telemetry: elevation, braking and throttle zones, and lap playback from OpenF1 car data.",
+  description: "Lap-vs-lap 3D telemetry: ghost car, live time delta, mini-sectors, g-g diagram, corner analysis and a full channel stack from OpenF1 car data.",
 };
 
-export default async function TelemetryPage({ searchParams }: { searchParams: Promise<{ session?: string }> }) {
-  const { session } = await searchParams;
+export default async function TelemetryPage({ searchParams }: { searchParams: Promise<{ session?: string; driver?: string }> }) {
+  const { session, driver } = await searchParams;
   const sessionKey = session && /^\d+$/.test(session) ? Number(session) : undefined;
+  const driverNumber = driver && /^\d+$/.test(driver) ? Number(driver) : undefined;
   return (
     <>
       <PageHeader
-        eyebrow="Telemetry cockpit"
-        title="Track Telemetry"
+        eyebrow="Telemetry workstation"
+        title="Telemetry Lab"
         watermark="3D"
-        description="Every braking zone, full-throttle run, and lift on one lap, mapped onto the circuit in 3D. Scrub the timeline or press play."
+        description="Two fastest laps, one circuit. Ghost car, live gap, mini-sectors, g-forces and every corner's braking point, straight from the car data."
       />
       <Section className="pt-0 sm:pt-0">
-        <TelemetryCockpit initialSession={sessionKey} />
+        <TelemetryCockpit initialSession={sessionKey} initialDriver={driverNumber} />
       </Section>
     </>
   );

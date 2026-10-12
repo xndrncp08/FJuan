@@ -73,3 +73,18 @@ export function sampleAt(samples: TelemetrySample[], cursor: number): TelemetryS
     drs: f < 0.5 ? a.drs : b.drs,
   };
 }
+
+/** Fractional sample index at a distance (metres), by binary search on sample distance. */
+export function indexAtDistance(samples: TelemetrySample[], d: number) {
+  let lo = 0;
+  let hi = samples.length - 1;
+  if (d <= samples[0].distance) return 0;
+  if (d >= samples[hi].distance) return hi;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (samples[mid].distance <= d) lo = mid;
+    else hi = mid;
+  }
+  const span = samples[hi].distance - samples[lo].distance || 1;
+  return lo + (d - samples[lo].distance) / span;
+}

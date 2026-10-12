@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Trophy } from "lucide-react";
+import { ChevronRight, Trophy } from "@/components/ui/icons";
 import ConstructorCharts from "@/components/teams/ConstructorCharts";
 import { PageHeader, Section } from "@/components/ui/Section";
 import { Card } from "@/components/ui/Card";

@@ -5,7 +5,7 @@
  * Synthetic data is always labelled as such.
  */
 
-import { Cpu, Database, Radio } from "lucide-react";
+import { Cpu, Database, Radio } from "@/components/ui/icons";
 import type { TelemetrySource } from "@/lib/telemetry/types";
 import { cn } from "@/lib/utils/cn";
 

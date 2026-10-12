@@ -8,7 +8,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowDown, ArrowUp, Timer } from "lucide-react";
+import { ArrowDown, ArrowUp, Timer } from "@/components/ui/icons";
 import { SearchField } from "@/components/ui/Fields";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/States";

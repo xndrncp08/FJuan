@@ -5,7 +5,7 @@
  * age are secondary. All links open the publisher in a new tab.
  */
 
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "@/components/ui/icons";
 import { Section, SectionHeader } from "@/components/ui/Section";
 import { Card } from "@/components/ui/Card";
 

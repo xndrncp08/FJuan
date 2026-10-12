@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getRaceSchedule } from "@/lib/api/jolpica";
-import RaceGrid, { SeasonProgress } from "@/components/calendar/RaceGrid";
+import RaceGrid from "@/components/calendar/RaceGrid";
 import { PageHeader, Section } from "@/components/ui/Section";
 import { useSeasonChoice } from "@/lib/hooks/useSeasonChoice";
 import { Button } from "@/components/ui/Button";
@@ -11,7 +11,6 @@ import { SeasonPicker } from "@/components/ui/SeasonPicker";
 import { Skeleton } from "@/components/ui/States";
 
 export default function CalendarPage() {
-  const currentYear = new Date().getFullYear();
   const [season, setSeason] = useSeasonChoice();
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -42,13 +41,10 @@ export default function CalendarPage() {
         description={
           loading || !races.length
             ? "Every race weekend, with results for the ones already run."
-            : `${races.length} races in ${countries} countries. Open any round for results or its weekend schedule.`
+            : `${races.length} races, ${countries} countries. Tap any round for its schedule or results.`
         }
       >
-        <div className="space-y-6">
-          <SeasonPicker value={season} onChange={setSeason} />
-          {season === String(currentYear) && <SeasonProgress races={loading ? [] : races} />}
-        </div>
+        <SeasonPicker value={season} onChange={setSeason} />
       </PageHeader>
 
       <Section className="pt-0 sm:pt-0">

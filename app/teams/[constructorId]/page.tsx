@@ -6,7 +6,7 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRight, ChevronRight, Cpu, Trophy } from "lucide-react";
+import { ArrowRight, ChevronRight, Cpu, Trophy } from "@/components/ui/icons";
 import { getConstructorStandings, getConstructorResults, getDriverStandings } from "@/lib/api/jolpica";
 import constructorsData from "@/lib/data/constructors.json";
 import ConstructorProfileCharts from "@/components/teams/ConstructorProfileCharts";

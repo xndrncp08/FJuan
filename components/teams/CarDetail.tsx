@@ -7,7 +7,7 @@
  * a floating window when opened from the site (app/@modal).
  */
 
-import { ArrowUpRight, Car, Cpu } from "lucide-react";
+import { ArrowUpRight, Car, Cpu } from "@/components/ui/icons";
 import { getConstructorStandings } from "@/lib/api/jolpica";
 import { getCarArticle, getSeasonCar } from "@/lib/api/cars";
 import { f1CarImageUrl } from "@/lib/api/teamLogos";
