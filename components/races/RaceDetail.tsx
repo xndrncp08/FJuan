@@ -45,8 +45,8 @@ export default async function RaceDetail({ season, round, variant }: { season: s
         <Card>
           <EmptyState
             icon={<Flag />}
-            title="Race not found"
-            description={`There’s no round ${round} in the ${season} season.`}
+            title={scheduleRes.status === "rejected" ? "Race data unavailable" : "Race not found"}
+            description={scheduleRes.status === "rejected" ? "The race data service didn’t respond. Try again shortly." : `There’s no round ${round} in the ${season} season.`}
             action={<ButtonLink href="/calendar" variant="filled">Calendar</ButtonLink>}
           />
         </Card>

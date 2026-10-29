@@ -46,3 +46,11 @@ cp .env.example .env.local
 npm run dev
 # or
 bun dev
+
+```
+
+## Race prediction
+
+See [prediction model and evaluation](docs/prediction-model.md) for cutoff rules, prediction horizons, missing-data behavior, regression tests, and snapshot capture/evaluation commands. Model estimates are relative scores, not calibrated win probabilities.
+
+Run `npm test`, `npm run lint`, `npm run typecheck`, and `npm run build` to verify changes. See [app reliability and validation](docs/app-validation.md) for the latest fixes and verification limits.

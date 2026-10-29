@@ -84,11 +84,11 @@ function CarInstance({
   );
 }
 
-function CameraRig({ rig, center, reduce }: { rig: React.RefObject<Rig>; center: THREE.Vector3; reduce: boolean }) {
+function CameraRig({ rig: rigRef, center, reduce }: { rig: React.RefObject<Rig>; center: THREE.Vector3; reduce: boolean }) {
   const cur = useRef({ az: 0.6, el: 0.2, dist: 7.4 });
   useFrame((state, delta) => {
     const camera = state.camera;
-    const R = rig.current;
+    const R = rigRef.current;
     if (!R) return;
     const dt = Math.min(delta, 1 / 20);
     if (!R.dragging) {

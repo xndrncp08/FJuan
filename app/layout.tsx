@@ -8,8 +8,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import PageTransition from "@/components/PageTransition";
 import PredictionChat from "@/components/prediction/PredictionChat";
-import { getNextRace } from "@/lib/api/jolpica";
-import { generateRacePrediction } from "@/lib/prediction/engine";
+import { getNextRacePrediction } from "@/lib/prediction/service";
 
 // Brand type: Russo One for display, Rajdhani for UI, JetBrains Mono for
 // timing data. Self-hosted by next/font so they always load (no FOUT from a
@@ -47,26 +46,6 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-// ─── Get prediction directly — no internal HTTP fetch ────────────────────────
-async function getNextRacePrediction() {
-  try {
-    const nextRace = await getNextRace();
-    if (!nextRace) return null;
-
-    return await generateRacePrediction(
-      new Date().getFullYear().toString(),
-      nextRace.round,
-      nextRace.raceName,
-      nextRace.Circuit.circuitId,
-      nextRace.Circuit.circuitName,
-      nextRace.date,
-      3,
-    );
-  } catch {
-    return null;
-  }
-}
-
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
 export default async function RootLayout({
@@ -94,6 +73,6 @@ export default async function RootLayout({
   );
 }
 async function PredictionAssistant() {
-  const prediction = await getNextRacePrediction();
+  const prediction = await getNextRacePrediction().catch(() => null);
   return prediction ? <PredictionChat prediction={prediction} /> : null;
 }

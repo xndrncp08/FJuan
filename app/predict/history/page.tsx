@@ -20,10 +20,10 @@ export default function PredictionHistoryPage() {
     <>
       <PageHeader
         back={{ href: "/predict", label: "Predict" }}
-        eyebrow="Did we call it?"
+        eyebrow="Model evaluation"
         title="Prediction Archive"
         watermark="CALL"
-        description="Pick any finished race. The model re-runs on only what it knew before lights out, then faces the result."
+        description="Compare a saved pre-race snapshot with the final result. Each prediction horizon is evaluated separately; races without a snapshot are excluded."
       />
       <Section className="pt-0 sm:pt-0">
         <Suspense fallback={<RouteLoading label="Loading archive" />}>

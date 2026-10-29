@@ -12,7 +12,7 @@
  */
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useNow } from "@/lib/hooks/useNow";
 import { CalendarX, ChevronRight, Flag, MapPin } from "@/components/ui/icons";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/States";
@@ -26,16 +26,6 @@ const raceStart = (race: any) => new Date(`${race.date}T${race.time ?? "12:00:00
 const dayOf = (race: any) => new Date(`${race.date}T00:00:00Z`);
 const fmt = (d: Date, opts: Intl.DateTimeFormatOptions) => d.toLocaleDateString("en-US", { timeZone: "UTC", ...opts });
 
-function useNow(intervalMs: number) {
-  // Time-dependent UI resolves after mount so server and client agree.
-  const [now, setNow] = useState<number | null>(null);
-  useEffect(() => {
-    setNow(Date.now());
-    const id = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(id);
-  }, [intervalMs]);
-  return now;
-}
 
 export default function RaceGrid({ races, season }: { races: any[]; season: string }) {
   const now = useNow(30_000);

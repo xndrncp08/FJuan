@@ -37,7 +37,7 @@ export default function PredictionClient({
   initialError: string | null;
 }) {
   const [refreshEnabled, setRefreshEnabled] = useState(false);
-  const { prediction: live, isLoading, error: liveError, refetch } = usePrediction({ enabled: refreshEnabled });
+  const { prediction: live, isFetching: isLoading, error: liveError, refetch } = usePrediction({ enabled: refreshEnabled });
 
   const prediction = live ?? initialPrediction;
   const error = liveError ?? initialError;
@@ -45,7 +45,6 @@ export default function PredictionClient({
   const refresh = () => {
     if (!refreshEnabled) {
       setRefreshEnabled(true);
-      setTimeout(() => refetch(), 0);
     } else {
       refetch();
     }
@@ -78,9 +77,8 @@ export default function PredictionClient({
   }
 
   const [p1, p2, p3] = prediction.predictions;
-  const rest = [...prediction.likelyFinishers].sort((a, b) => b.score - a.score);
-  const field = [...prediction.predictions, ...rest];
-  const isSprint = prediction.isSprint ?? false;
+  const field = prediction.ranking;
+  const isSprint = prediction.sprintAvailable;
   const isWet = prediction.weather?.isWetExpected ?? false;
   const w = prediction.weather;
   const date = new Date(`${prediction.raceDate}T00:00:00Z`).toLocaleDateString("en-US", {
@@ -105,13 +103,13 @@ export default function PredictionClient({
           </p>
 
           <div className="mt-6 flex flex-wrap items-center gap-2">
-            {isSprint && (
+            {prediction.isSprint && (
               <Badge tone="warning">
                 <Zap className="h-3 w-3" aria-hidden />
                 Sprint weekend
               </Badge>
             )}
-            {w && (
+            {w.available && (
               <>
                 <Badge tone={isWet ? "info" : "neutral"}>
                   <CloudRain className="h-3 w-3" aria-hidden />
@@ -119,14 +117,16 @@ export default function PredictionClient({
                 </Badge>
                 <Badge>
                   <Thermometer className="h-3 w-3" aria-hidden />
-                  {Math.round(w.temperatureC)}°C
+                  {w.temperatureC === null ? "Temperature unavailable" : `${Math.round(w.temperatureC)}°C`}
                 </Badge>
                 <Badge>
                   <Wind className="h-3 w-3" aria-hidden />
-                  {Math.round(w.windSpeedKph)} km/h
+                  {w.windSpeedKph === null ? "Wind unavailable" : `${Math.round(w.windSpeedKph)} km/h`}
                 </Badge>
               </>
             )}
+            {!w.available && <Badge tone="warning">Weather unavailable</Badge>}
+            <Badge>{prediction.horizon === "pre-qualifying" ? "Pre-qualifying" : "Post-qualifying · pre-race"}</Badge>
             <ButtonLink href="/predict/history" size="sm" variant="plain" className="ml-auto">
               <Activity className="h-3.5 w-3.5" aria-hidden />
               Past calls
@@ -139,6 +139,10 @@ export default function PredictionClient({
         </div>
       </header>
 
+      <div className="container-page mb-6 space-y-2">
+        <p className="text-footnote text-label-3">Inputs captured at {new Date(prediction.cutoff).toLocaleString("en-GB", { timeZone: "UTC" })} UTC · {field.length} eligible drivers.</p>
+        {prediction.warnings.map(note => <p key={note} className="text-footnote text-label-3">{note}</p>)}
+      </div>
       <div className="container-page mb-6"><PageIndex items={[{ href: "#forecast-picks", label: "Leading contenders" }, { href: "#forecast-field", label: "Full forecast" }, { href: "#forecast-method", label: "How it works" }]} /></div>
       <Section id="forecast-picks" className="pt-0 sm:pt-0">
         <div className="space-y-5">
@@ -150,14 +154,14 @@ export default function PredictionClient({
               <PodiumCard key={d.driverId} driver={d} place={i + 1} field={field} isWet={isWet} isSprint={isSprint} />
             ))}
           </div>
-          <InsightNote title="How to read this forecast">Scores combine eight weighted factors on a 0–100 scale. Win chances are normalised across the top ten and sum to about 100%. They are chances of winning, not of a podium.</InsightNote>
+          <InsightNote title="How to read this forecast">Scores combine eight weighted factors on a 0–100 scale. Relative model estimates sum to 100% across the entire eligible field before display rounding. They are not calibrated win or podium probabilities.</InsightNote>
         </div>
       </Section>
 
       <Section id="forecast-field" className="pt-0 sm:pt-0">
         <h2 className="mb-1 text-title-3 text-paper">Full forecast</h2>
-        <p className="mb-4 text-footnote text-label-3">Win probability across the model’s top ten. Scores are out of 100.</p>
-        <Forecast drivers={field.slice(0, 10)} />
+        <p className="mb-4 text-footnote text-label-3">Model estimates across the entire eligible field. Scores are out of 100; equal scores indicate a tie.</p>
+        <Forecast drivers={field} />
       </Section>
 
       <Section id="forecast-method" className="pt-0 sm:pt-0">
@@ -175,7 +179,7 @@ function DriverName({ d, size = "md" }: { d: DriverPrediction; size?: "md" | "lg
       <div className="mt-2 flex items-center gap-2 text-footnote text-label-3">
         <TeamMark team={d.constructorId} size="sm" />
         {d.constructorName}
-        {d.factors.gridPenalty < 50 && (
+        {(d.penaltySeverity ?? 0) > 0 && (
           <Badge tone="warning" className="ml-1">
             <TriangleAlert className="h-3 w-3" aria-hidden />
             Grid penalty
@@ -200,7 +204,7 @@ function PickCard({ driver: d, field, isWet, isSprint }: { driver: DriverPredict
           <div className="relative">
             <p className="flex items-center gap-1.5 text-footnote font-semibold text-gold">
               <Sparkles className="h-3.5 w-3.5" aria-hidden />
-              The model’s pick
+              {field.filter(candidate => candidate.score === d.score).length > 1 ? "Joint model leader" : "The model’s pick"}
             </p>
             <div className="mt-5">
               <DriverName d={d} size="lg" />
@@ -208,10 +212,10 @@ function PickCard({ driver: d, field, isWet, isSprint }: { driver: DriverPredict
             <div className="mt-8 flex items-end gap-8">
               <div>
                 <div className="tabular text-[clamp(3rem,8vw,4.5rem)] font-bold leading-none tracking-[-0.045em] text-paper">
-                  {d.podiumProbability}
+                  {(d.modelEstimate * 100).toFixed(1)}
                   <span className="text-title-2 text-label-2">%</span>
                 </div>
-                <div className="mt-1.5 text-footnote text-label-3">Win probability</div>
+                <div className="mt-1.5 text-footnote text-label-3">Model estimate</div>
               </div>
               <div>
                 <div className="tabular text-stat text-paper">{d.score.toFixed(1)}</div>
@@ -254,8 +258,8 @@ function PodiumCard({
           </div>
         </div>
         <div className="text-right">
-          <div className="tabular text-stat text-paper">{d.podiumProbability}%</div>
-          <div className="text-caption text-label-3">Win chance</div><div className="mt-1 text-caption text-label-3">Score {d.score.toFixed(1)}</div>
+          <div className="tabular text-stat text-paper">{(d.modelEstimate * 100).toFixed(1)}%</div>
+          <div className="text-caption text-label-3">Model estimate</div><div className="mt-1 text-caption text-label-3">Score {d.score.toFixed(1)}</div>
         </div>
       </div>
       {d.insight && <p className="mt-5 text-subhead text-label-2">{d.insight}</p>}
@@ -273,10 +277,10 @@ function PodiumCard({
 }
 
 function Forecast({ drivers }: { drivers: DriverPrediction[] }) {
-  const top = Math.max(1, ...drivers.map((d) => d.podiumProbability));
+  const top = Math.max(Number.EPSILON, ...drivers.map((d) => d.modelEstimate));
   return (
     <Card padding="none" className="overflow-hidden">
-      <div className="hidden grid-cols-[2rem_minmax(0,14rem)_1fr_3.5rem_3.5rem] gap-4 border-b border-hairline px-5 py-3 text-caption font-semibold uppercase tracking-widest text-label-3 sm:grid"><span>Rank</span><span>Driver</span><span>Win chance</span><span className="text-right">Score</span><span className="text-right">%</span></div>
+      <div className="hidden grid-cols-[2rem_minmax(0,14rem)_1fr_3.5rem_3.5rem] gap-4 border-b border-hairline px-5 py-3 text-caption font-semibold uppercase tracking-widest text-label-3 sm:grid"><span>Rank</span><span>Driver</span><span>Model estimate</span><span className="text-right">Score</span><span className="text-right">%</span></div>
       <ol>
         {drivers.map((d, i) => (
           <li
@@ -287,18 +291,18 @@ function Forecast({ drivers }: { drivers: DriverPrediction[] }) {
             <div className="min-w-0">
               <div className="flex items-center gap-2 truncate text-callout">
                 <TeamMark team={d.constructorId} size="sm" />
-                <Link href={`/drivers/${d.driverId}`} className="inline-flex min-h-11 items-center font-semibold text-paper hover:text-tint">{d.familyName}</Link>
-                {d.factors.gridPenalty < 50 && <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-warning" aria-label="Grid penalty" />}
+                {d.driverId.startsWith("openf1:") ? <span className="inline-flex min-h-11 items-center font-semibold text-paper">{d.familyName}</span> : <Link href={`/drivers/${d.driverId}`} className="inline-flex min-h-11 items-center font-semibold text-paper hover:text-tint">{d.familyName}</Link>}
+                {(d.penaltySeverity ?? 0) > 0 && <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-warning" aria-label="Grid penalty" />}
               </div>
               <div className="mt-1.5 h-1.5 overflow-hidden bg-fill-1 sm:hidden" aria-hidden>
-                <div className="h-full bg-ember" style={{ width: `${(d.podiumProbability / top) * 100}%`, opacity: 1 - i * 0.06 }} />
+                <div className="h-full bg-ember" style={{ width: `${(d.modelEstimate / top) * 100}%`, opacity: Math.max(0.35, 1 - i * 0.035) }} />
               </div>
             </div>
             <div className="hidden h-2 overflow-hidden bg-fill-1 sm:block" aria-hidden>
-              <div className="h-full bg-ember" style={{ width: `${(d.podiumProbability / top) * 100}%`, opacity: 1 - i * 0.06 }} />
+              <div className="h-full bg-ember" style={{ width: `${(d.modelEstimate / top) * 100}%`, opacity: Math.max(0.35, 1 - i * 0.035) }} />
             </div>
             <span className="tabular hidden text-right text-subhead text-label-3 sm:block">{d.score.toFixed(1)}</span>
-            <span className="tabular text-right text-subhead font-semibold text-paper">{d.podiumProbability}%</span>
+            <span className="tabular text-right text-subhead font-semibold text-paper">{(d.modelEstimate * 100).toFixed(1)}%</span>
           </li>
         ))}
       </ol>
@@ -312,8 +316,7 @@ function Methodology({ isWet, isSprint }: { isWet: boolean; isSprint: boolean })
     <Card padding="lg">
       <h2 className="text-title-3 text-paper">How the model works</h2>
       <p className="mt-2 max-w-prose text-subhead text-label-2">
-        Eight factors, each scored 0–100 and normalised across the field, combined with the weights below. Probabilities come from a
-        softmax over the top ten scores.
+        Eight factors scored 0–100, combined with unchanged weights. Missing inputs receive a neutral 50. Relative estimates use a softmax across the entire eligible field; fixed-domain ratings and penalties retain their scale.
       </p>
 
       <div className="mt-6 flex h-3 overflow-hidden" role="img" aria-label="Factor weights">
@@ -347,7 +350,7 @@ function Methodology({ isWet, isSprint }: { isWet: boolean; isSprint: boolean })
       </ul>
 
       <p className="mt-8 border-t border-hairline pt-5 text-footnote text-label-3">
-        Data from the Jolpica F1 API, Open-Meteo forecasts, and OpenF1 race control messages. A prediction is a probability, not a promise.
+        Data from the Jolpica F1 API, Open-Meteo forecasts, and OpenF1 race control messages. These estimates have not been calibrated against held-out race outcomes.
       </p>
     </Card>
   );
@@ -371,7 +374,7 @@ function ProjectedPodium({ top }: { top: DriverPrediction[] }) {
             <li key={d.driverId} className={cn("stagger-in px-2 py-3 text-center sm:py-4", place === 1 && "bg-fill-1")} style={{ ["--i" as string]: place }}>
               <span className={cn("block font-mono text-caption", MEDAL_TEXT[place - 1])}>P{place}</span>
               <span className="block font-display text-[1.25rem] uppercase leading-tight text-paper">{d.driverCode}</span>
-              <span className="tabular block text-footnote text-label-3">{d.podiumProbability}% win</span>
+              <span className="tabular block text-footnote text-label-3">{(d.modelEstimate * 100).toFixed(1)}% estimate</span>
             </li>
           );
         })}

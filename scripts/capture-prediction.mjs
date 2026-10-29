@@ -1,0 +1,12 @@
+import { getPredictionRace } from '../lib/prediction/service.ts';
+import { capturePredictionInputs } from '../lib/prediction/data.ts';
+import { saveSnapshot } from '../lib/prediction/snapshots.ts';
+import { parseHorizon } from '../lib/prediction/policy.ts';
+const args = process.argv.slice(2);
+const value = flag => { const i = args.indexOf(flag); return i < 0 ? undefined : args[i + 1]; };
+const directory = value('--out');
+if (!directory) throw new Error('Usage: npm run prediction:capture -- --out directory [--season YYYY --round N --horizon pre-qualifying|post-qualifying]');
+const race = await getPredictionRace(value('--season'), value('--round'));
+if (!race) throw new Error('No upcoming race. Historical captures cannot be backfilled.');
+const snapshot = await capturePredictionInputs(race, { horizon: parseHorizon(value('--horizon') ?? null) });
+console.log(await saveSnapshot(snapshot, directory));

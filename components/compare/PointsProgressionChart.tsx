@@ -7,13 +7,11 @@ import { A_COLOR, B_COLOR, alignSeasons } from "./constants";
 
 /** Cumulative career points by season — the shape of each career. */
 export function PointsProgressionChart({ a, b }: { a: DriverStats; b: DriverStats }) {
-  let ca = 0;
-  let cb = 0;
-  const data = alignSeasons(a, b).map(({ season, a: ra, b: rb }) => ({
-    season,
-    a: (ca += ra?.points ?? 0),
-    b: (cb += rb?.points ?? 0),
-  }));
+  const data: { season: string; a: number; b: number }[] = [];
+  for (const { season, a: ra, b: rb } of alignSeasons(a, b)) {
+    const previous = data.at(-1);
+    data.push({ season, a: (previous?.a ?? 0) + (ra?.points ?? 0), b: (previous?.b ?? 0) + (rb?.points ?? 0) });
+  }
 
   return (
     <ResponsiveContainer width="100%" height="100%">

@@ -1,7 +1,8 @@
 node_modules/
 .next/
 output/
-
+.playwright-cli/
+/us
 .env
 .env.local
 

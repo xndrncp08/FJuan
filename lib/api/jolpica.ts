@@ -1,3 +1,5 @@
+import { raceEndTime, nextScheduledRace } from "@/lib/utils/raceCalendar";
+
 // Jolpica F1 API Client (Ergast replacement)
 const BASE_URL = "https://api.jolpi.ca/ergast/f1";
 
@@ -14,22 +16,22 @@ export interface ApiResponse<T> {
 }
 
 // Generic fetch function with error handling
-async function fetchFromAPI<T>(endpoint: string, revalidateSecs = 300): Promise<T> {
-  try {
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
-      next: { revalidate: revalidateSecs },
-    });
-
-    if (!response.ok) {
-      return null as T;
+export async function fetchFromAPI<T>(endpoint: string, revalidateSecs = 300): Promise<T> {
+  const request = () => fetch(`${BASE_URL}${endpoint}`, {
+    next: { revalidate: revalidateSecs },
+    signal: AbortSignal.timeout(12_000),
+  });
+  let response = await request();
+  if (response.status === 429) {
+    const delay = Number(response.headers.get("Retry-After") ?? "1") * 1000;
+    // Longer provider cooldowns stay retryable errors instead of holding the page open.
+    if (Number.isFinite(delay) && delay >= 0 && delay <= 5000) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+      response = await request();
     }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error(`Error fetching from ${endpoint}:`, error);
-    return null as T;
   }
+  if (!response.ok) throw new Error(`Race data service returned ${response.status}.`);
+  return response.json();
 }
 
 export async function getCurrentSeason(): Promise<string> {
@@ -38,7 +40,7 @@ export async function getCurrentSeason(): Promise<string> {
 }
 
 export async function getDriversBySeason(season: string = "current") {
-  const data = await fetchFromAPI<any>(`/${season}/drivers.json`);
+  const data = await fetchFromAPI<any>(`/${season}/drivers.json?limit=100`);
   return data.MRData.DriverTable.Drivers;
 }
 
@@ -54,10 +56,10 @@ export async function getDriver(driverId: string) {
 export async function getDriverStandings(
   season: string = "current",
   round?: string,
-) {
+): Promise<any[]> {
   const endpoint = round
-    ? `/${season}/${round}/driverStandings.json`
-    : `/${season}/driverStandings.json`;
+    ? `/${season}/${round}/driverStandings.json?limit=100`
+    : `/${season}/driverStandings.json?limit=100`;
   const data = await fetchFromAPI<any>(endpoint);
   return data?.MRData?.StandingsTable?.StandingsLists?.[0]?.DriverStandings || [];
 }
@@ -107,15 +109,6 @@ export async function getRaceSchedule(season: string = "current") {
   return data?.MRData?.RaceTable?.Races ?? [];
 }
 
-// A race counts as past once it has plausibly finished: start time plus three
-// hours. Comparing against the bare date (midnight UTC) marked races as past
-// on the morning of race day, before lights out.
-const RACE_DURATION_MS = 3 * 60 * 60 * 1000;
-
-function raceEndTime(race: any): number {
-  return new Date(`${race.date}T${race.time ?? "23:59:59Z"}`).getTime() + RACE_DURATION_MS;
-}
-
 export async function getRaceCalendar(season: string = "current") {
   const races = await getRaceSchedule(season);
   const now = Date.now();
@@ -125,10 +118,9 @@ export async function getRaceCalendar(season: string = "current") {
   }));
 }
 
-export async function getNextRace() {
-  const races = await getRaceCalendar("current");
-  const upcoming = races.filter((r: any) => !r.isPast);
-  return upcoming[0] || null;
+export async function getNextRace(season = "current") {
+  const races = await getRaceSchedule(season);
+  return nextScheduledRace<any>(races);
 }
 
 export async function getRaceResults(season: string, round: string) {
@@ -170,7 +162,7 @@ export async function getConstructorResults(
   season: string,
 ) {
   const data = await fetchFromAPI<any>(
-    `/${season}/constructors/${constructorId}/results.json`,
+    `/${season}/constructors/${constructorId}/results.json?limit=100`,
   );
   return data.MRData.RaceTable.Races;
 }

@@ -28,7 +28,8 @@ export function FactorBreakdown({
       {FACTORS.map((f) => {
         const value = driver.factors[f.key] ?? 0;
         const avg = field.length ? field.reduce((s, d) => s + (d.factors[f.key] ?? 0), 0) / field.length : 50;
-        const active = isFactorActive(f.context, isWet, isSprint);
+        const missing = driver.missingFactors.includes(f.key);
+        const active = !missing && isFactorActive(f.context, isWet, isSprint);
         const delta = Math.round(value - avg);
         return (
           <li key={f.key}>
@@ -36,7 +37,7 @@ export function FactorBreakdown({
               <span className="text-label-2">
                 {f.label}
                 <span className="ml-1.5 text-caption text-label-3">{f.weight}%</span>
-                {!active && <span className="ml-1.5 text-caption text-label-3">· not in play</span>}
+                {!active && <span className="ml-1.5 text-caption text-label-3">{missing ? "· unavailable, neutral" : "· not in play"}</span>}
               </span>
               <span className="tabular flex items-baseline gap-2">
                 {active && delta !== 0 && (

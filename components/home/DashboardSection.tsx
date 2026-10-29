@@ -103,7 +103,7 @@ function StandingsCard({ standings }: { standings: any[] }) {
 
 function PredictionCard({ prediction, nextRace }: { prediction: any; nextRace: any }) {
   const picks: any[] = prediction?.predictions?.slice(0, 5) ?? [];
-  const top = Math.max(1, ...picks.map((p) => Number(p.podiumProbability) || 0));
+  const top = Math.max(1, ...picks.map((p) => (Number(p.modelEstimate) || 0) * 100));
 
   return (
     <Card padding="none" className="flex flex-col self-start overflow-hidden">
@@ -113,7 +113,7 @@ function PredictionCard({ prediction, nextRace }: { prediction: any; nextRace: a
           Prediction
         </div>
         <h3 className="mt-1 text-headline text-paper">
-          Podium chances{prediction?.raceName || nextRace?.raceName ? ` · ${prediction?.raceName ?? nextRace?.raceName}` : ""}
+          Leading contenders{prediction?.raceName || nextRace?.raceName ? ` · ${prediction?.raceName ?? nextRace?.raceName}` : ""}
         </h3>
       </div>
 
@@ -124,7 +124,7 @@ function PredictionCard({ prediction, nextRace }: { prediction: any; nextRace: a
       ) : (
         <ol className="space-y-4 px-5 py-4 sm:px-6">
           {picks.map((p, i) => {
-            const prob = Number(p.podiumProbability) || 0;
+            const prob = (Number(p.modelEstimate) || 0) * 100;
             return (
               <li key={p.driverId ?? i}>
                 <div className="mb-1.5 flex items-baseline justify-between gap-3">
@@ -133,7 +133,7 @@ function PredictionCard({ prediction, nextRace }: { prediction: any; nextRace: a
                     <span className="font-semibold text-paper">{p.familyName}</span>
                     <span className="ml-2 text-footnote text-label-3">{p.constructorName}</span>
                   </span>
-                  <span className="tabular text-callout font-semibold text-paper">{prob}%</span>
+                  <span className="tabular text-callout font-semibold text-paper">{prob.toFixed(1)}% estimate</span>
                 </div>
                 <div className="h-2 overflow-hidden bg-fill-1" aria-hidden>
                   <div
@@ -157,7 +157,7 @@ function PredictionCard({ prediction, nextRace }: { prediction: any; nextRace: a
         </div>
       )}
 
-      {prediction?.weather && (
+      {prediction?.weather?.available && (
         <div className="flex flex-wrap gap-x-5 gap-y-2 px-5 pb-5 text-footnote text-label-3 sm:px-6">
           <span className="inline-flex items-center gap-1.5">
             <CloudRain className="h-4 w-4" aria-hidden />
@@ -165,15 +165,16 @@ function PredictionCard({ prediction, nextRace }: { prediction: any; nextRace: a
           </span>
           <span className="inline-flex items-center gap-1.5">
             <Thermometer className="h-4 w-4" aria-hidden />
-            <span className="tabular">{Math.round(prediction.weather.temperatureC)}°C</span>
+            <span className="tabular">{prediction.weather.temperatureC === null ? "—" : Math.round(prediction.weather.temperatureC)}°C</span>
           </span>
           <span className="inline-flex items-center gap-1.5">
             <Wind className="h-4 w-4" aria-hidden />
-            <span className="tabular">{Math.round(prediction.weather.windSpeedKph)} km/h</span>
+            <span className="tabular">{prediction.weather.windSpeedKph === null ? "—" : Math.round(prediction.weather.windSpeedKph)} km/h</span>
           </span>
         </div>
       )}
 
+      {prediction && !prediction.weather?.available && <p className="px-5 pb-3 text-footnote text-label-3">Weather unavailable · relative estimates, not calibrated odds.</p>}
       <Link
         href="/predict"
         className="row-interactive flex items-center justify-between border-t border-hairline px-5 py-3.5 text-[0.8125rem] font-bold uppercase tracking-[0.14em] text-tint sm:px-6"

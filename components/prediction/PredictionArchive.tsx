@@ -18,6 +18,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, Check, ChevronDown, Minus, X } from "@/components/ui/icons";
 import type { Backtest, BacktestRow } from "@/lib/prediction/backtest";
+import { raceEndTime } from "@/lib/utils/raceCalendar";
 import { getRaceSchedule } from "@/lib/api/jolpica";
 import { teamColor } from "@/lib/theme/teams";
 import { Button, ButtonLink } from "@/components/ui/Button";
@@ -26,7 +27,6 @@ import { cn } from "@/lib/utils/cn";
 
 const THIS_YEAR = new Date().getFullYear();
 const SEASONS = Array.from({ length: THIS_YEAR - 2021 + 1 }, (_, i) => String(THIS_YEAR - i));
-const RACE_DONE_MS = 3 * 60 * 60 * 1000;
 
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -41,7 +41,8 @@ export default function PredictionArchive() {
   const params = useSearchParams();
   const season = params.get("season") ?? String(THIS_YEAR);
   const roundParam = params.get("round");
-  const go = (s: string, r?: string) => router.replace(`${pathname}?${new URLSearchParams(r ? { season: s, round: r } : { season: s })}`, { scroll: false });
+  const horizon = params.get("horizon") === "pre-qualifying" ? "pre-qualifying" : "post-qualifying";
+  const go = (s: string, r?: string, h = horizon) => router.replace(`${pathname}?${new URLSearchParams({ season: s, ...(r ? { round: r } : {}), horizon: h })}`, { scroll: false });
 
   const schedule = useQuery({
     queryKey: ["schedule", season],
@@ -50,17 +51,17 @@ export default function PredictionArchive() {
   });
   const [now] = useState(() => Date.now());
   const finished = useMemo(
-    () => (schedule.data ?? []).filter((r) => new Date(`${r.date}T${r.time ?? "12:00:00Z"}`).getTime() + RACE_DONE_MS < now),
+    () => (schedule.data ?? []).filter((r) => raceEndTime(r) < now),
     [schedule.data, now],
   );
   // Results can lag the flag; the API falls back gracefully, but default to the latest finished round.
   const round = roundParam ?? finished[finished.length - 1]?.round ?? null;
 
   const backtest = useQuery({
-    queryKey: ["backtest", season, round],
+    queryKey: ["backtest", season, round, horizon],
     enabled: !!round,
     staleTime: 3_600_000,
-    queryFn: () => getJson<Backtest>(`/api/delta/classification?season=${season}&round=${round}`),
+    queryFn: () => getJson<Backtest>(`/api/delta/classification?season=${season}&round=${round}&horizon=${horizon}`),
   });
 
   const rail = useRef<HTMLOListElement>(null);
@@ -71,8 +72,14 @@ export default function PredictionArchive() {
   return (
     <div className="space-y-6">
       <div className="card space-y-4 p-4 sm:p-6">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="label-caps text-caption text-label-3">Pick a race</p>
+          <label className="flex min-w-0 flex-wrap items-center gap-2 text-footnote text-label-2">Prediction horizon
+            <select className="min-h-11 max-w-full border border-separator bg-surface px-2 text-paper" aria-label="Prediction horizon" value={horizon} onChange={e => go(season, round ?? undefined, e.target.value as typeof horizon)}>
+              <option value="pre-qualifying">Pre-qualifying</option>
+              <option value="post-qualifying">Post-qualifying / pre-race</option>
+            </select>
+          </label>
           <label className="pressable relative inline-flex h-11 items-center border border-separator bg-fill-1 pl-3 pr-8 text-[0.8125rem] font-bold uppercase tracking-[0.12em] text-paper focus-within:outline focus-within:outline-2 focus-within:outline-tint">
             {season}
             <ChevronDown className="pointer-events-none absolute right-2.5 h-4 w-4 text-label-3" />
@@ -112,14 +119,14 @@ export default function PredictionArchive() {
 
       {!round ? null : backtest.isPending ? (
         <div className="space-y-4" role="status" aria-busy="true">
-          <p className="text-footnote text-label-3">Re-running the model with only what it knew before lights out…</p>
+          <p className="text-footnote text-label-3">Evaluating a saved snapshot from the selected horizon…</p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-24" />)}</div>
           <Skeleton className="h-[28rem]" />
         </div>
       ) : backtest.isError ? (
         <div className="card"><EmptyState title="No verdict for this race" description={(backtest.error as Error).message} action={<Button onClick={() => void backtest.refetch()}>Try again</Button>} /></div>
       ) : (
-        <Verdict key={`${season}-${round}`} b={backtest.data} />
+        <Verdict key={`${season}-${round}-${horizon}`} b={backtest.data} />
       )}
     </div>
   );
@@ -141,23 +148,25 @@ function Verdict({ b }: { b: Backtest }) {
         <ButtonLink href={`/races/${b.season}/${b.round}`} size="sm" variant="plain">Full results</ButtonLink>
       </div>
 
+      <p className="text-footnote text-label-3">{b.horizon} · inputs captured {b.cutoff}. Ranking metrics include retired drivers in official order; tied scores use average ranks. Top-three hits account for ties.</p>
+      {!b.stats.completeField && <p className="status-line">Incomplete field: aggregate metrics are withheld. Missing predictions: {b.stats.missingDrivers.join(", ") || "none"}; missing outcomes: {b.stats.missingOutcomes.join(", ") || "none"}.</p>}
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Tile label="Winner" good={b.stats.winnerCorrect}>
+        <Tile label="Winner" good={b.stats.winnerCorrect === true}>
           <span className="flex items-center gap-2">
-            {b.stats.winnerCorrect ? <Check className="h-6 w-6 text-success" /> : <X className="h-6 w-6 text-tint" />}
-            {b.stats.winnerCorrect ? "Called" : "Missed"}
+            {b.stats.winnerCorrect === null ? <Minus className="h-6 w-6 text-label-3" /> : b.stats.winnerCorrect ? <Check className="h-6 w-6 text-success" /> : <X className="h-6 w-6 text-tint" />}
+            {b.stats.winnerCorrect === null ? "Not scored" : b.stats.winnerCorrect ? "Called" : "Missed"}
           </span>
         </Tile>
-        <Tile label="Podium" hint="drivers in the right top 3" good={b.stats.podiumHits >= 2}>{b.stats.podiumHits}/3</Tile>
-        <Tile label="Top 10" hint="points finishers called" good={b.stats.top10Hits >= 7}>{b.stats.top10Hits}/10</Tile>
-        <Tile label="Avg miss" hint="places per driver">±{b.stats.positionMae.toFixed(1)}</Tile>
+        <Tile label="Podium" hint="drivers in the right top 3" good={(b.stats.podiumHits ?? 0) >= 2}>{b.stats.podiumHits?.toFixed(1) ?? "—"}/3</Tile>
+        <Tile label="Top 10" hint="points finishers called" good={(b.stats.top10Hits ?? 0) >= 7}>{b.stats.top10Hits?.toFixed(1) ?? "—"}/10</Tile>
+        <Tile label="Avg miss" hint="places per driver">±{b.stats.positionMae?.toFixed(1) ?? "—"}</Tile>
       </dl>
 
       <div className="grid gap-3 md:grid-cols-2">
-        <Podium title="We called" rows={byPred.slice(0, 3)} rank={(r) => r.predicted} highlight={(r) => r.actual !== null && r.actual <= 3} />
+        <Podium title="Model ranking" rows={byPred.slice(0, 3)} rank={(r) => r.predicted} highlight={(r) => r.actual !== null && r.actual <= 3} />
         <Podium title="What happened" rows={byActual.slice(0, 3)} rank={(r) => r.actual!} highlight={(r) => r.predicted <= 3} real />
       </div>
-      {winnerPred && winnerReal && !b.stats.winnerCorrect && (
+      {winnerPred && winnerReal && b.stats.winnerCorrect === false && winnerPred.score > (byPred[1]?.score ?? -Infinity) && (
         <p className="text-footnote text-label-2">
           The model had <b className="text-paper">{winnerPred.name}</b> on top; <b className="text-paper">{winnerReal.name}</b> won from a predicted P{winnerReal.predicted}.
         </p>
@@ -192,7 +201,7 @@ function Verdict({ b }: { b: Backtest }) {
                       <span className="truncate text-footnote text-label-3">{r.name}</span>
                     </span>
                   </th>
-                  <td className="py-2 pr-2 text-right font-mono text-[0.875rem] text-paper">{r.actual ? `P${r.actual}` : "DNF"}</td>
+                  <td className="py-2 pr-2 text-right font-mono text-[0.875rem] text-paper">{r.actual ? `P${r.actual}${r.status === "dnf" ? " · DNF" : r.status === "dsq" ? " · DSQ" : ""}` : r.status.toUpperCase()}</td>
                   <td className="py-2 text-right"><DeltaChip delta={r.delta} /></td>
                 </tr>
               ))}
@@ -223,7 +232,7 @@ function Podium({ title, rows, rank, highlight, real }: { title: string; rows: B
             <span className={cn("flex h-9 w-9 items-center justify-center border font-display", ["border-gold/50 text-gold", "border-silver/50 text-silver", "border-bronze/50 text-bronze"][i])}>{rank(r)}</span>
             <span className="h-7 w-1" style={{ background: teamColor(r.constructorId) }} aria-hidden />
             <span className="min-w-0 flex-1 truncate text-callout font-semibold text-paper">{r.name}</span>
-            {highlight(r) ? <Check className="h-4 w-4 shrink-0 text-success" aria-label="On both podiums" /> : <span className="shrink-0 font-mono text-caption text-label-3">{real ? `pred P${r.predicted}` : r.actual ? `fin P${r.actual}` : "DNF"}</span>}
+            {highlight(r) ? <Check className="h-4 w-4 shrink-0 text-success" aria-label="On both podiums" /> : <span className="shrink-0 font-mono text-caption text-label-3">{real ? `pred P${r.predicted}` : r.actual ? `fin P${r.actual}` : r.status.toUpperCase()}</span>}
           </li>
         ))}
       </ol>
