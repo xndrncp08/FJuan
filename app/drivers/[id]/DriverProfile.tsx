@@ -32,8 +32,8 @@ export default async function DriverProfile({ driverId }: { driverId: string }) 
         <Card>
           <EmptyState
             icon={<UserX />}
-            title="Driver not found"
-            description="We couldn’t find a driver with that ID. They may be listed under a different name."
+            title="Driver data unavailable"
+            description="This driver could not be loaded. Check the driver ID or try again shortly."
             action={<ButtonLink href="/drivers" variant="filled">All drivers</ButtonLink>}
           />
         </Card>

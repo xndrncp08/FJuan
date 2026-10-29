@@ -81,8 +81,10 @@ export default async function ConstructorProfilePage({ params }: { params: Promi
     };
   });
 
-  let running = 0;
-  const series = races.map((r) => ({ ...r, cumPoints: (running += r.points) }));
+  const series: (RaceRow & { cumPoints: number })[] = [];
+  for (const race of races) {
+    series.push({ ...race, cumPoints: (series.at(-1)?.cumPoints ?? 0) + race.points });
+  }
 
   const completed = races.filter((r) => r.bestPos !== null).length;
   const podiums = races.reduce((s, r) => s + r.results.filter((x) => x.position && x.position <= 3).length, 0);

@@ -1,8 +1,8 @@
 /**
  * components/prediction/PredictionChat.tsx
  *
- * "Nacho Bot" — floating chat about the next race's prediction.
- * Tagline: "I'm not your bot, ese."
+ * "Prediction insights" — floating chat about the next race's prediction.
+ * Tagline: "Explore the race prediction."
  *
  * - The bubble docks in any corner, picture-in-picture style: drag it (or
  *   flick it — release velocity is projected forward) and it springs to the
@@ -237,7 +237,7 @@ export default function PredictionChat({ prediction }: { prediction: RacePredict
         {open && (
           <motion.div
             role="dialog"
-            aria-label="Nacho Bot"
+            aria-label="Prediction insights"
             className={cn(
               "material-thick fixed z-[400] flex w-[min(400px,calc(100vw-24px))] flex-col overflow-hidden rounded-xl shadow-popover",
               PANEL_SIDE[corner],
@@ -260,15 +260,16 @@ export default function PredictionChat({ prediction }: { prediction: RacePredict
                 <NachoIcon className="h-7 w-7" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-callout font-semibold text-paper">Nacho Bot</p>
-                <p className="truncate text-caption text-label-3">I’m not your bot, ese.</p>
+                <p className="text-callout font-semibold text-paper">Prediction insights</p>
+                <p className="truncate text-caption text-label-3">Explore the race prediction.</p>
               </div>
               {messages.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setMessages([])}
+                  disabled={streaming}
                   aria-label="Clear conversation"
-                  className="pressable flex h-11 w-11 items-center justify-center text-label-3 hover:bg-fill-1 hover:text-paper"
+                  className="pressable flex h-11 w-11 items-center justify-center text-label-3 hover:bg-fill-1 hover:text-paper disabled:opacity-40"
                 >
                   <RotateCcw className="h-4 w-4" />
                 </button>
@@ -337,7 +338,7 @@ export default function PredictionChat({ prediction }: { prediction: RacePredict
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask Nacho Bot"
+                placeholder="Ask Prediction insights"
                 aria-label="Message"
                 disabled={streaming}
                 enterKeyHint="send"
@@ -430,7 +431,7 @@ export default function PredictionChat({ prediction }: { prediction: RacePredict
             const next = cornerInDirection(corner, e.key);
             if (next !== corner) moveTo(next);
           }}
-          aria-label={open ? "Close Nacho Bot" : "Open Nacho Bot"}
+          aria-label={open ? "Close Prediction insights" : "Open Prediction insights"}
           aria-description={`Docked ${CORNER_NAME[corner]}. Drag, or use the arrow keys, to move it to another corner.`}
           aria-expanded={open}
           drag={!open}
@@ -471,7 +472,7 @@ export default function PredictionChat({ prediction }: { prediction: RacePredict
 
 function Typing() {
   return (
-    <span className="inline-flex gap-1 py-1" aria-label="Nacho Bot is typing">
+    <span className="inline-flex gap-1 py-1" aria-label="Prediction insights is typing">
       {[0, 1, 2].map((i) => (
         <span key={i} className="h-1.5 w-1.5 animate-bounce rounded-full bg-label-3" style={{ animationDelay: `${i * 120}ms` }} />
       ))}

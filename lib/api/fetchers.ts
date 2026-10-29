@@ -1,61 +1,28 @@
 import * as jolpica from "./jolpica";
 import * as openf1 from "./openf1";
-import {
+import type {
   Driver,
   DriverStats,
   Constructor,
-  DriverRaceResult,
   SeasonResult,
 } from "../types/driver";
-import championshipData from "../data/championships.json";
+import championshipData from "../data/championships.json" with { type: "json" };
 
-const BASE_URL = "https://api.jolpi.ca/ergast/f1";
-
-// Fetch ALL paginated results for a driver - handles Hamilton's 350+ races
-async function fetchAllDriverResults(driverId: string): Promise<any[]> {
+// One driver per race row; all career statistics require every page.
+async function fetchAllDriverRaces(driverId: string, endpoint: string): Promise<any[]> {
   const pageSize = 100;
   let offset = 0;
   let allRaces: any[] = [];
   let total = Infinity;
 
   while (offset < total) {
-    const res = await fetch(
-      `${BASE_URL}/drivers/${driverId}/results.json?limit=${pageSize}&offset=${offset}`,
-      { next: { revalidate: 300 } }
-    );
-    if (!res.ok) break;
-    const data = await res.json();
+    const data = await jolpica.fetchFromAPI<any>(`/drivers/${driverId}/${endpoint}.json?limit=${pageSize}&offset=${offset}`);
     const mrData = data?.MRData;
     total = parseInt(mrData?.total || "0");
     const races = mrData?.RaceTable?.Races || [];
     allRaces = [...allRaces, ...races];
     offset += pageSize;
-    if (races.length === 0) break;
-  }
-
-  return allRaces;
-}
-
-// Fetch ALL career qualifying results for pole positions
-async function fetchAllDriverQualifying(driverId: string): Promise<any[]> {
-  const pageSize = 100;
-  let offset = 0;
-  let allRaces: any[] = [];
-  let total = Infinity;
-
-  while (offset < total) {
-    const res = await fetch(
-      `${BASE_URL}/drivers/${driverId}/qualifying.json?limit=${pageSize}&offset=${offset}`,
-      { next: { revalidate: 300 } }
-    );
-    if (!res.ok) break;
-    const data = await res.json();
-    const mrData = data?.MRData;
-    total = parseInt(mrData?.total || "0");
-    const races = mrData?.RaceTable?.Races || [];
-    allRaces = [...allRaces, ...races];
-    offset += pageSize;
-    if (races.length === 0) break;
+    if (races.length === 0 && allRaces.length < total) throw new Error("Career data is incomplete.");
   }
 
   return allRaces;
@@ -76,7 +43,7 @@ export async function getDriverStats(driverId: string): Promise<DriverStats | nu
       await Promise.allSettled([
         jolpica.getDriver(driverId),
         jolpica.getCurrentDriverStandings(),
-        jolpica.getDriverFastestLaps(driverId),
+        fetchAllDriverRaces(driverId, "fastest/1/results"),
       ]);
 
     const driverData = driverRes.status === "fulfilled" ? driverRes.value : null;
@@ -87,15 +54,15 @@ export async function getDriverStats(driverId: string): Promise<DriverStats | nu
 
     // Fetch ALL career results and qualifying with pagination (sequential to avoid rate limits)
     const [allRaces, allQualifying] = await Promise.all([
-      fetchAllDriverResults(driverId),
-      fetchAllDriverQualifying(driverId),
+      fetchAllDriverRaces(driverId, "results"),
+      fetchAllDriverRaces(driverId, "qualifying"),
     ]);
 
     // Calculate career stats from full result set
     const totalRaces = allRaces.length;
     const firstSeason = allRaces[0]?.season || "Unknown";
     const lastSeason = allRaces[allRaces.length - 1]?.season || "Unknown";
-    const yearsActive = parseInt(lastSeason) - parseInt(firstSeason);
+    const yearsActive = allRaces.length ? parseInt(lastSeason) - parseInt(firstSeason) : 0;
 
     let totalWins = 0;
     let totalPodiums = 0;
@@ -134,8 +101,9 @@ export async function getDriverStats(driverId: string): Promise<DriverStats | nu
     const totalPoles = allQualifying.filter(
       (race: any) => race.QualifyingResults?.[0]?.position === "1"
     ).length;
+    const qualifyingPositions = allQualifying.map(race => Number(race.QualifyingResults?.[0]?.position)).filter(position => Number.isFinite(position) && position > 0);
 
-    // Championships from static JSON — accurate and never changes
+    // shortcut: title counts use a static archive; refresh it after each championship.
     const totalChampionships = (championshipData as Record<string, number>)[driverId] ?? 0;
 
     // Season-by-season breakdown
@@ -166,7 +134,7 @@ export async function getDriverStats(driverId: string): Promise<DriverStats | nu
         races: s.races,
         wins: s.wins,
         podiums: s.podiums,
-        poles: 0,
+        poles: allQualifying.filter(race => race.season === season && race.QualifyingResults?.[0]?.position === "1").length,
         points: s.points,
         position: 0,
       }))
@@ -196,7 +164,7 @@ export async function getDriverStats(driverId: string): Promise<DriverStats | nu
       dnfCount,
       retirementRate,
       avgFinishPosition: Math.round(avgFinishPosition * 10) / 10,
-      avgQualifyingPosition: 0,
+      avgQualifyingPosition: qualifyingPositions.length ? qualifyingPositions.reduce((sum, position) => sum + position, 0) / qualifyingPositions.length : 0,
       bestFinish,
       worstFinish,
       pointsPerRace: Math.round(pointsPerRace * 100) / 100,

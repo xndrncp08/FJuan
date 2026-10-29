@@ -74,6 +74,12 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [previousPath, setPreviousPath] = useState(pathname);
+  if (previousPath !== pathname) {
+    setPreviousPath(pathname);
+    setMenuOpen(false);
+    setSearchOpen(false);
+  }
   const reduce = useReducedMotion();
   const time = useClock();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -108,11 +114,6 @@ export default function Navbar() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
-
-  useEffect(() => {
-    setMenuOpen(false);
-    setSearchOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     document.documentElement.style.overflow = menuOpen || searchOpen ? "hidden" : "";
@@ -259,6 +260,7 @@ export default function Navbar() {
 function SearchPalette({ open, onClose, time }: { open: boolean; onClose: () => void; time: string }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
+  if (!open && query) setQuery("");
   const inputRef = useRef<HTMLInputElement>(null);
   const scopeRef = useRef<HTMLDivElement>(null);
   useFocusScope(scopeRef, open);
@@ -266,7 +268,6 @@ function SearchPalette({ open, onClose, time }: { open: boolean; onClose: () => 
 
   useEffect(() => {
     if (open) {
-      setQuery("");
       const frame = requestAnimationFrame(() => inputRef.current?.focus());
       return () => cancelAnimationFrame(frame);
     }

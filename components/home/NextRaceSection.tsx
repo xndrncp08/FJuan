@@ -8,11 +8,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useNow } from "@/lib/hooks/useNow";
 import { CalendarDays, ChevronRight, MapPin, Sparkles } from "@/components/ui/icons";
 import { ButtonLink } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/States";
 
 type Session = { date: string; time?: string };
 
@@ -31,15 +33,6 @@ function toDate(s: Session | undefined): Date | null {
   return new Date(`${s.date}T${s.time ?? "12:00:00Z"}`);
 }
 
-function useNow(intervalMs = 1000) {
-  const [now, setNow] = useState<number | null>(null);
-  useEffect(() => {
-    setNow(Date.now());
-    const id = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(id);
-  }, [intervalMs]);
-  return now;
-}
 
 function splitDuration(ms: number) {
   const clamp = Math.max(0, ms);
@@ -63,6 +56,10 @@ export default function NextRaceSection({ nextRace }: { nextRace: any }) {
     if (raceStart) list.push({ label: "Race", at: raceStart });
     return list.sort((a, b) => a.at.getTime() - b.at.getTime());
   }, [nextRace, raceStart]);
+
+  if (nextRace === undefined) {
+    return <section className="container-page py-12"><Card><EmptyState title="Race schedule unavailable" description="The calendar service didn’t respond. Try the calendar again shortly." action={<ButtonLink href="/calendar">Open calendar</ButtonLink>} /></Card></section>;
+  }
 
   if (!nextRace || !raceStart) {
     return (

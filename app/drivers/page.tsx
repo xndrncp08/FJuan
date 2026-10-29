@@ -7,7 +7,7 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Users } from "@/components/ui/icons";
 import { useSeasonChoice } from "@/lib/hooks/useSeasonChoice";
@@ -23,57 +23,20 @@ import { EmptyState, Skeleton } from "@/components/ui/States";
 import { teamColor } from "@/lib/theme/teams";
 import { cn } from "@/lib/utils/cn";
 
-const currentYear = new Date().getFullYear();
-
 const MEDAL_TEXT = ["text-gold", "text-silver", "text-bronze"];
 const MEDAL_BG = ["bg-gold/15", "bg-silver/15", "bg-bronze/15"];
-
-async function fetchSeasonStandings(season: string) {
-  try {
-    const res = await fetch(`https://api.jolpi.ca/ergast/f1/${season}/driverStandings.json`, { cache: "force-cache" });
-    if (!res.ok) throw new Error("Standings service unavailable");
-    const data = await res.json();
-    return data.MRData.StandingsTable.StandingsLists[0]?.DriverStandings || [];
-  } catch {
-    throw new Error("Standings service unavailable");
-  }
-}
 
 export default function DriversPage() {
   const [season, setSeason] = useSeasonChoice();
   const [query, setQuery] = useState("");
   const [team, setTeam] = useState("");
   const [scoring, setScoring] = useState("all");
-  const [failed, setFailed] = useState(false);
-  const [attempt, setAttempt] = useState(0);
-  const [rows, setRows] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const { data: current, isLoading, isError, refetch } = useDriverStandings();
-  const isCurrent = season === String(currentYear);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (isCurrent) {
-      setRows(current || []);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setFailed(false);
-    fetchSeasonStandings(season).then((data) => {
-      if (cancelled) return;
-      setRows(data);
-    }).catch(() => { if (!cancelled) { setRows([]); setFailed(true); } }).finally(() => { if (!cancelled) setLoading(false); });
-    return () => {
-      cancelled = true;
-    };
-  }, [season, current, isCurrent, attempt]);
+  const { data: rows = [], isPending: busy, isError, refetch } = useDriverStandings(season);
 
   const teams = [...new Map(rows.flatMap((r) => (r.Constructors ?? []).map((c: any) => [c.constructorId, c.name] as const))).entries()];
   const normalize = (s: string) => s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
   const shown = rows.filter((s) => normalize(`${s.Driver.givenName} ${s.Driver.familyName} ${s.Driver.code ?? ""}`).includes(normalize(query.trim())) && (!team || s.Constructors?.some((c: any) => c.constructorId === team)) && (scoring === "all" || (scoring === "points" ? Number(s.points) > 0 : Number(s.wins) > 0)));
   const resetFilters = () => { setQuery(""); setTeam(""); setScoring("all"); };
-  const busy = (isCurrent && isLoading) || loading;
   const leader = Math.max(...rows.map((d) => parseFloat(d.points) || 0), 1);
 
   return (
@@ -90,7 +53,7 @@ export default function DriversPage() {
       <Section className="pt-0 sm:pt-0">
         {busy ? (
           <LoadingState />
-        ) : (isCurrent ? isError : failed) ? (<Card><EmptyState title="Standings unavailable" description="The data service didn’t respond. Your season is saved; try again." action={<Button onClick={() => isCurrent ? void refetch() : setAttempt((n) => n + 1)}>Retry standings</Button>} /></Card>) : rows.length === 0 ? (
+        ) : isError ? (<Card><EmptyState title="Standings unavailable" description="The data service didn’t respond. Your season is saved; try again." action={<Button onClick={() => void refetch()}>Retry standings</Button>} /></Card>) : rows.length === 0 ? (
           <Card>
             <EmptyState
               icon={<Users />}

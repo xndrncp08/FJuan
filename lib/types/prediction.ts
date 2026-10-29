@@ -1,71 +1,101 @@
-/**
- * lib/types/prediction.ts
- *
- * Types for the race prediction engine v3.
- * Extends v2 with weather, sprint, tyre fit, and grid penalty factors.
- */
+export type PredictionHorizon = "pre-qualifying" | "post-qualifying";
+export type FactorKey = "currentForm" | "qualifyingStrength" | "championshipPosition" | "circuitHistory" | "weatherAdaptability" | "sprintForm" | "tyreFit" | "gridPenalty";
 
-// ─── Per-driver factor breakdown ──────────────────────────────────────────────
-
-export interface DriverPrediction {
-  driverId:          string;
-  driverCode:        string;  // e.g. "VER", "HAM"
-  givenName:         string;
-  familyName:        string;
-  constructorName:   string;
-  constructorId:     string;
-  score:             number;  // composite weighted score (0–100)
-  podiumProbability: number;  // softmax probability % (sums to 100 across top 10)
-
-  factors: {
-    // ── v2 factors ────────────────────────────────────────────────────────
-    currentForm:          number; // 0–100, recency-weighted race finishing positions
-    championshipPosition: number; // 0–100, inverted standing + wins bonus
-    circuitHistory:       number; // 0–100, podiums at this circuit, last 10 seasons
-    qualifyingStrength:   number; // 0–100, recency-weighted qualifying positions
-
-    // ── v3 additions ──────────────────────────────────────────────────────
-    weatherAdaptability:  number; // 0–100, wet-weather rating if rain expected, else 50
-    sprintForm:           number; // 0–100, sprint result for this weekend (0 if not sprint)
-    tyreFit:              number; // 0–100, constructor tyre-management rating for circuit compound
-    gridPenalty:          number; // 0 if penalty confirmed, 100 if clean (binary)
-  };
-
-  insight: string; // Groq-generated one-sentence analyst note
+export interface RaceContext {
+  season: string;
+  round: string;
+  raceName: string;
+  circuitId: string;
+  circuitName: string;
+  raceDate: string;
+  raceStart: string;
+  qualifyingStart: string;
+  qualifyingEnd: string;
+  latitude: number | null;
+  longitude: number | null;
+  isSprint: boolean;
 }
 
-// ─── Weather forecast snapshot ────────────────────────────────────────────────
+/** availableAt is when this exact response was observed, not the event date. */
+export interface Observation<T> { availableAt: string; source: string; value: T }
+export interface Entry {
+  driverId: string;
+  driverCode: string;
+  givenName: string;
+  familyName: string;
+  constructorId: string;
+  constructorName: string;
+  number: string;
+  status: "entered" | "withdrawn";
+}
+export interface Position { driverId: string; position: number; wins?: number }
+export interface PastResult {
+  season: string;
+  round: string;
+  endedAt: string;
+  rows: Position[];
+}
+export interface Penalty { driverId: string; severity: number; announcedAt: string }
+export interface ForecastValues { rainProbability: number; temperatureC: number | null; windSpeedKph: number | null; raceDate: string }
+export interface Ratings { wet: Record<string, number>; tyre: Record<string, Record<string, number>>; compound: Record<string, string> }
 
+/** Immutable, versioned inputs. Never reconstruct these from today's historical API responses. */
+export interface PredictionSnapshot {
+  schemaVersion: 1;
+  capturedAt: string;
+  cutoff: string;
+  horizon: PredictionHorizon;
+  race: RaceContext;
+  entries: Observation<Entry[]>;
+  entryBasis: "qualifying" | "practice" | "entry-list";
+  form: Observation<PastResult[]> | null;
+  qualifyingHistory: Observation<PastResult[]> | null;
+  circuitHistory: Observation<PastResult[]> | null;
+  standings: Observation<PastResult> | null;
+  qualifying: Observation<{ endedAt: string; rows: Position[] }> | null;
+  sprint: Observation<{ endedAt: string; rows: Position[] }> | null;
+  startingGrid: Observation<Position[]> | null;
+  penalties: Observation<Penalty[]> | null;
+  weather: Observation<ForecastValues> | null;
+  ratings: Observation<Ratings> | null;
+  warnings: string[];
+}
+
+export interface DriverPrediction extends Omit<Entry, "number" | "status"> {
+  score: number;
+  /** Relative softmax estimate over the entire field, 0–1. Not calibrated win odds. */
+  modelEstimate: number;
+  factors: Record<FactorKey, number>;
+  missingFactors: FactorKey[];
+  inactiveFactors: FactorKey[];
+  penaltySeverity: number | null;
+  insight: string;
+}
 export interface WeatherForecast {
-  rainProbability: number; // 0–100, % chance of rain on race day
-  temperatureC:    number; // expected max temp °C
-  windSpeedKph:    number; // expected max wind speed km/h
-  isWetExpected:   boolean; // true if rainProbability > 40
+  available: boolean;
+  rainProbability: number | null;
+  temperatureC: number | null;
+  windSpeedKph: number | null;
+  isWetExpected: boolean | null;
 }
-
-// ─── Full race prediction output ──────────────────────────────────────────────
-
 export interface RacePrediction {
-  raceName:       string;
-  circuitId:      string;
-  circuitName:    string;
-  raceDate:       string; // ISO "YYYY-MM-DD"
-
-  // Top 3 predicted podium finishers
-  predictions:    DriverPrediction[];
-
-  // P4–P10 range (shuffled slightly to reflect uncertainty in midfield)
+  raceName: string;
+  circuitId: string;
+  circuitName: string;
+  raceDate: string;
+  season: string;
+  round: string;
+  predictions: DriverPrediction[];
   likelyFinishers: DriverPrediction[];
-
-  // Every scored driver in predicted order (unshuffled) — what backtests score
-  ranking?:       DriverPrediction[];
-
-  generatedAt:    string; // ISO timestamp of when prediction was generated
-
-  // ── v3 additions ─────────────────────────────────────────────────────────
-  weather:        WeatherForecast; // forecast data used for the weather factor
-  isSprint:       boolean;        // whether this is a sprint weekend
-
-  // Human-readable summary of model weights and data window used
-  modelSummary:   string;
+  ranking: DriverPrediction[];
+  generatedAt: string;
+  cutoff: string;
+  horizon: PredictionHorizon;
+  weather: WeatherForecast;
+  isSprint: boolean;
+  sprintAvailable: boolean;
+  entryBasis: PredictionSnapshot["entryBasis"];
+  coverage: Record<FactorKey, number>;
+  warnings: string[];
+  modelSummary: string;
 }

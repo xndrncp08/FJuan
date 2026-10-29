@@ -1,111 +1,48 @@
-/**
- * lib/prediction/backtest.ts
- *
- * Scores the classification engine against a finished race: the engine
- * only sees rounds before the target (getPriorRounds), so running it for
- * a completed round is an honest out-of-sample test.
- */
-
-import { getLastRace } from "@/lib/api/jolpica";
-import { getClassification } from "@/lib/telemetry/provider";
-import type { RaceClassification } from "@/lib/telemetry/types";
-import { generateRacePrediction } from "./engine";
+import { getLastRace, getRaceResults } from "@/lib/api/jolpica";
+import type { PredictionHorizon, PredictionSnapshot } from "@/lib/types/prediction";
+import { scorePrediction } from "./engine";
+import { findSnapshot } from "./snapshots";
+import { baselineRankings, outcomePositions, parseOutcomes, rankingMetrics, type Outcome, type RankingMetrics } from "./metrics";
+import { PredictionUnavailableError } from "./policy";
 
 export interface BacktestRow {
-  driverId: string;
-  code: string;
-  name: string;
-  constructorId: string;
-  predicted: number;
-  actual: number | null;
-  /** predicted − actual places (negative = finished worse than predicted). */
-  delta: number | null;
-  score: number;
+  driverId: string; code: string; name: string; constructorId: string;
+  predicted: number; actual: number | null; delta: number | null; score: number;
+  status: Outcome["status"] | "missing";
 }
-
 export interface Backtest {
-  season: string;
-  round: string;
-  raceName: string;
-  date: string;
-  source: RaceClassification["source"];
-  rows: BacktestRow[];
-  stats: {
-    positionMae: number;
-    winnerCorrect: boolean;
-    podiumHits: number;
-    top10Hits: number;
-    /** Spearman rank correlation between predicted and actual finishing order. */
-    spearman: number;
-    classified: number;
+  season: string; round: string; raceName: string; date: string; source: "jolpica";
+  horizon: PredictionHorizon; cutoff: string; rows: BacktestRow[];
+  stats: RankingMetrics;
+  baselines: Record<string, RankingMetrics | null>;
+  coverage: ReturnType<typeof scorePrediction>["coverage"];
+  warnings: string[];
+}
+export function evaluateSnapshot(snapshot: PredictionSnapshot, outcomes: Outcome[]): Backtest {
+  const prediction = scorePrediction(snapshot);
+  const actual = outcomePositions(outcomes);
+  const rows = prediction.ranking.map((d, i) => ({
+    driverId: d.driverId, code: d.driverCode, name: `${d.givenName} ${d.familyName}`, constructorId: d.constructorId,
+    predicted: i + 1, actual: actual.get(d.driverId) ?? null, delta: actual.has(d.driverId) ? i + 1 - actual.get(d.driverId)! : null,
+    score: d.score, status: outcomes.find(o => o.driverId === d.driverId)?.status ?? "missing" as const,
+  }));
+  return {
+    season: snapshot.race.season, round: snapshot.race.round, raceName: snapshot.race.raceName, date: snapshot.race.raceDate, source: "jolpica",
+    horizon: snapshot.horizon, cutoff: snapshot.cutoff, rows, stats: rankingMetrics(prediction.ranking, outcomes),
+    baselines: Object.fromEntries(Object.entries(baselineRankings(snapshot, prediction.ranking)).map(([name, ranking]) => [name, ranking ? rankingMetrics(ranking, outcomes) : null])),
+    coverage: prediction.coverage, warnings: prediction.warnings,
   };
 }
-
-function spearman(pairs: [number, number][]) {
-  const n = pairs.length;
-  if (n < 3) return 0;
-  const d2 = pairs.reduce((s, [a, b]) => s + (a - b) ** 2, 0);
-  return 1 - (6 * d2) / (n * (n * n - 1));
-}
-
-export async function backtestRace(season?: string, round?: string): Promise<Backtest | null> {
+export async function backtestRace(season?: string, round?: string, horizon: PredictionHorizon = "post-qualifying"): Promise<Backtest | null> {
   let target = season && round ? { season, round } : null;
   if (!target) {
     const last = await getLastRace();
     if (!last) return null;
     target = { season: last.season, round: last.round };
   }
-  const actual = await getClassification(target.season, target.round);
-  if (!actual) return null;
-
-  const prediction = await generateRacePrediction(
-    actual.season,
-    actual.round,
-    actual.raceName,
-    actual.circuitId,
-    actual.circuitName,
-    actual.date,
-    30,
-    { insights: false },
-  );
-  const ranking = prediction.ranking ?? [...prediction.predictions, ...prediction.likelyFinishers];
-  const finish = new Map(actual.rows.map((r) => [r.driverId, r]));
-
-  // Re-rank predictions among drivers who actually started, so a reserve
-  // driver in the model doesn't shift everyone by one place.
-  const started = ranking.filter((p) => finish.has(p.driverId));
-  const rows: BacktestRow[] = started.map((p, i) => {
-    const a = finish.get(p.driverId)!;
-    return {
-      driverId: p.driverId,
-      code: p.driverCode,
-      name: `${p.givenName} ${p.familyName}`,
-      constructorId: a.constructorId || p.constructorId,
-      predicted: i + 1,
-      actual: a.position,
-      delta: a.position !== null ? i + 1 - a.position : null,
-      score: p.score,
-    };
-  });
-
-  const classified = rows.filter((r) => r.actual !== null);
-  const top = (k: number, key: "predicted" | "actual") => new Set(rows.filter((r) => r[key] !== null && (r[key] as number) <= k).map((r) => r.driverId));
-  const hits = (k: number) => [...top(k, "predicted")].filter((id) => top(k, "actual").has(id)).length;
-
-  return {
-    season: actual.season,
-    round: actual.round,
-    raceName: actual.raceName,
-    date: actual.date,
-    source: actual.source,
-    rows,
-    stats: {
-      positionMae: classified.length ? classified.reduce((s, r) => s + Math.abs(r.delta as number), 0) / classified.length : 0,
-      winnerCorrect: rows[0]?.actual === 1,
-      podiumHits: hits(3),
-      top10Hits: hits(10),
-      spearman: spearman(classified.map((r) => [r.predicted, r.actual as number])),
-      classified: classified.length,
-    },
-  };
+  const snapshot = await findSnapshot(target.season, target.round, horizon);
+  if (!snapshot) throw new PredictionUnavailableError(`No saved ${horizon} snapshot for this race. It is excluded from evaluation; present-day historical responses cannot replace pre-race inputs.`);
+  const actual = await getRaceResults(target.season, target.round);
+  if (!actual?.Results?.length) return null;
+  return evaluateSnapshot(snapshot, parseOutcomes(actual.Results));
 }

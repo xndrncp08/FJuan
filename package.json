@@ -6,8 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "lint": "eslint . --max-warnings 0",
+    "test": "node --import ./scripts/register-typescript.mjs --test lib/*/*.test.mjs && node lib/telemetry/analysis.check.mjs",
+    "typecheck": "tsc --noEmit",
+    "test:prediction": "node --import ./scripts/register-typescript.mjs --test lib/prediction/*.test.mjs",
+    "prediction:capture": "node --import ./scripts/register-typescript.mjs scripts/capture-prediction.mjs",
+    "prediction:evaluate": "node --import ./scripts/register-typescript.mjs scripts/evaluate-predictions.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.16.0",

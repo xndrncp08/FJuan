@@ -4,7 +4,7 @@ import { getF1News } from "@/lib/api/news-fetcher";
 import { getCurrentStandings } from "@/lib/api/fetchers";
 import { getConstructorStandings, getNextRace, getLastRace } from "@/lib/api/jolpica";
 import { getSeasonCars } from "@/lib/api/cars";
-import { generateRacePrediction } from "@/lib/prediction/engine";
+import { getNextRacePrediction } from "@/lib/prediction/service";
 import HeroSection from "@/components/home/HeroSection";
 import { getHeroHud } from "@/lib/api/heroHud";
 import CarShowcase from "@/components/home/CarShowcase";
@@ -25,9 +25,9 @@ export default function Home() {
 
 async function HomeData() {
   const [standings, nextRace, lastRace, news, seasonCars, ctorStandings] = await Promise.all([
-    getCurrentStandings(),
-    getNextRace(),
-    getLastRace(),
+    getCurrentStandings().catch(() => []),
+    getNextRace().catch(() => undefined),
+    getLastRace().catch(() => null),
     getF1News(),
     getSeasonCars().catch(() => []),
     getConstructorStandings("current").catch(() => [] as any[]),
@@ -43,15 +43,7 @@ async function HomeData() {
   let predictionPreview = null;
   if (nextRace) {
     try {
-      predictionPreview = await generateRacePrediction(
-        new Date().getFullYear().toString(),
-        nextRace.round,
-        nextRace.raceName,
-        nextRace.Circuit.circuitId,
-        nextRace.Circuit.circuitName,
-        nextRace.date,
-        3,
-      );
+      predictionPreview = await getNextRacePrediction();
     } catch {
       // prediction failing shouldn't break the homepage
     }

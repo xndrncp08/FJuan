@@ -455,11 +455,11 @@ function Classification() {
     <div>
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
-          { label: "Winner", value: b.stats.winnerCorrect ? <Check className="h-6 w-6 text-success" aria-label="Correct" /> : <X className="h-6 w-6 text-tint" aria-label="Missed" /> },
-          { label: "Podium hits", value: `${b.stats.podiumHits}/3` },
-          { label: "Top-10 hits", value: `${b.stats.top10Hits}/10` },
-          { label: "Position MAE", value: b.stats.positionMae.toFixed(1) },
-          { label: "Rank corr. ρ", value: b.stats.spearman.toFixed(2) },
+          { label: "Winner", value: b.stats.winnerCorrect === null ? "—" : b.stats.winnerCorrect ? <Check className="h-6 w-6 text-success" aria-label="Correct" /> : <X className="h-6 w-6 text-tint" aria-label="Missed" /> },
+          { label: "Podium hits", value: `${b.stats.podiumHits?.toFixed(1) ?? "—"}/3` },
+          { label: "Top-10 hits", value: `${b.stats.top10Hits?.toFixed(1) ?? "—"}/10` },
+          { label: "Position MAE", value: b.stats.positionMae?.toFixed(1) ?? "—" },
+          { label: "Rank corr. ρ", value: b.stats.spearman?.toFixed(2) ?? "—" },
         ].map((s) => (
           <div key={s.label} className="border border-hairline bg-fill-1 p-3">
             <div className="flex h-7 items-center font-display text-[1.5rem] leading-none text-paper">{s.value}</div>
@@ -491,7 +491,7 @@ function Classification() {
                     <span className="hidden truncate text-footnote text-label-3 sm:inline">{r.name}</span>
                   </span>
                 </td>
-                <td className="py-2 pr-2 text-right font-mono text-[0.875rem] text-paper">{r.actual ? `P${r.actual}` : "DNF"}</td>
+                <td className="py-2 pr-2 text-right font-mono text-[0.875rem] text-paper">{r.actual ? `P${r.actual}${r.status === "dnf" ? " · DNF" : r.status === "dsq" ? " · DSQ" : ""}` : r.status.toUpperCase()}</td>
                 <td className="py-2 text-right">
                   {r.delta === null ? (
                     <span className="text-label-4">—</span>
@@ -508,7 +508,7 @@ function Classification() {
         </table>
       </div>
       <p className="mt-3 text-caption text-label-3">
-        {b.raceName} {b.season}, round {b.round}. The engine only sees races before this one. Δ places: positive means the driver finished higher than predicted. Official result via{" "}
+        {b.raceName} {b.season}, round {b.round}. Saved {b.horizon} inputs at {b.cutoff}. Incomplete fields are not scored. Δ places: positive means the driver finished higher than predicted. Official result via{" "}
         <SourceBadge source={b.source} className="ml-1 align-middle !py-0" />
       </p>
     </div>

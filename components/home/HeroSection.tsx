@@ -26,6 +26,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useNow } from "@/lib/hooks/useNow";
 import { Suspense, use, useEffect, useRef, useState } from "react";
 import { AnimatePresence, animate, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight } from "@/components/ui/icons";
@@ -506,16 +507,6 @@ export default function HeroSection({ hud }: { hud: Promise<HeroHud | null> }) {
 
 // ─── Live data (streamed from the server; the hero never waits on it) ────────
 
-function useClock(run = true) {
-  const [now, setNow] = useState<number | null>(null);
-  useEffect(() => {
-    if (!run) return;
-    setNow(Date.now());
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [run]);
-  return now;
-}
 
 function countdown(ms: number) {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -550,7 +541,7 @@ const specGrid = "grid grid-cols-2 gap-px border border-paper/10 bg-paper/10 bac
 
 function SpecStrip({ hud, run, reduce }: { hud: Promise<HeroHud | null>; run: boolean; reduce: boolean }) {
   const h = use(hud);
-  const now = useClock(!!h?.next);
+  const now = useNow(1000, !!h?.next);
   const points = useCountUp(h?.leader?.points ?? 0, run, 0.1, reduce);
   const done = useCountUp(h?.roundsDone ?? 0, run, 0.2, reduce);
   if (!h) return null;
@@ -586,7 +577,7 @@ function SpecStripSkeleton() {
 
 function HudCorners({ hud }: { hud: Promise<HeroHud | null> }) {
   const h = use(hud);
-  const now = useClock();
+  const now = useNow();
   const utc = now === null ? "--:--:--" : new Date(now).toISOString().slice(11, 19);
   return (
     <>

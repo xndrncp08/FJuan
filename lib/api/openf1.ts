@@ -158,7 +158,7 @@ export async function getDrivers(session_key: number): Promise<number[]> {
 }
 
 // Get real-time telemetry for all drivers in a session
-export async function getSessionTelemetry(session_key: number, limit: number = 100) {
+export async function getSessionTelemetry(session_key: number) {
   try {
     const drivers = await getDrivers(session_key);
     
