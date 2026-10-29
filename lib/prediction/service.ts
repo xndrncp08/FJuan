@@ -4,7 +4,6 @@ import { nextScheduledRace, raceStartTime } from "@/lib/utils/raceCalendar";
 import { capturePredictionInputs } from "./data";
 import { scorePrediction } from "./engine";
 import { findSnapshot, saveSnapshot } from "./snapshots";
-import { generateInsight } from "./insights";
 import { PredictionUnavailableError } from "./policy";
 
 export async function getPredictionRace(season = String(new Date().getUTCFullYear()), round?: string): Promise<any | null> {
@@ -15,7 +14,7 @@ export async function getPredictionRace(season = String(new Date().getUTCFullYea
   const races = (await res.json())?.MRData?.RaceTable?.Races ?? [];
   return round ? races[0] ?? null : nextScheduledRace<any>(races);
 }
-export async function generateRacePrediction(race: any, options: { horizon?: PredictionHorizon; cutoff?: string; insights?: boolean } = {}) {
+export async function generateRacePrediction(race: any, options: { horizon?: PredictionHorizon; cutoff?: string } = {}) {
   const requestedAt = Date.now();
   const archived = options.cutoff || requestedAt >= raceStartTime(race);
   let snapshot;
@@ -31,12 +30,7 @@ export async function generateRacePrediction(race: any, options: { horizon?: Pre
   }
   if (!snapshot) throw new PredictionUnavailableError("No saved pre-race snapshot for this horizon. Today's data cannot reconstruct what was known then.");
   if (captured && process.env.PREDICTION_SNAPSHOT_DIR) await saveSnapshot(snapshot, process.env.PREDICTION_SNAPSHOT_DIR);
-  const prediction = scorePrediction(snapshot);
-  if (options.insights !== false) {
-    const displayed = [...prediction.predictions, ...prediction.likelyFinishers];
-    for (let i = 0; i < displayed.length; i += 4) await Promise.all(displayed.slice(i, i + 4).map(async d => { d.insight = await generateInsight(d); }));
-  }
-  return prediction;
+  return scorePrediction(snapshot);
 }
 
 /** Share one immutable capture across the page, home preview, and assistant in a server render. */

@@ -47,7 +47,7 @@ export interface PredictionSnapshot {
   horizon: PredictionHorizon;
   race: RaceContext;
   entries: Observation<Entry[]>;
-  entryBasis: "qualifying" | "practice" | "entry-list";
+  entryBasis: "qualifying" | "practice" | "entry-list" | "previous-race";
   form: Observation<PastResult[]> | null;
   qualifyingHistory: Observation<PastResult[]> | null;
   circuitHistory: Observation<PastResult[]> | null;

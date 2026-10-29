@@ -13,7 +13,7 @@ Prediction refresh makes one initial request and displays subsequent fetching st
 - Zero-error, zero-warning lint; TypeScript and production build pass.
 - `npm test` runs the API, prediction, and telemetry-query regressions plus the existing telemetry self-check. CI runs this suite and rejects lint warnings.
 - Browser checks cover calendar failure/retry and season persistence, driver filters, mobile menu/search reset, and the main routes at 390px. Driver comparison was also checked against the server endpoint. No horizontal overflow was found in the checked routes.
-- A live provider returned an HTTP 200 chat stream using explicitly synthetic prediction input. This checks connectivity, not predictive accuracy or factual reliability of arbitrary replies.
+- A live provider returned an HTTP 200 chat stream using explicitly synthetic prediction input. This checks optional conversational chat connectivity, not prediction generation. Forecasts and card explanations now run without AI calls.
 - Production HTTP checks cover malformed inputs and synthetic telemetry/delta success responses. External data services can still rate-limit requests; the UI preserves recovery rather than publishing partial career totals.
 
 Historical prediction replay still requires genuine saved pre-race snapshots. See [prediction model and evaluation](prediction-model.md); these fixes do not establish improved prediction accuracy.

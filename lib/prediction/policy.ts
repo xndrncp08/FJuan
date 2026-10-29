@@ -29,7 +29,7 @@ export function validateSnapshot(s: PredictionSnapshot): void {
   if (timestamp(s.race.qualifyingStart) >= timestamp(s.race.qualifyingEnd) || timestamp(s.race.qualifyingEnd) >= timestamp(s.race.raceStart)) throw new Error("Invalid session boundaries.");
   if (!HORIZONS.includes(s.horizon) || horizonAt(s.race, cutoff) !== s.horizon) throw new Error("Snapshot is outside its prediction horizon.");
   if (!Array.isArray(s.entries?.value) || !s.entries.value.length) throw new PredictionUnavailableError("No race-specific entry information is available.");
-  if (!["entry-list", "practice", "qualifying"].includes(s.entryBasis)) throw new Error("Unknown entry source.");
+  if (!["entry-list", "practice", "qualifying", "previous-race"].includes(s.entryBasis)) throw new Error("Unknown entry source.");
   if (s.horizon === "pre-qualifying" && (s.qualifying || s.startingGrid || s.entryBasis === "qualifying")) throw new Error("Pre-qualifying snapshots cannot contain qualifying or starting-grid data.");
   const keys = ["entries", "form", "qualifyingHistory", "circuitHistory", "standings", "qualifying", "sprint", "startingGrid", "penalties", "weather", "ratings"] as const;
   for (const key of keys) {

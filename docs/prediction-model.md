@@ -1,10 +1,10 @@
 # Race prediction: correctness and evaluation
 
-FJuan combines eight factors with the existing weights: recent form 35%, qualifying 15%, championship 15%, circuit history 10%, weather 10%, sprint 7%, tyre fit 5%, grid penalties 3%. **No weights or temperature were tuned in this change.** Generated explanation text does not select drivers or change scores.
+FJuan combines eight factors with the existing weights: recent form 35%, qualifying 15%, championship 15%, circuit history 10%, weather 10%, sprint 7%, tyre fit 5%, grid penalties 3%. **No weights or temperature were tuned in this change.** Predictions and card explanations run entirely from this deterministic model. No AI service is called to generate a forecast.
 
 ## Prediction horizons and cutoff
 
-- **Pre-qualifying:** after race-weekend participants are available, strictly before main qualifying starts. Recent qualifying form is allowed; this weekend's qualifying result and starting grid are forbidden.
+- **Pre-qualifying:** strictly before main qualifying starts. Before practice participants are available, the most recent available completed race in the same season supplies an explicitly provisional field. Recent qualifying form is allowed; this weekend's qualifying result and starting grid are forbidden.
 - **Post-qualifying / pre-race:** after main qualifying ends and a completed qualifying result is published, strictly before the scheduled race start. Current qualifying order is used. A scheduled end alone does not establish that a delayed session has finished.
 - Qualifying in progress and predictions newly reconstructed after race start are unsupported. Previously saved snapshots remain usable.
 
@@ -22,7 +22,7 @@ Historical weather requires a forecast captured before the cutoff. The supported
 
 ## Entries, identifiers, and missing inputs
 
-Post-qualifying captures use race-specific qualifying participants. Pre-qualifying captures use the latest completed practice session's participants. These are explicitly provisional: a practice reserve, a non-qualifier later admitted, or an unreported withdrawal can make the inferred field incomplete. An explicit race-withdrawal message removes that driver. A supplied timestamped entry-list snapshot can represent a more authoritative field. Without race-specific evidence, capture fails; it never falls back to a season-wide driver union.
+Post-qualifying captures use race-specific qualifying participants. Pre-qualifying captures use the latest completed practice session's participants when available. Before practice, they use the most recent available completed race field from the same season and disclose that substitutions or withdrawals may change it. These are explicitly provisional: a practice reserve, a non-qualifier later admitted, or an unreported withdrawal can make the inferred field incomplete. An explicit race-withdrawal message removes that driver. A supplied timestamped entry-list snapshot can represent a more authoritative field. Without either weekend participants or a previous race field, capture fails; it never falls back to a season-wide driver union. This preserves field provenance while allowing the model to run before practice starts.
 
 Canonical driver IDs and legacy aliases live in `ratings.ts`, following [Jolpica driver identifiers](https://github.com/jolpica/jolpica-f1/blob/main/docs/endpoints/drivers.md). Unmapped session participants retain an `openf1:<number>` identifier and neutral history rather than receiving an invented Jolpica identity. Their coverage must be resolved before full-field evaluation.
 
@@ -42,7 +42,7 @@ Qualifying features use raw session order, **never starting-grid order**. The la
 
 The UI labels shares **Model estimate**, not calibrated win probabilities. Unknown weather is shown as unavailable, and per-driver factor fallbacks and the capture horizon are visible. Provider/model branding is absent from prediction labels, tooltips and errors. Existing provider endpoints, technical configuration and attribution remain intact; explanations are not represented as human-written.
 
-Card insights are assembled from verified statements. The optional explanation provider may select statement indices; arbitrary returned prose is discarded. Chat receives the cutoff, full field, missing factors, coverage and uncertainty, with explicit rules against inventing supporting evidence. As with any open-ended generated conversation, those instructions are not a guarantee of factuality; card insights have the stricter statement-selection boundary.
+Card insights are assembled deterministically from the model's factor scores and missing-input statements. They require no provider key or AI request. Chat receives the cutoff, full field, missing factors, coverage and uncertainty, with explicit rules against inventing supporting evidence. As with any open-ended generated conversation, those instructions are not a guarantee of factuality; card insights have the stricter statement-selection boundary.
 
 ## Outcome and metric policy
 
@@ -94,10 +94,14 @@ Training-period summaries do not perform any fitting. Validation uses strictly l
 
 ## Validation evidence from this change
 
-All eight reported categories were reproduced before edits with mocked inputs (ten distinct failure cases). The new regression suite covers the corrected paths, cutoff rejection, entry fallback behavior, metric edge cases, provider output constraints, immutable snapshots and chronological holdout isolation.
+All eight reported categories were reproduced before edits with mocked inputs (ten distinct failure cases). The new regression suite covers the corrected paths, cutoff rejection, entry fallback behavior, metric edge cases, deterministic card explanations, immutable snapshots and chronological holdout isolation.
 
 Validation completed locally: 59 prediction regression/evaluation tests and the existing telemetry assertions passed; lint completed with 0 errors and 13 existing warnings outside the changed prediction code; typecheck and the production build passed. Chromium checks at 390px and 1440px verified the full 22-driver synthetic field, unavailable-weather labels, horizon/cutoff display, neutral branding, and no horizontal overflow. The archive was checked with missing snapshots and incomplete outcomes. API checks returned 400 for invalid inputs and 422 for unavailable historical snapshots. Browser fixtures were explicitly synthetic; live provider-generated responses were not exercised.
 
 A live read of the 2025 calendar returned 24 races. The coverage inventory reserved 11 training-period races, 6 validation races and 7 untouched holdout races. There were **zero saved pre-race input snapshots**: all 34 training/validation race-horizon cases were excluded and no historical accuracy metrics were produced. Holdout input/outcome files were not read. Network access worked; missing historical snapshots, not network access, blocked a valid predictive-accuracy comparison.
 
 Correctness improvements are demonstrated by deterministic tests. Predictive-accuracy improvements are **not established**. No tuning is justified by this inventory, and synthetic fixtures are never presented as race-performance evidence.
+
+## Pre-practice availability correction
+
+The previous entry gate returned HTTP 422 before practice, preventing the model from running despite available prior-race inputs. The live capture now uses an explicitly provisional previous-race field until weekend participant data appears. The scoring weights and factor calculations are unchanged. Tests cover this exact pre-practice path through the prediction API, and historical replay asserts zero network requests even with an AI provider key present. AI calls have been removed from forecast generation; optional conversational chat remains independent.

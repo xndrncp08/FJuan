@@ -112,7 +112,6 @@ export async function capturePredictionInputs(rawRace: any, options: { horizon?:
       givenName: d.first_name ?? "", familyName: d.last_name ?? d.full_name, constructorId: constructorIds[d.team_name] ?? "", constructorName: d.team_name ?? "Unknown", number: String(d.driver_number), status: "entered",
     }));
   }
-  if (!entries.length || !entryObservation) throw new PredictionUnavailableError("Race-specific participants are unavailable. A season-wide driver list is not an entry list; return once weekend data is published.");
   if (entryBasis === "qualifying") warnings.push("Field uses qualifying participants; non-qualifiers admitted to the race and late withdrawals require an updated entry snapshot.");
 
   let scheduleObs = await get(`${JOLPICA}/${race.season}.json?limit=100`);
@@ -129,9 +128,20 @@ export async function capturePredictionInputs(rawRace: any, options: { horizon?:
     const [result, qualifying] = await Promise.all([get(`${JOLPICA}/${r.season}/${r.round}/results.json?limit=100`), get(`${JOLPICA}/${r.season}/${r.round}/qualifying.json?limit=100`)]);
     const raceResult = result?.value?.MRData?.RaceTable?.Races?.[0];
     const q = qualifying?.value?.MRData?.RaceTable?.Races?.[0];
+    if (horizon === "pre-qualifying" && !sessionDrivers.length && raceResult?.Results?.length && String(raceResult.season) === race.season && String(raceResult.round) === String(r.round) && Number(r.round) < Number(race.round) && raceEndTime(raceResult) < now()) {
+      entryBasis = "previous-race";
+      entryObservation = result;
+      entries = raceResult.Results.map((row: any) => ({
+        driverId: canonicalDriverId(row.Driver.driverId), driverCode: row.Driver.code ?? row.Driver.familyName.slice(0, 3).toUpperCase(),
+        givenName: row.Driver.givenName, familyName: row.Driver.familyName,
+        constructorId: row.Constructor?.constructorId ?? "", constructorName: row.Constructor?.name ?? "Unknown",
+        number: "", status: "entered",
+      }));
+    }
     if (raceResult?.Results?.length) { formResults.push(past(raceResult)); formTime = result; }
     if (q?.QualifyingResults?.length) { qualResults.push(past(q, "QualifyingResults")); qualTime = qualifying; }
   }
+  if (!entries.length || !entryObservation) throw new PredictionUnavailableError("No participant data is available yet. The model needs practice, qualifying, or a previous race field to run.");
   if (formResults.length < prior.length) warnings.push(`Recent results available for ${formResults.length}/${prior.length} prior races.`);
   if (qualResults.length < prior.length) warnings.push(`Prior qualifying available for ${qualResults.length}/${prior.length} races.`);
   const last = prior.at(-1);

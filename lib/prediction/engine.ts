@@ -100,6 +100,7 @@ export function scorePrediction(snapshot: PredictionSnapshot, topN = 10): RacePr
   if (!s.weather) warnings.push("Weather forecast unavailable at the cutoff; weather is neutral.");
   if (!s.penalties) warnings.push("Grid-penalty information unavailable; no clean-grid claim is made.");
   if (s.entryBasis === "practice") warnings.push("Provisional field from practice participants; later substitutions or withdrawals may change it.");
+  if (s.entryBasis === "previous-race") warnings.push("Provisional field from the most recent available previous race; substitutions or withdrawals may change it. The field updates when weekend participants are published.");
   if (ranking.some(d => d.missingFactors.length)) warnings.push("Missing features use 50/100 neutral fallbacks; estimates have not been calibrated against race outcomes.");
   return {
     raceName: s.race.raceName, circuitId: s.race.circuitId, circuitName: s.race.circuitName, raceDate: s.race.raceDate,
